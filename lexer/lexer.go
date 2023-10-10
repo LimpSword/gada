@@ -3,6 +3,7 @@ package lexer
 import (
 	"bufio"
 	"gada/token"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -14,8 +15,9 @@ type Lexer struct {
 }
 
 type Token struct {
-	Type  string
-	Value string
+	Type     string
+	Position int
+	Value    int
 }
 
 func NewLexer(text string) *Lexer {
@@ -23,8 +25,11 @@ func NewLexer(text string) *Lexer {
 	return &Lexer{reader: reader}
 }
 
-func (l *Lexer) Read() []Token {
+// Read reads the text and returns the list of tokens and the associated lexicon.
+func (l *Lexer) Read() ([]Token, []any) {
 	tokens := make([]Token, 0)
+	lexi := make([]interface{}, 0)
+	position := 1
 	for {
 		l.column++
 
@@ -34,14 +39,12 @@ func (l *Lexer) Read() []Token {
 			case '\n':
 				l.line++
 				l.column = 0
-			case ' ':
-				continue
 			case '+':
-				tokens = append(tokens, Token{Type: "Operator", Value: "+"})
+				tokens = append(tokens, Token{Type: "Operator", Value: token.ADD})
 			case '-':
-				tokens = append(tokens, Token{Type: "Operator", Value: "-"})
+				tokens = append(tokens, Token{Type: "Operator", Value: token.SUB})
 			case '*':
-				tokens = append(tokens, Token{Type: "Operator", Value: "*"})
+				tokens = append(tokens, Token{Type: "Operator", Value: token.MUL})
 			case '/':
 				r, _, err := l.reader.ReadRune()
 				if err == nil {
@@ -63,41 +66,43 @@ func (l *Lexer) Read() []Token {
 						r, _, err := l.reader.ReadRune()
 						if err == nil {
 							if r == '=' {
-								tokens = append(tokens, Token{Type: "Operator", Value: "/="})
+								tokens = append(tokens, Token{Type: "Operator", Value: token.NEQ})
 							} else {
-								tokens = append(tokens, Token{Type: "Operator", Value: "/"})
+								tokens = append(tokens, Token{Type: "Operator", Value: token.QUO})
 								l.reader.UnreadRune()
 							}
 						}
 					}
 				}
 			case '=':
-				tokens = append(tokens, Token{Type: "Operator", Value: "="})
+				tokens = append(tokens, Token{Type: "Operator", Value: token.EQL})
+			case '.':
+				tokens = append(tokens, Token{Type: "Operator", Value: token.PERIOD})
 			case ';':
-				tokens = append(tokens, Token{Type: "Separator", Value: ";"})
+				tokens = append(tokens, Token{Type: "Separator", Value: token.SEMICOLON})
 			case ',':
-				tokens = append(tokens, Token{Type: "Separator", Value: ","})
+				tokens = append(tokens, Token{Type: "Separator", Value: token.COMMA})
 			case ':':
-				tokens = append(tokens, Token{Type: "Separator", Value: ":"})
+				tokens = append(tokens, Token{Type: "Separator", Value: token.COLON})
 			case '(':
-				tokens = append(tokens, Token{Type: "Separator", Value: "("})
+				tokens = append(tokens, Token{Type: "Separator", Value: token.LPAREN})
 			case ')':
-				tokens = append(tokens, Token{Type: "Separator", Value: ")"})
+				tokens = append(tokens, Token{Type: "Separator", Value: token.RPAREN})
 			case '>':
 				if r, _, err := l.reader.ReadRune(); err == nil {
 					if r == '=' {
-						tokens = append(tokens, Token{Type: "Operator", Value: ">="})
+						tokens = append(tokens, Token{Type: "Operator", Value: token.GEQ})
 					} else {
-						tokens = append(tokens, Token{Type: "Operator", Value: ">"})
+						tokens = append(tokens, Token{Type: "Operator", Value: token.GTR})
 						l.reader.UnreadRune()
 					}
 				}
 			case '<':
 				if r, _, err := l.reader.ReadRune(); err == nil {
 					if r == '=' {
-						tokens = append(tokens, Token{Type: "Operator", Value: "<="})
+						tokens = append(tokens, Token{Type: "Operator", Value: token.LEQ})
 					} else {
-						tokens = append(tokens, Token{Type: "Operator", Value: "<"})
+						tokens = append(tokens, Token{Type: "Operator", Value: token.LSS})
 						l.reader.UnreadRune()
 					}
 				}
@@ -109,9 +114,11 @@ func (l *Lexer) Read() []Token {
 					r, _, err := l.reader.ReadRune()
 					if err == nil {
 						if r == '\'' {
-							tokens = append(tokens, Token{Type: "Literal", Value: char})
+							tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.CHAR})
 						}
 					}
+					lexi = append(lexi, char)
+					position++
 				}
 			case '"':
 				// A string is a sequence of characters surrounded by double quotes.
@@ -128,9 +135,13 @@ func (l *Lexer) Read() []Token {
 						break
 					}
 				}
-				tokens = append(tokens, Token{Type: "Literal", Value: str})
+				tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.STRING})
+				lexi = append(lexi, str)
+				position++
 			default:
-				if unicode.IsDigit(r) {
+				if unicode.IsSpace(r) {
+					continue
+				} else if unicode.IsDigit(r) {
 					number := string(r)
 					for {
 						r, _, err := l.reader.ReadRune()
@@ -139,6 +150,10 @@ func (l *Lexer) Read() []Token {
 								number += string(r)
 								continue
 							} else {
+								// Check if we have a lexical error.
+								if !unicode.IsSpace(r) {
+									println("Lexical error: unexpected character '" + string(r) + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
+								}
 								l.reader.UnreadRune()
 								break
 							}
@@ -146,9 +161,10 @@ func (l *Lexer) Read() []Token {
 							break
 						}
 					}
-					tokens = append(tokens, Token{Type: "Literal", Value: number})
-				}
-				if unicode.IsLetter(r) {
+					tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.INT})
+					lexi = append(lexi, number)
+					position++
+				} else if unicode.IsLetter(r) {
 					name := string(r)
 					for {
 						r, _, err := l.reader.ReadRune()
@@ -157,6 +173,10 @@ func (l *Lexer) Read() []Token {
 								name += string(r)
 								continue
 							} else {
+								// Check if we have a lexical error.
+								if !unicode.IsSpace(r) {
+									println("Lexical error: unexpected character '" + string(r) + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
+								}
 								l.reader.UnreadRune()
 								break
 							}
@@ -165,15 +185,23 @@ func (l *Lexer) Read() []Token {
 						}
 					}
 					if token.IsKeywordString(name) {
-						tokens = append(tokens, Token{Type: "Keyword", Value: name})
+						tokens = append(tokens, Token{Type: "Keyword", Value: int(token.LookupIdent(name))})
 					} else {
-						tokens = append(tokens, Token{Type: "Identifier", Value: name})
+						tokens = append(tokens, Token{Type: "Identifier", Value: token.IDENT})
+					}
+				} else {
+					// Check if we have a lexical error.
+					if !unicode.IsSpace(r) {
+						println("Lexical error: unexpected character '" + string(r) + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
 					}
 				}
 			}
 		} else {
+			if err.Error() != "EOF" {
+				panic(err)
+			}
 			break
 		}
 	}
-	return tokens
+	return tokens, lexi
 }
