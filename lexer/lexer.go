@@ -42,14 +42,11 @@ func (l *Lexer) Read() ([]Token, []any) {
 			case '+':
 				tokens = append(tokens, Token{Type: "Operator", Value: token.ADD})
 			case '-':
-				tokens = append(tokens, Token{Type: "Operator", Value: token.SUB})
-			case '*':
-				tokens = append(tokens, Token{Type: "Operator", Value: token.MUL})
-			case '/':
+				// comments are --
 				r, _, err := l.reader.ReadRune()
 				if err == nil {
 					// Check if it's a comment.
-					if r == '/' {
+					if r == '-' {
 						// Skip until the end of the line.
 						for {
 							r, _, err := l.reader.ReadRune()
@@ -62,16 +59,19 @@ func (l *Lexer) Read() ([]Token, []any) {
 							}
 						}
 					} else {
-						// It can be a /= operator.
-						r, _, err := l.reader.ReadRune()
-						if err == nil {
-							if r == '=' {
-								tokens = append(tokens, Token{Type: "Operator", Value: token.NEQ})
-							} else {
-								tokens = append(tokens, Token{Type: "Operator", Value: token.QUO})
-								l.reader.UnreadRune()
-							}
-						}
+						tokens = append(tokens, Token{Type: "Operator", Value: token.SUB})
+					}
+				}
+			case '*':
+				tokens = append(tokens, Token{Type: "Operator", Value: token.MUL})
+			case '/':
+				r, _, err := l.reader.ReadRune()
+				if err == nil {
+					if r == '=' {
+						tokens = append(tokens, Token{Type: "Operator", Value: token.NEQ})
+					} else {
+						tokens = append(tokens, Token{Type: "Operator", Value: token.QUO})
+						l.reader.UnreadRune()
 					}
 				}
 			case '=':
@@ -117,6 +117,7 @@ func (l *Lexer) Read() ([]Token, []any) {
 							tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.CHAR})
 						}
 					}
+					// FIXME: Check if we have a lexical error.
 					lexi = append(lexi, char)
 					position++
 				}
@@ -135,6 +136,7 @@ func (l *Lexer) Read() ([]Token, []any) {
 						break
 					}
 				}
+				// FIXME: Check if we have a lexical error.
 				tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.STRING})
 				lexi = append(lexi, str)
 				position++
@@ -151,7 +153,7 @@ func (l *Lexer) Read() ([]Token, []any) {
 								continue
 							} else {
 								// Check if we have a lexical error.
-								if !unicode.IsSpace(r) {
+								if !unicode.IsSpace(r) && !token.IsOperatorString(string(r)) {
 									println("Lexical error: unexpected character '" + string(r) + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
 								}
 								l.reader.UnreadRune()
@@ -174,7 +176,7 @@ func (l *Lexer) Read() ([]Token, []any) {
 								continue
 							} else {
 								// Check if we have a lexical error.
-								if !unicode.IsSpace(r) {
+								if !unicode.IsSpace(r) && !token.IsOperatorString(string(r)) {
 									println("Lexical error: unexpected character '" + string(r) + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
 								}
 								l.reader.UnreadRune()
@@ -187,7 +189,9 @@ func (l *Lexer) Read() ([]Token, []any) {
 					if token.IsKeywordString(name) {
 						tokens = append(tokens, Token{Type: "Keyword", Value: int(token.LookupIdent(name))})
 					} else {
-						tokens = append(tokens, Token{Type: "Identifier", Value: token.IDENT})
+						tokens = append(tokens, Token{Type: "Identifier", Position: position, Value: token.IDENT})
+						lexi = append(lexi, name)
+						position++
 					}
 				} else {
 					// Check if we have a lexical error.

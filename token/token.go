@@ -172,11 +172,16 @@ func (t Token) Precedence() int {
 }
 
 var keywords map[string]Token
+var operators map[string]Token
 
 func init() {
 	keywords = make(map[string]Token)
 	for i := keywords_beg + 1; i < keywords_end; i++ {
 		keywords[tokens[i]] = Token(i)
+	}
+	operators = make(map[string]Token)
+	for i := operator_beg + 1; i < operator_end; i++ {
+		operators[tokens[i]] = Token(i)
 	}
 }
 
@@ -194,6 +199,13 @@ func IsLiteral(tok Token) bool {
 
 func IsOperator(tok Token) bool {
 	return tok > operator_beg && tok < operator_end
+}
+
+func IsOperatorString(s string) bool {
+	if _, ok := operators[s]; ok {
+		return true
+	}
+	return false
 }
 
 func IsKeyword(tok Token) bool {
