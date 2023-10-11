@@ -159,7 +159,6 @@ func (l *Lexer) Read() ([]Token, []any) {
 					continue
 				} else if unicode.IsDigit(r) {
 					number := string(r)
-					remFound := false
 					for {
 						r, _, err := l.reader.ReadRune()
 						if err == nil {
@@ -167,50 +166,16 @@ func (l *Lexer) Read() ([]Token, []any) {
 								number += string(r)
 								continue
 							} else {
-								if unicode.IsSpace(r) || token.IsOperatorString(string(r)) {
-									l.reader.UnreadRune()
-									break
-								} else {
-									// Check for rem
-									if r == 'r' {
-										next, _, _ := l.reader.ReadRune()
-										if next == 'e' {
-											next, _, _ = l.reader.ReadRune()
-											if next == 'm' {
-												// Validate the int and the rem operator
-												tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.INT})
-												lexi = append(lexi, number)
-												position++
-
-												tokens = append(tokens, Token{Type: "Operator", Value: token.REM})
-												remFound = true
-												break
-											} else {
-												// Look for the whole unexpected string
-												l.reader.UnreadRune()
-												break
-											}
-										} else {
-											// Look for the whole unexpected string
-											l.reader.UnreadRune()
-											break
-										}
-									} else {
-										// Look for the whole unexpected string
-										l.reader.UnreadRune()
-										break
-									}
-								}
+								l.reader.UnreadRune()
+								break
 							}
 						} else {
 							break
 						}
 					}
-					if !remFound {
-						tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.INT})
-						lexi = append(lexi, number)
-						position++
-					}
+					tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.INT})
+					lexi = append(lexi, number)
+					position++
 				} else if unicode.IsLetter(r) {
 					name := string(r)
 					for {
