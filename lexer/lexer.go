@@ -144,9 +144,8 @@ func (l *Lexer) Read() ([]Token, []any) {
 				if unicode.IsSpace(r) {
 					continue
 				} else if unicode.IsDigit(r) {
-					// FIXME: what about if we have a lot of rem operators?
-
 					number := string(r)
+					remFound := false
 					for {
 						r, _, err := l.reader.ReadRune()
 						if err == nil {
@@ -154,49 +153,44 @@ func (l *Lexer) Read() ([]Token, []any) {
 								number += string(r)
 								continue
 							} else {
-								// TODO
+								if unicode.IsSpace(r) || token.IsOperatorString(string(r)) {
+									l.reader.UnreadRune()
+									break
+								} else {
+									// Check for rem
+									if r == 'r' {
+										next, _, _ := l.reader.ReadRune()
+										if next == 'e' {
+											next, _, _ = l.reader.ReadRune()
+											if next == 'm' {
+												// Validate the int and the rem operator
+												tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.INT})
+												lexi = append(lexi, number)
+												position++
 
-								// Check if we have a lexical error.
-								unexpected := string(r)
-								for {
-									r, _, err := l.reader.ReadRune()
-									if err == nil {
-										if !unicode.IsSpace(r) && !token.IsOperatorString(string(r)) {
-											unexpected += string(r)
+												tokens = append(tokens, Token{Type: "Operator", Value: token.REM})
+												remFound = true
+												break
+											} else {
+												// Look for the whole unexpected string
+											}
 										} else {
-											l.reader.UnreadRune()
-											break
+											// Look for the whole unexpected string
 										}
 									} else {
-										break
+										// Look for the whole unexpected string
 									}
 								}
-								if len(unexpected) > 0 {
-									// Check for the rem operator
-									println(unexpected)
-									if strings.HasPrefix(unexpected, "rem") && (len(unexpected) == 3 || len(unexpected) > 3 && !unicode.IsDigit(rune(unexpected[3]))) {
-										println("Lexical error: unexpected character '" + unexpected + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
-									} else {
-										// Unread the unexpected characters.
-										println(len(unexpected))
-										for i := len(unexpected) - 1; i >= 0; i-- {
-											l.reader.UnreadRune()
-										}
-										r, _, _ := l.reader.ReadRune()
-										println(string(r))
-										l.reader.UnreadRune()
-									}
-								}
-								l.reader.UnreadRune()
-								break
 							}
 						} else {
 							break
 						}
 					}
-					tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.INT})
-					lexi = append(lexi, number)
-					position++
+					if !remFound {
+						tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.INT})
+						lexi = append(lexi, number)
+						position++
+					}
 				} else if unicode.IsLetter(r) {
 					name := string(r)
 					for {
