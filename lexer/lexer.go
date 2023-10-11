@@ -115,9 +115,24 @@ func (l *Lexer) Read() ([]Token, []any) {
 					if err == nil {
 						if r == '\'' {
 							tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.CHAR})
+						} else {
+							// Send an error
+							unexpected := string(r)
+							for {
+								r, _, err := l.reader.ReadRune()
+								if err == nil {
+									if r == '\'' {
+										break
+									} else {
+										unexpected += string(r)
+									}
+								} else {
+									break
+								}
+							}
+							println("Lexical error: unexpected character '" + unexpected + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
 						}
 					}
-					// FIXME: Check if we have a lexical error.
 					lexi = append(lexi, char)
 					position++
 				}
@@ -136,7 +151,6 @@ func (l *Lexer) Read() ([]Token, []any) {
 						break
 					}
 				}
-				// FIXME: Check if we have a lexical error, ie if the next rune is not an operator or whitespace.
 				tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.STRING})
 				lexi = append(lexi, str)
 				position++
@@ -173,12 +187,18 @@ func (l *Lexer) Read() ([]Token, []any) {
 												break
 											} else {
 												// Look for the whole unexpected string
+												l.reader.UnreadRune()
+												break
 											}
 										} else {
 											// Look for the whole unexpected string
+											l.reader.UnreadRune()
+											break
 										}
 									} else {
 										// Look for the whole unexpected string
+										l.reader.UnreadRune()
+										break
 									}
 								}
 							}

@@ -3,7 +3,7 @@ package main
 import lexer2 "gada/lexer"
 
 func main() {
-	lexer := lexer2.NewLexer("56rem5rem8 + 8 * 5 --a comment\na+b")
+	lexer := lexer2.NewLexer("45 a7")
 	tokens, lexicon := lexer.Read()
 	for _, token := range tokens {
 		println(token.Type, token.Value, token.Position)
