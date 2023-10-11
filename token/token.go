@@ -95,7 +95,7 @@ var tokens = [...]string{
 	SUB:    "-",
 	MUL:    "*",
 	QUO:    "/",
-	REM_OP: "%",
+	REM_OP: "rem",
 
 	EQL: "=",
 	LSS: "<",

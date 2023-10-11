@@ -136,7 +136,7 @@ func (l *Lexer) Read() ([]Token, []any) {
 						break
 					}
 				}
-				// FIXME: Check if we have a lexical error.
+				// FIXME: Check if we have a lexical error, ie if the next rune is not an operator or whitespace.
 				tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.STRING})
 				lexi = append(lexi, str)
 				position++
@@ -144,6 +144,8 @@ func (l *Lexer) Read() ([]Token, []any) {
 				if unicode.IsSpace(r) {
 					continue
 				} else if unicode.IsDigit(r) {
+					// FIXME: what about if we have a lot of rem operators?
+
 					number := string(r)
 					for {
 						r, _, err := l.reader.ReadRune()
@@ -152,9 +154,38 @@ func (l *Lexer) Read() ([]Token, []any) {
 								number += string(r)
 								continue
 							} else {
+								// TODO
+
 								// Check if we have a lexical error.
-								if !unicode.IsSpace(r) && !token.IsOperatorString(string(r)) {
-									println("Lexical error: unexpected character '" + string(r) + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
+								unexpected := string(r)
+								for {
+									r, _, err := l.reader.ReadRune()
+									if err == nil {
+										if !unicode.IsSpace(r) && !token.IsOperatorString(string(r)) {
+											unexpected += string(r)
+										} else {
+											l.reader.UnreadRune()
+											break
+										}
+									} else {
+										break
+									}
+								}
+								if len(unexpected) > 0 {
+									// Check for the rem operator
+									println(unexpected)
+									if strings.HasPrefix(unexpected, "rem") && (len(unexpected) == 3 || len(unexpected) > 3 && !unicode.IsDigit(rune(unexpected[3]))) {
+										println("Lexical error: unexpected character '" + unexpected + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
+									} else {
+										// Unread the unexpected characters.
+										println(len(unexpected))
+										for i := len(unexpected) - 1; i >= 0; i-- {
+											l.reader.UnreadRune()
+										}
+										r, _, _ := l.reader.ReadRune()
+										println(string(r))
+										l.reader.UnreadRune()
+									}
 								}
 								l.reader.UnreadRune()
 								break
@@ -187,7 +218,12 @@ func (l *Lexer) Read() ([]Token, []any) {
 						}
 					}
 					if token.IsKeywordString(name) {
-						tokens = append(tokens, Token{Type: "Keyword", Value: int(token.LookupIdent(name))})
+						// Check if it is them rem operator
+						if name == "rem" {
+							tokens = append(tokens, Token{Type: "Operator", Value: token.REM})
+						} else {
+							tokens = append(tokens, Token{Type: "Keyword", Value: int(token.LookupIdent(name))})
+						}
 					} else {
 						tokens = append(tokens, Token{Type: "Identifier", Position: position, Value: token.IDENT})
 						lexi = append(lexi, name)
