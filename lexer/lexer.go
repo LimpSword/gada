@@ -115,6 +115,8 @@ func (l *Lexer) Read() ([]Token, []any) {
 					if err == nil {
 						if r == '\'' {
 							tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.CHAR})
+							lexi = append(lexi, char)
+							position++
 						} else {
 							// Send an error
 							unexpected := string(r)
@@ -127,14 +129,13 @@ func (l *Lexer) Read() ([]Token, []any) {
 										unexpected += string(r)
 									}
 								} else {
+									println("Lexical error: unexpected end of file at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
 									break
 								}
 							}
 							println("Lexical error: unexpected character '" + unexpected + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
 						}
 					}
-					lexi = append(lexi, char)
-					position++
 				}
 			case '"':
 				// A string is a sequence of characters surrounded by double quotes.
@@ -148,6 +149,7 @@ func (l *Lexer) Read() ([]Token, []any) {
 							str += string(r)
 						}
 					} else {
+						println("Lexical error: unexpected end of file at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
 						break
 					}
 				}
