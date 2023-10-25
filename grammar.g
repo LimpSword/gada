@@ -1,172 +1,184 @@
-grammar gram_c;
+%token in out true false null
+%% /* LL(1) */
 
-<chiffre>
-    : 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+chiffre : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
 
-<chiffre+>
-    : <chiffre><chiffre+>
-    | <chiffre>
+chiffre_plus
+    : chiffre chiffre_plus
+    | chiffre ;
 
-<alpha>
-    : a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q
-    | r | s | t | u | v | w | x | y | z
-    | A | B | C | D | E | F | G | H | I | J | K | L | M | N | O | P | Q
-    | R | S | T | U | V | W | X | Y | Z 
+alpha
+    : 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q'
+    | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z'
+    | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q'
+    | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' ;
 
-<ident>
-    : <alpha> <ident_tail*>
+ident
+    : alpha ident_tail_star ;
 
-<ident?>
-    : <ident>
-    | ^
+ident_opt
+    : ident
+    | /*eps*/ ;
 
-<ident+_,>
-    : <ident>,<ident+_,>
-    | <ident>
+ident_plus_comma
+    : ident ',' ident_plus_comma
+    | ident ;
 
-<ident_tail>
-    : <alpha> | <chiffre> | _
+ident_tail
+    : alpha | chiffre | '_' ;
 
-<ident_tail*>
-    : <ident_tail><ident_tail*>
-    | <ident_tail>
-    | ^
+ident_tail_star
+    : ident_tail ident_tail_star
+    | ident_tail
+    | /* eps */ ;
 
-<entier>
-    : <chiffre+>
+entier
+    : chiffre_plus ;
 
-<caractere>
-    : ' <printable_caractere> '
+caractere
+    : ''' printable_caractere ''' ;
 
-<printable_caractere>
-    : ' ' | ! | " | # | $ | % | & | ' | ( | ) | * | + | , | - | . | / 
-    | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | : | ; | < | = | > | ? | @ 
-    | A | B | C | D | E | F | G | H | I | J | K | L | M | N | O | P | Q 
-    | R | S | T | U | V | W | X | Y | Z | [ | \ | ] | ^ | _ | ` 
-    | a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q 
-    | r | s | t | u | v | w | x | y | z | { | | | } | ~
+printable_caractere
+    : ' ' | '!' | '"' | '#' | '$' | '%' | '&' | ''' | '(' | ')' | '*' | '+' | ',' | '-' | '.' | '/' 
+    | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | ':' | ';' | '=' | '?' | '@' 
+    | alpha | '[' | '\' | ']' | '^' | '_' | '`' | '{' | '|' | '}' | '~' ;
 
-<fichier>
-    : with Ada.Text_IO; use Ada.Text_IO;
-      procedure <ident> is <decl*>
-      begin <instr+> end <ident?> ; EOF
+fichier
+    : 'with' 'Ada.Text_IO;' 'use' 'Ada.Text_IO;'
+      'procedure' ident 'is' decl_star
+      'begin' instr_plus 'end' ident_opt ';' 'EOF' ;
 
-<decl>
-    : type <ident> ;
-    | type <ident> is access <ident> ;
-    | type <ident> is record <champs+> end record ;
-    | <ident+_,> : <type> <init> ;
-    | procedure <ident> <params?> is <decl*>
-      begin <instr+> end <ident?> ;
-    | function <ident> <params?> return <type> is <decl*>
-      begin <instr+> end <ident?> ;
+decl
+    : 'type' ident ';'
+    | 'type' ident 'is' 'access' ident ';'
+    | 'type' ident 'is' 'record' champs_plus 'end' 'record' ';'
+    | ident_plus_comma ':' 'type' init ';'
+    | 'procedure' ident params_opt 'is' decl_star
+      'begin' instr_plus 'end' ident_opt ';'
+    | 'function' ident params_opt 'return' 'type' 'is' ;
+
+decl_star
+    : 'begin' instr_plus 'end' ident_opt ';' ;
     
-<init>
-    : := <expr>
-    | ^
+init
+    : ':=' expr
+    | /*eps*/ ;
 
-<decl*>
-    : <decl><decl*>
-    | <decl>
-    | ^
+decl_star
+    : decl decl_star
+    | decl
+    | /*eps*/ ;
 
-<champs>
-    : <ident+_,> : <type> ;
+champs
+    : ident_plus_comma ':' 'type' ';' ;
 
-<type>
-    : <ident>
-    | access <ident>
+champs_plus
+    : champs champs_plus
+    | champs ;
 
-<params>
-    : ( <param+_;> )
+type
+    : ident
+    | 'access' ident ;
 
-<params?>
-    : <params>
-    | ^
+params
+    : '(' param_plus_semicolon ')' ';' ;
 
-<param>
-    : <ident+_,> : <mode?> <type>
+params_opt
+    : params
+    | /*eps*/ ;
 
-<param+_;>
-    : <param>;<param+_;>
-    | <param>
+param
+    : ident_plus_comma ':' mode_opt type ;
 
-<mode>
+param_plus_semicolon
+    : param ';' param_plus_semicolon
+    | param ;
+
+mode
     : in
-    | in out
+    | in out ;
 
-<mode?>
-    : <mode>
-    | ^
+mode_opt
+    : mode
+    | /*eps*/ ;
 
-<expr>
-    : <entier>
-    | <caractere>
-    | true
-    | false
-    | null
-    | ( <expr> )
-    | <access>
-    | <expr> <operateur> <expr>
-    | not <expr>
-    | - <expr>
-    | new <ident>
-    | <ident> ( <expr+_,> )
-    | character ' val ( <expr> )
+expr
+    : entier expr_operator
+    | caractere expr_operator
+    | true expr_operator
+    | false expr_operator
+    | null expr_operator
+    | '(' expr ')' expr_operator
+    | access expr_operator
+    | 'not' expr expr_operator
+    | '-' expr expr_operator
+    | 'new' ident expr_operator
+    | ident '(' expr_plus_comma ')' expr_operator
+    | 'character' ''' 'val' '(' expr ')' expr_operator;
 
-<expr+_,>
-    : <expr>,<expr+_,>
-    | <expr>
+expr_operator
+    : operateur expr expr_operator ;
 
-<expr?>
-    : <expr>
-    | ^
+expr_plus_comma
+    : expr ',' expr_plus_comma
+    | expr ;
 
-<instr>
-    : <access> := <expr> ;
-    | <ident> ;
-    | <ident> ( <expr+_,> ) ;
-    | return <expr?> ;
-    | begin <instr+> end ;
-    | if <expr> then <instr+> <else_if*>
-      (else <instr+>)? end if ;
-    | for <ident> in <reverse> <expr> .. <expr>
-      loop <instr+> end loop ;
-    | while <expr> loop <instr+> end loop ;
+expr_opt
+    : expr
+    | /*eps*/ ;
 
-<instr+>
-    : <instr><instr+>
-    | <instr>
+instr
+    : 'access' ':=' expr ';'
+    | ident ';'
+    | ident '(' expr_plus_comma ')' ';'
+    | 'return' expr_opt ';'
+    | 'begin' instr_plus 'end' ';'
+    | 'if' expr 'then' instr_plus else_if_star
+      else_instr_opt 'end' 'if' ';'
+    | 'for' ident 'in' reverse_instr expr '..' expr
+      'loop' instr_plus 'end' 'loop' ';'
+    | 'while' expr 'loop' instr_plus 'end' 'loop' ;
 
-<else_if>
-    : elsif <expr> then <instr+>
+instr_plus
+    : instr instr_plus
+    | instr ;
 
-<else_if*>
-    : <else_if><else_if*>
-    | <else_if>
-    | ^
+else_if
+    : 'elsif' expr 'then' instr_plus ;
 
-<operateur>
-    : =
-    | /=
-    | <
-    | <=
-    | >
-    | >=
-    | +
-    | -
-    | *
-    | /
-    | rem
-    | and
-    | and then
-    | or
-    | or else
+else_if_star
+    : else_if else_if_star
+    | else_if
+    | /*eps*/ ;
 
-<access>
-    : <ident>
-    | <expr> . <ident>
+else_instr
+    : 'else' instr_plus ;
 
-<reverse>
-    : reverse
-    | ^
+else_instr_opt
+    : 'else_instr'
+    | /*eps*/ ;
+
+operateur
+    : '='
+    | '/='
+    | '>'
+    | '>='
+    | '<'
+    | '<='
+    | '+'
+    | '-'
+    | '*'
+    | '/'
+    | 'rem'
+    | 'and'
+    | 'and' 'then'
+    | 'or'
+    | 'or' 'else' ;
+
+access
+    : ident
+    | ident '.' expr ; /* A vérifier */
+
+reverse_instr
+    : 'reverse'
+    | /*eps*/ ;
