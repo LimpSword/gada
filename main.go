@@ -1,9 +1,11 @@
 package main
 
-import lexer2 "gada/lexer"
+import (
+	"gada/reader"
+)
 
 func main() {
-	lexer := lexer2.NewLexer("2 rem 2 + b + 'aaaa")
+	lexer := reader.FileLexer("examples/test.ada")
 	tokens, lexicon := lexer.Read()
 	for _, token := range tokens {
 		println(token.Type, token.Value, token.Position)
