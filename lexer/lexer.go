@@ -52,6 +52,7 @@ func (l *Lexer) Read() ([]Token, []any) {
 							r, _, err := l.reader.ReadRune()
 							if err == nil {
 								if r == '\n' {
+									l.reader.UnreadRune()
 									break
 								}
 							} else {
@@ -60,6 +61,7 @@ func (l *Lexer) Read() ([]Token, []any) {
 						}
 					} else {
 						tokens = append(tokens, Token{Type: "Operator", Value: token.SUB})
+						l.reader.UnreadRune()
 					}
 				}
 			case '*':
