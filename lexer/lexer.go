@@ -135,7 +135,7 @@ func (l *Lexer) Read() ([]Token, []any) {
 									break
 								}
 							}
-							println("Lexical error: unexpected character '" + unexpected + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
+							println("Lexical error: unexpected character '" + char + unexpected + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
 						}
 					}
 				}
