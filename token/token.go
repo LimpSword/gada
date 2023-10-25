@@ -81,7 +81,7 @@ const (
 	keywords_end
 )
 
-var tokens = [...]string{
+var Tokens = [...]string{
 	ILLEGAL: "ILLEGAL",
 	EOF:     "EOF",
 	COMMENT: "COMMENT",
@@ -145,7 +145,7 @@ var tokens = [...]string{
 }
 
 func (t Token) String() string {
-	return tokens[t]
+	return Tokens[t]
 }
 
 func (t Token) Precedence() int {
@@ -177,11 +177,11 @@ var operators map[string]Token
 func init() {
 	keywords = make(map[string]Token)
 	for i := keywords_beg + 1; i < keywords_end; i++ {
-		keywords[tokens[i]] = Token(i)
+		keywords[Tokens[i]] = Token(i)
 	}
 	operators = make(map[string]Token)
 	for i := operator_beg + 1; i < operator_end; i++ {
-		operators[tokens[i]] = Token(i)
+		operators[Tokens[i]] = Token(i)
 	}
 }
 
