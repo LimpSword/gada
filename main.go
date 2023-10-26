@@ -13,9 +13,17 @@ func main() {
 	for _, token := range foundTokens {
 		if token.Line != line {
 			line = token.Line
-			fmt.Printf("\n%s %s %d %d %d ", token.Type, tokens.Tokens[token.Value], token.Position, token.Line, token.Column)
+			if token.Position != 0 {
+				fmt.Printf("\n(%s:%s %s %d %d )", token.Type, tokens.Tokens[token.Value], lexicon[token.Position-1], token.Line, token.Column)
+			} else {
+				fmt.Printf("\n(%s:%s %d %d )", token.Type, tokens.Tokens[token.Value], token.Line, token.Column)
+			}
 		} else {
-			fmt.Printf("%s %s %d %d %d ", token.Type, tokens.Tokens[token.Value], token.Position, token.Line, token.Column)
+			if token.Position != 0 {
+				fmt.Printf("(%s:%s %s %d %d )", token.Type, tokens.Tokens[token.Value], lexicon[token.Position-1], token.Line, token.Column)
+			} else {
+				fmt.Printf("(%s:%s %d %d )", token.Type, tokens.Tokens[token.Value], token.Line, token.Column)
+			}
 		}
 	}
 	for _, lex := range lexicon {
