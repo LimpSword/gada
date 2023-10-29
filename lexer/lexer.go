@@ -156,11 +156,11 @@ func (l *Lexer) Read() ([]Token, []any) {
 										unexpected += string(r)
 									}
 								} else {
-									println("Lexical error: unexpected end of file at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
+									println("Lexical error: unexpected end of file at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column)-1, 10) + ".")
 									break
 								}
 							}
-							println("Lexical error: unexpected character '" + char + unexpected + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
+							println("Lexical error: unexpected character '" + char + unexpected + "' at line " + strconv.FormatInt(int64(l.line), 10) + " between column " + strconv.FormatInt(int64(beginPos.Column), 10) + " and " + strconv.FormatInt(int64(l.column), 10) + ".")
 						}
 					}
 				}
@@ -177,7 +177,7 @@ func (l *Lexer) Read() ([]Token, []any) {
 							str += string(r)
 						}
 					} else {
-						println("Lexical error: unexpected end of file at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
+						println("Lexical error: unexpected end of file at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column)-1, 10) + ".")
 						break
 					}
 				}
@@ -245,7 +245,7 @@ func (l *Lexer) Read() ([]Token, []any) {
 				} else {
 					// Check if we have a lexical error.
 					if !unicode.IsSpace(r) {
-						println("Lexical error: unexpected character '" + string(r) + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
+						println("Lexical error: unexpected character '" + string(r) + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column)-1, 10) + ".")
 					}
 				}
 			}
