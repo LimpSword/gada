@@ -38,14 +38,18 @@ const (
 	LEQ // <=
 	GEQ // >=
 
+	PERIOD // .
+	operator_end
+
+	// Separators
+	separator_beg
 	LPAREN // (
 	COMMA  // ,
-	PERIOD // .
 
 	RPAREN    // )
 	SEMICOLON // ;
 	COLON     // :
-	operator_end
+	separator_end
 
 	// Keywords
 	keywords_beg
@@ -173,6 +177,7 @@ func (t Token) Precedence() int {
 
 var keywords map[string]Token
 var operators map[string]Token
+var separators map[string]Token
 
 func init() {
 	keywords = make(map[string]Token)
@@ -182,6 +187,10 @@ func init() {
 	operators = make(map[string]Token)
 	for i := operator_beg + 1; i < operator_end; i++ {
 		operators[Tokens[i]] = Token(i)
+	}
+	separators = make(map[string]Token)
+	for i := separator_beg + 1; i < separator_end; i++ {
+		separators[Tokens[i]] = Token(i)
 	}
 }
 
@@ -203,6 +212,17 @@ func IsOperator(tok Token) bool {
 
 func IsOperatorString(s string) bool {
 	if _, ok := operators[s]; ok {
+		return true
+	}
+	return false
+}
+
+func IsSeparator(tok Token) bool {
+	return tok > separator_beg && tok < separator_end
+}
+
+func IsSeparatorString(s string) bool {
+	if _, ok := separators[s]; ok {
 		return true
 	}
 	return false

@@ -218,10 +218,10 @@ func (l *Lexer) Read() ([]Token, []any) {
 								name += string(r)
 								continue
 							} else {
-								// Check if we have a lexical error.
-								if !unicode.IsSpace(r) && !token.IsOperatorString(string(r)) {
-									println("Lexical error: unexpected character '" + string(r) + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
-								}
+								//// Check if we have a lexical error.
+								//if !unicode.IsSpace(r) && !token.IsOperatorString(string(r)) {
+								//	println("Lexical error: unexpected character '" + string(r) + "' at line " + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column), 10) + ".")
+								//}
 								l.reader.UnreadRune()
 								l.column--
 								break
