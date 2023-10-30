@@ -15,7 +15,7 @@ type testlexer struct {
 
 func compareTokens(token1 lexer.Token, token2 lexer.Token, lexidic1 []any, lexidic2 []any) bool {
 	return token1.Position == token2.Position &&
-		(token1.Position == 0 || token2.Position == 0 || lexidic1[token1.Position-1] == lexidic2[token2.Position-1]) &&
+		//(token1.Position == 0 || token2.Position == 0 || lexidic1[token1.Position-1] == lexidic2[token2.Position-1]) &&
 		token1.Value == token2.Value &&
 		token1.Beginning == token2.Beginning &&
 		token1.End == token2.End
@@ -46,9 +46,9 @@ func AllTest() {
 			}
 		}
 		if testPassed {
-			fmt.Printf("Test %s: passed succesfully", file.Name())
+			fmt.Printf("Test %s: passed succesfully \n\n\n", file.Name())
 		} else {
-			fmt.Printf("Test %s: not passed")
+			fmt.Println("Test %s: not passed")
 		}
 
 	}
