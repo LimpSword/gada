@@ -9,7 +9,7 @@ func getExpected() map[string]testlexer {
 	expected := make(map[string]testlexer)
 	// helloWorld
 	tokens := make([]lexer.Token, 0)
-	lexi := make([]interface{}, 0)
+	lexi := make([]string, 0)
 	tokens = append(tokens, lexer.Token{"", 0, token.WITH, lexer.Position{1, 1}, lexer.Position{1, 5}})
 	tokens = append(tokens, lexer.Token{"", 1, token.IDENT, lexer.Position{1, 6}, lexer.Position{1, 13}})
 	tokens = append(tokens, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{1, 13}, lexer.Position{1, 14}})
@@ -17,32 +17,31 @@ func getExpected() map[string]testlexer {
 	expected["helloWorld"] = testlexer{
 		tokens:  tokens,
 		lexidic: lexi}
-		
+
 	// geometry
-    tokens1 := make([]lexer.Token, 0)
-    lexi1 := make([]interface{}, 0)
-    
-    
-    // Tokens and positions for LINE 1 "with Ada.Text_IO ; use Ada.Text_IO ;"
-    tokens1 = append(tokens1, lexer.Token{"", 0, token.WITH, lexer.Position{1, 1}, lexer.Position{1, 5}})
-    lexi1 = append(lexi1, "Ada.Text_IO") // Lexical position 0
-    tokens1 = append(tokens1, lexer.Token{"", 1, token.IDENT, lexer.Position{1, 6}, lexer.Position{1, 13}})
-    tokens1 = append(tokens1, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{1, 14}, lexer.Position{1, 15}})
+	tokens1 := make([]lexer.Token, 0)
+	lexi1 := make([]string, 0)
+
+	// Tokens and positions for LINE 1 "with Ada.Text_IO ; use Ada.Text_IO ;"
+	tokens1 = append(tokens1, lexer.Token{"", 0, token.WITH, lexer.Position{1, 1}, lexer.Position{1, 5}})
+	lexi1 = append(lexi1, "Text_IO") // Lexical position 0
+	tokens1 = append(tokens1, lexer.Token{"", 1, token.IDENT, lexer.Position{1, 6}, lexer.Position{1, 13}})
+	tokens1 = append(tokens1, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{1, 14}, lexer.Position{1, 15}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.USE, lexer.Position{1, 16}, lexer.Position{1, 19}})
 	lexi1 = append(lexi1, "Text_IO") // Lexical position 1
 	tokens1 = append(tokens1, lexer.Token{"", 2, token.IDENT, lexer.Position{1, 20}, lexer.Position{1, 27}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{1, 28}, lexer.Position{1, 29}})
-    
-    // Tokens and positions for LINE 3 "procedure unDebut is"
-    tokens1 = append(tokens1, lexer.Token{"", 0, token.PROCEDURE, lexer.Position{3, 1}, lexer.Position{3, 10}})
+
+	// Tokens and positions for LINE 3 "procedure unDebut is"
+	tokens1 = append(tokens1, lexer.Token{"", 0, token.PROCEDURE, lexer.Position{3, 1}, lexer.Position{3, 10}})
 	lexi1 = append(lexi1, "unDebut") // Lexical position 2
-    tokens1 = append(tokens1, lexer.Token{"", 3, token.IDENT, lexer.Position{3, 11}, lexer.Position{3, 18}})
-    tokens1 = append(tokens1, lexer.Token{"", 0, token.IS, lexer.Position{3, 19}, lexer.Position{3, 21}})
-    
-    // Tokens and positions for line 5 function aireRectangle
-    tokens1 = append(tokens1, lexer.Token{"", 0, token.FUNCTION, lexer.Position{5, 4}, lexer.Position{5, 12}})
+	tokens1 = append(tokens1, lexer.Token{"", 3, token.IDENT, lexer.Position{3, 11}, lexer.Position{3, 18}})
+	tokens1 = append(tokens1, lexer.Token{"", 0, token.IS, lexer.Position{3, 19}, lexer.Position{3, 21}})
+
+	// Tokens and positions for line 5 function aireRectangle
+	tokens1 = append(tokens1, lexer.Token{"", 0, token.FUNCTION, lexer.Position{5, 4}, lexer.Position{5, 12}})
 	lexi1 = append(lexi1, "aireRectangle") // Lexical position 3
-    tokens1 = append(tokens1, lexer.Token{"", 4, token.IDENT, lexer.Position{5, 13}, lexer.Position{5, 26}})
+	tokens1 = append(tokens1, lexer.Token{"", 4, token.IDENT, lexer.Position{5, 13}, lexer.Position{5, 26}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.LPAREN, lexer.Position{5, 26}, lexer.Position{5, 27}})
 	lexi1 = append(lexi1, "larg") // Lexical position 4
 	tokens1 = append(tokens1, lexer.Token{"", 5, token.IDENT, lexer.Position{5, 27}, lexer.Position{5, 31}})
@@ -69,11 +68,10 @@ func getExpected() map[string]testlexer {
 	tokens1 = append(tokens1, lexer.Token{"", 11, token.IDENT, lexer.Position{6, 10}, lexer.Position{6, 17}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{6, 17}, lexer.Position{6, 18}})
 
-    
-    // Tokens and positions for the line 7 "begin"
-    tokens1 = append(tokens1, lexer.Token{"", 0, token.BEGIN, lexer.Position{7, 4}, lexer.Position{7, 9}})
+	// Tokens and positions for the line 7 "begin"
+	tokens1 = append(tokens1, lexer.Token{"", 0, token.BEGIN, lexer.Position{7, 4}, lexer.Position{7, 9}})
 
-	// Tokens and positions for the line 8 "aire := larg * long;" 
+	// Tokens and positions for the line 8 "aire := larg * long;"
 	lexi1 = append(lexi1, "aire") // Lexical position 11
 	tokens1 = append(tokens1, lexer.Token{"", 12, token.IDENT, lexer.Position{8, 7}, lexer.Position{8, 11}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.COLON, lexer.Position{8, 12}, lexer.Position{8, 13}})
@@ -85,7 +83,7 @@ func getExpected() map[string]testlexer {
 	tokens1 = append(tokens1, lexer.Token{"", 14, token.IDENT, lexer.Position{8, 20}, lexer.Position{8, 24}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{8, 25}, lexer.Position{8, 26}})
 
-    // Tokens and positions for the line 9 "return aire"
+	// Tokens and positions for the line 9 "return aire"
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.RETURN, lexer.Position{9, 4}, lexer.Position{9, 10}})
 	lexi1 = append(lexi1, "aire") // Lexical position 14
 	tokens1 = append(tokens1, lexer.Token{"", 15, token.IDENT, lexer.Position{9, 11}, lexer.Position{9, 15}})
@@ -96,11 +94,10 @@ func getExpected() map[string]testlexer {
 	tokens1 = append(tokens1, lexer.Token{"", 16, token.IDENT, lexer.Position{10, 8}, lexer.Position{10, 21}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{10, 22}, lexer.Position{10, 23}})
 
-
-    // Tokens and positions for the line 12 "function perimetreRectangle"
-    tokens1 = append(tokens1, lexer.Token{"", 0, token.FUNCTION, lexer.Position{12, 4}, lexer.Position{12, 12}})
+	// Tokens and positions for the line 12 "function perimetreRectangle"
+	tokens1 = append(tokens1, lexer.Token{"", 0, token.FUNCTION, lexer.Position{12, 4}, lexer.Position{12, 12}})
 	lexi1 = append(lexi1, "perimetreRectangle") // Lexical position 16
-    tokens1 = append(tokens1, lexer.Token{"", 17, token.IDENT, lexer.Position{12, 13}, lexer.Position{12, 31}})
+	tokens1 = append(tokens1, lexer.Token{"", 17, token.IDENT, lexer.Position{12, 13}, lexer.Position{12, 31}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.LPAREN, lexer.Position{12, 31}, lexer.Position{12, 32}})
 	lexi1 = append(lexi1, "larg") // Lexical position 17
 	tokens1 = append(tokens1, lexer.Token{"", 18, token.IDENT, lexer.Position{12, 32}, lexer.Position{12, 36}})
@@ -118,7 +115,7 @@ func getExpected() map[string]testlexer {
 	lexi1 = append(lexi1, "integer") // Lexical position 21
 	tokens1 = append(tokens1, lexer.Token{"", 22, token.IDENT, lexer.Position{12, 71}, lexer.Position{12, 78}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.IS, lexer.Position{12, 79}, lexer.Position{12, 81}})
-    
+
 	// Tokens and positions for line 13 "p : integer;"
 	lexi1 = append(lexi1, "p") // Lexical position 22
 	tokens1 = append(tokens1, lexer.Token{"", 23, token.IDENT, lexer.Position{13, 4}, lexer.Position{13, 5}})
@@ -193,7 +190,7 @@ func getExpected() map[string]testlexer {
 	tokens1 = append(tokens1, lexer.Token{"", 38, token.IDENT, lexer.Position{28, 12}, lexer.Position{28, 18}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.COLON, lexer.Position{28, 19}, lexer.Position{28, 20}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.EQL, lexer.Position{28, 20}, lexer.Position{28, 21}})
-	lexi1 = append(lexi1, "permetreRectangle") // Lexical position 38
+	lexi1 = append(lexi1, "perimetreRectangle") // Lexical position 38
 	tokens1 = append(tokens1, lexer.Token{"", 39, token.IDENT, lexer.Position{28, 22}, lexer.Position{28, 40}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.LPAREN, lexer.Position{28, 40}, lexer.Position{28, 41}})
 	lexi1 = append(lexi1, "2") // Lexical position 39
@@ -212,7 +209,7 @@ func getExpected() map[string]testlexer {
 	tokens1 = append(tokens1, lexer.Token{"", 43, token.IDENT, lexer.Position{29, 14}, lexer.Position{29, 20}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.RPAREN, lexer.Position{29, 20}, lexer.Position{29, 21}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{29, 22}, lexer.Position{29, 23}})
-	
+
 	// Tokens and positions for line 30 "else valeur := aireRectangle(2,3) ;"
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.ELSE, lexer.Position{30, 7}, lexer.Position{30, 11}})
 	lexi1 = append(lexi1, "valeur") // Lexical position 43
@@ -250,19 +247,16 @@ func getExpected() map[string]testlexer {
 	tokens1 = append(tokens1, lexer.Token{"", 50, token.IDENT, lexer.Position{33, 5}, lexer.Position{33, 12}})
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{33, 13}, lexer.Position{33, 14}})
 
-
-    expected["geometry"] = testlexer{
-        tokens:  tokens1,
-        lexidic: lexi1,
-    }
+	expected["geometry"] = testlexer{
+		tokens:  tokens1,
+		lexidic: lexi1,
+	}
 
 	return expected
 }
 
 func getExpected2() map[string]testlexer {
-    expected := make(map[string]testlexer)
-    
-    
-    
-    return expected
+	expected := make(map[string]testlexer)
+
+	return expected
 }

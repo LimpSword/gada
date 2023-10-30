@@ -33,9 +33,9 @@ func NewLexer(text string) *Lexer {
 }
 
 // Read reads the text and returns the list of tokens and the associated lexicon.
-func (l *Lexer) Read() ([]Token, []any) {
+func (l *Lexer) Read() ([]Token, []string) {
 	tokens := make([]Token, 0)
-	lexi := make([]interface{}, 0)
+	lexi := make([]string, 0)
 	l.column++
 	l.line++
 	position := 1
