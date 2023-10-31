@@ -17,7 +17,7 @@ func getExpected() map[string]testlexer {
 	lexi = append(lexi, "Text_IO")
 	expected["helloWorld"] = testlexer{
 		tokens:  tokens,
-		lexidic: lexi}
+		lexiDic: lexi}
 
 	// inlineComment
 	tokens2 := make([]lexer.Token, 0)
@@ -47,7 +47,7 @@ func getExpected() map[string]testlexer {
 
 	expected["inlineComment"] = testlexer{
 		tokens:  tokens2,
-		lexidic: lexi2}
+		lexiDic: lexi2}
 
 	// geometry
 	tokens1 := make([]lexer.Token, 0)
@@ -280,7 +280,7 @@ func getExpected() map[string]testlexer {
 
 	expected["geometry"] = testlexer{
 		tokens:  tokens1,
-		lexidic: lexi1,
+		lexiDic: lexi1,
 	}
 
 	return expected

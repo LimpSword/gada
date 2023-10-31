@@ -6,16 +6,18 @@ import (
 	"gada/reader"
 	"log"
 	"os"
+	"strings"
 )
 
 type testlexer struct {
 	tokens  []lexer.Token
-	lexidic []string
+	lexiDic []string
 }
 
-func compareTokens(token1 lexer.Token, token2 lexer.Token, lexidic1 []string, lexidic2 []string) bool {
+func compareTokens(token1 lexer.Token, token2 lexer.Token, lexiDic1 []string, lexiDic2 []string) bool {
 	return token1.Position == token2.Position &&
-		(token1.Position == 0 || token2.Position == 0 || lexidic1[token1.Position-1] == lexidic2[token2.Position-1]) &&
+		(token1.Position == 0 || lexiDic1[token1.Position-1] == lexiDic2[token2.Position-1]) &&
+		// previous condition check if the literals are equal in case where the token is a literal
 		token1.Value == token2.Value &&
 		token1.Beginning == token2.Beginning &&
 		token1.End == token2.End
@@ -28,26 +30,29 @@ func AllTest() {
 	}
 	expected := getExpected()
 	for _, file := range files {
-		nameNoExt := file.Name()[0 : len(file.Name())-4]
+		nameNoExt := strings.Split(file.Name(), ".")[0]
 		testPassed := true
 		fileLexer := reader.FileLexer("examples/" + file.Name())
 		foundTokens, lexicon := fileLexer.Read()
 		for ind, token := range foundTokens {
-			if ind >= len(expected[nameNoExt].tokens) || !compareTokens(token, expected[nameNoExt].tokens[ind], lexicon, expected[nameNoExt].lexidic) {
+			expecTokens, expecLexi := expected[nameNoExt].tokens, expected[nameNoExt].lexiDic
+			if ind >= len(expecTokens) || !compareTokens(token, expecTokens[ind], lexicon, expecLexi) {
 				testPassed = false
-				if ind >= len(expected[nameNoExt].tokens) {
+				if ind >= len(expecTokens) {
 					log.Fatalf("\nTest: %s There is more token than expected", file.Name())
 				}
-				tokenlit1, tokenlit2 := "", ""
+				tokenLit1, tokenLit2 := "", ""
 				if token.Position != 0 {
-					tokenlit1 = lexicon[token.Position-1]
+					tokenLit1 = lexicon[token.Position-1]
 				}
-				if expected[nameNoExt].tokens[ind].Position != 0 {
-					tokenlit2 = expected[nameNoExt].lexidic[expected[nameNoExt].tokens[ind].Position-1]
+				if expecTokens[ind].Position != 0 {
+					tokenLit2 = expecLexi[expecTokens[ind].Position-1]
 				}
-				log.Fatalf("\ntoken number: %d token gen: %v %s is different than token expected: %v %s", ind, token, tokenlit1, expected[nameNoExt].tokens[ind], tokenlit2)
+				// tokenLit1 and tokenLit2 are the literals in case tokens are literals
+				// there here for the debug only
+				log.Fatalf("\ntoken number: %d token gen: %v %s is different than token expected: %v %s", ind, token, tokenLit1, expecTokens[ind], tokenLit2)
 			} else {
-				//fmt.Printf("token number: %d token: %v lexi: %v\n", ind, expected[nameNoExt].tokens, expected[nameNoExt].lexidic)
+				//fmt.Printf("token number: %d token: %v lexi: %v\n", ind, expecTokens, expecLexi)
 			}
 		}
 		if testPassed {
