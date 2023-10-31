@@ -7,6 +7,7 @@ import (
 
 func getExpected() map[string]testlexer {
 	expected := make(map[string]testlexer)
+
 	// helloWorld
 	tokens := make([]lexer.Token, 0)
 	lexi := make([]string, 0)
@@ -18,11 +19,41 @@ func getExpected() map[string]testlexer {
 		tokens:  tokens,
 		lexidic: lexi}
 
+	// inlineComment
+	tokens2 := make([]lexer.Token, 0)
+	lexi2 := make([]string, 0)
+	// Tokens and positions for LINE 1 "with Text_IO; --use Text_IO;"
+	tokens2 = append(tokens2, lexer.Token{"", 0, token.WITH, lexer.Position{1, 1}, lexer.Position{1, 5}})
+	tokens2 = append(tokens2, lexer.Token{"", 1, token.IDENT, lexer.Position{1, 6}, lexer.Position{1, 13}})
+	lexi2 = append(lexi2, "Text_IO")
+	tokens2 = append(tokens2, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{1, 13}, lexer.Position{1, 14}})
+	// Tokens and positions for LINE 2 "333 "let's"; -- random -- comment --doing--"
+	tokens2 = append(tokens2, lexer.Token{"", 2, token.INT, lexer.Position{2, 1}, lexer.Position{2, 4}})
+	lexi2 = append(lexi2, "333")
+	tokens2 = append(tokens2, lexer.Token{"", 3, token.STRING, lexer.Position{2, 5}, lexer.Position{2, 12}})
+	lexi2 = append(lexi2, "let's")
+	tokens2 = append(tokens2, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{2, 12}, lexer.Position{2, 13}})
+	// Tokens and positions for LINE 4 "      45.26;"
+	tokens2 = append(tokens2, lexer.Token{"", 4, token.INT, lexer.Position{4, 7}, lexer.Position{4, 9}})
+	lexi2 = append(lexi2, "45")
+	tokens2 = append(tokens2, lexer.Token{"", 0, token.PERIOD, lexer.Position{4, 9}, lexer.Position{4, 10}})
+	tokens2 = append(tokens2, lexer.Token{"", 5, token.INT, lexer.Position{4, 10}, lexer.Position{4, 12}})
+	lexi2 = append(lexi2, "26")
+	tokens2 = append(tokens2, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{4, 12}, lexer.Position{4, 13}})
+	// Tokens and positions for LINE 5 "  hwy; ----------"
+	tokens2 = append(tokens2, lexer.Token{"", 6, token.IDENT, lexer.Position{5, 3}, lexer.Position{5, 6}})
+	lexi2 = append(lexi2, "hwy")
+	tokens2 = append(tokens2, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{5, 6}, lexer.Position{5, 7}})
+
+	expected["inlineComment"] = testlexer{
+		tokens:  tokens2,
+		lexidic: lexi2}
+
 	// geometry
 	tokens1 := make([]lexer.Token, 0)
 	lexi1 := make([]string, 0)
 
-	// Tokens and positions for LINE 1 "with Ada.Text_IO ; use Ada.Text_IO ;"
+	// Tokens and positions for LINE 1 "with Text_IO ; use Text_IO ;"
 	tokens1 = append(tokens1, lexer.Token{"", 0, token.WITH, lexer.Position{1, 1}, lexer.Position{1, 5}})
 	lexi1 = append(lexi1, "Text_IO") // Lexical position 0
 	tokens1 = append(tokens1, lexer.Token{"", 1, token.IDENT, lexer.Position{1, 6}, lexer.Position{1, 13}})

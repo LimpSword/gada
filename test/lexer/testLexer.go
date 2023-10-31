@@ -36,7 +36,7 @@ func AllTest() {
 			if ind >= len(expected[nameNoExt].tokens) || !compareTokens(token, expected[nameNoExt].tokens[ind], lexicon, expected[nameNoExt].lexidic) {
 				testPassed = false
 				if ind >= len(expected[nameNoExt].tokens) {
-					log.Fatal("\nThere is more token than expected")
+					log.Fatalf("\nTest: %s There is more token than expected", file.Name())
 				}
 				tokenlit1, tokenlit2 := "", ""
 				if token.Position != 0 {
