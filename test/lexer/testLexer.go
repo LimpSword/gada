@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gada/lexer"
 	"gada/reader"
+	"gada/token"
 	"log"
 	"os"
 	"strings"
@@ -23,7 +24,7 @@ func compareTokens(token1 lexer.Token, token2 lexer.Token, lexiDic1 []string, le
 		token1.End == token2.End
 }
 
-func AllTest() {
+func AllTest(display bool) {
 	files, err := os.ReadDir("examples")
 	if err != nil {
 		log.Fatalf("the directory provided have this error : %s", err)
@@ -34,6 +35,12 @@ func AllTest() {
 		testPassed := true
 		fileLexer := reader.FileLexer("examples/" + file.Name())
 		foundTokens, lexicon := fileLexer.Read()
+		if display {
+			for _, token := range foundTokens {
+				fmt.Printf("%s %d\n", token.Type, token.Value)
+			}
+			fmt.Printf("\n")
+		}
 		for ind, token := range foundTokens {
 			expecTokens, expecLexi := expected[nameNoExt].tokens, expected[nameNoExt].lexiDic
 			if ind >= len(expecTokens) || !compareTokens(token, expecTokens[ind], lexicon, expecLexi) {
@@ -61,5 +68,30 @@ func AllTest() {
 			fmt.Printf("Test %s: not passed\n", file.Name())
 		}
 
+	}
+}
+
+func displayLexer() {
+	lexer := reader.FileLexer("examples/helloWorld.ada")
+	foundTokens, lexicon := lexer.Read()
+	line := -1
+	for _, tok := range foundTokens {
+		if tok.Beginning.Line != line {
+			line = tok.Beginning.Line
+			if tok.Position != 0 {
+				fmt.Printf("\nLine : %d (%s:%s:%s from: %d to :%d )", tok.Beginning.Line, tok.Type, token.Tokens[tok.Value], lexicon[tok.Position-1], tok.Beginning.Column, tok.End.Column)
+			} else {
+				fmt.Printf("\nLine : %d (%s:%s from: %d to :%d )", tok.Beginning.Line, tok.Type, token.Tokens[tok.Value], tok.Beginning.Column, tok.End.Column)
+			}
+		} else {
+			if tok.Position != 0 {
+				fmt.Printf("(%s:%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], lexicon[tok.Position-1], tok.Beginning.Column, tok.End.Column)
+			} else {
+				fmt.Printf("(%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], tok.Beginning.Column, tok.End.Column)
+			}
+		}
+	}
+	for _, lex := range lexicon {
+		fmt.Println(lex)
 	}
 }
