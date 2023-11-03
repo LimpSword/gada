@@ -35,9 +35,13 @@ func AllTest(display bool) {
 		testPassed := true
 		fileLexer := reader.FileLexer("examples/" + file.Name())
 		foundTokens, lexicon := fileLexer.Read()
-		if display {
+		if display { // Display lexer output
 			for _, token := range foundTokens {
-				fmt.Printf("%s %d\n", token.Type, token.Value)
+				if token.Position > 0 {
+					fmt.Printf("(%d %d) ", token.Value, token.Position)
+				} else {
+					fmt.Printf("%d ", token.Value)
+				}
 			}
 			fmt.Printf("\n")
 		}
