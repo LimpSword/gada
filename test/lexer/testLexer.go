@@ -24,7 +24,7 @@ func compareTokens(token1 lexer.Token, token2 lexer.Token, lexiDic1 []string, le
 		token1.End == token2.End
 }
 
-func AllTest(display bool) {
+func AllTest() {
 	files, err := os.ReadDir("examples")
 	if err != nil {
 		log.Fatalf("the directory provided have this error : %s", err)
@@ -35,16 +35,6 @@ func AllTest(display bool) {
 		testPassed := true
 		fileLexer := reader.FileLexer("examples/" + file.Name())
 		foundTokens, lexicon := fileLexer.Read()
-		if display { // Display lexer output
-			for _, token := range foundTokens {
-				if token.Position > 0 {
-					fmt.Printf("(%d %d) ", token.Value, token.Position)
-				} else {
-					fmt.Printf("%d ", token.Value)
-				}
-			}
-			fmt.Printf("\n")
-		}
 		for ind, token := range foundTokens {
 			expecTokens, expecLexi := expected[nameNoExt].tokens, expected[nameNoExt].lexiDic
 			if ind >= len(expecTokens) || !compareTokens(token, expecTokens[ind], lexicon, expecLexi) {
@@ -75,8 +65,8 @@ func AllTest(display bool) {
 	}
 }
 
-func displayLexer() {
-	lexer := reader.FileLexer("examples/helloWorld.ada")
+func DisplayLexer(name string) {
+	lexer := reader.FileLexer("examples/" + name)
 	foundTokens, lexicon := lexer.Read()
 	line := -1
 	for _, tok := range foundTokens {

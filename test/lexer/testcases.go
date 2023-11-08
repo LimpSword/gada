@@ -19,6 +19,26 @@ func getExpected() map[string]testlexer {
 		tokens:  tokens,
 		lexiDic: lexi}
 
+	tokens3 := make([]lexer.Token, 0)
+	lexi3 := make([]string, 0)
+	tokens3 = append(tokens3, lexer.Token{"", 0, token.WITH, lexer.Position{1, 1}, lexer.Position{1, 5}})
+	tokens3 = append(tokens3, lexer.Token{"", 1, token.IDENT, lexer.Position{1, 6}, lexer.Position{1, 9}})
+	lexi3 = append(lexi3, "Ada")
+	tokens3 = append(tokens3, lexer.Token{"", 0, token.PERIOD, lexer.Position{1, 9}, lexer.Position{1, 10}})
+	tokens3 = append(tokens3, lexer.Token{"", 2, token.IDENT, lexer.Position{1, 10}, lexer.Position{1, 17}})
+	lexi3 = append(lexi3, "Text_IO")
+	tokens3 = append(tokens3, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{1, 18}, lexer.Position{1, 19}})
+	tokens3 = append(tokens3, lexer.Token{"", 0, token.USE, lexer.Position{1, 20}, lexer.Position{1, 23}})
+	tokens3 = append(tokens3, lexer.Token{"", 3, token.IDENT, lexer.Position{1, 24}, lexer.Position{1, 27}})
+	lexi3 = append(lexi3, "Ada")
+	tokens3 = append(tokens3, lexer.Token{"", 0, token.PERIOD, lexer.Position{1, 27}, lexer.Position{1, 28}})
+	tokens3 = append(tokens3, lexer.Token{"", 4, token.IDENT, lexer.Position{1, 28}, lexer.Position{1, 35}})
+	lexi3 = append(lexi3, "Text_IO")
+	tokens3 = append(tokens3, lexer.Token{"", 0, token.SEMICOLON, lexer.Position{1, 36}, lexer.Position{1, 37}})
+	expected["firstLine"] = testlexer{
+		tokens:  tokens3,
+		lexiDic: lexi3}
+
 	// inlineComment
 	tokens2 := make([]lexer.Token, 0)
 	lexi2 := make([]string, 0)
