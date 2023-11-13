@@ -12,6 +12,9 @@ type Lexer struct {
 	line   int
 	column int
 	reader *bufio.Reader
+
+	Tokens []Token
+	Lexi   []string
 }
 
 type Position struct {
@@ -32,7 +35,7 @@ func NewLexer(text string) *Lexer {
 	return &Lexer{reader: reader}
 }
 
-// Read reads the text and returns the list of tokens and the associated lexicon.
+// Read reads the text and returns the list of Tokens and the associated lexicon.
 func (l *Lexer) Read() ([]Token, []string) {
 	tokens := make([]Token, 0)
 	lexi := make([]string, 0)
@@ -256,5 +259,7 @@ func (l *Lexer) Read() ([]Token, []string) {
 			break
 		}
 	}
+	l.Tokens = tokens
+	l.Lexi = lexi
 	return tokens, lexi
 }
