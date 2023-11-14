@@ -39,6 +39,7 @@ const (
 	GEQ // >=
 
 	PERIOD // .
+	CAST   // '
 	operator_end
 
 	// Separators

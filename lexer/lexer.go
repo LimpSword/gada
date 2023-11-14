@@ -133,6 +133,13 @@ func (l *Lexer) Read() ([]Token, []string) {
 					}
 				}
 			case '\'':
+				// Check if the keyword 'character' is present before.
+				if len(tokens) > 0 {
+					if tokens[len(tokens)-1].Value == token.IDENT && lexi[len(lexi)-1] == "character" {
+						tokens = append(tokens, Token{Type: "Operator", Value: token.CAST, Beginning: beginPos, End: Position{l.line, l.column}})
+						break
+					}
+				}
 				// A char is a single character surrounded by single quotes.
 				r, _, err := l.reader.ReadRune()
 				l.column++
