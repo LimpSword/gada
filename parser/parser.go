@@ -50,6 +50,7 @@ func readExpression(parser *Parser) Node {
 }
 
 func readOr(parser *Parser) Node {
+	// TODO: read "or else"
 	andExpr := readAnd(parser)
 	for parser.peekToken() == token.OR {
 		parser.readToken()
@@ -60,6 +61,7 @@ func readOr(parser *Parser) Node {
 }
 
 func readAnd(parser *Parser) Node {
+	// TODO: read "and then"
 	equalityExpr := readEquality(parser)
 	for parser.peekToken() == token.AND {
 		parser.readToken()
@@ -69,7 +71,10 @@ func readAnd(parser *Parser) Node {
 	return equalityExpr
 }
 
+// TODO: read "not"
+
 func readEquality(parser *Parser) Node {
+	// TODO: right associative
 	relationalExpr := readRelational(parser)
 	for parser.peekToken() == token.EQL || parser.peekToken() == token.NEQ {
 		tkn := parser.readToken()
@@ -80,6 +85,7 @@ func readEquality(parser *Parser) Node {
 }
 
 func readRelational(parser *Parser) Node {
+	// TODO: right associative
 	additiveExpr := readAdditive(parser)
 	for parser.peekToken() == token.LSS || parser.peekToken() == token.LEQ ||
 		parser.peekToken() == token.GTR || parser.peekToken() == token.GEQ {
@@ -111,6 +117,7 @@ func readMultiplicative(parser *Parser) Node {
 }
 
 func readUnary(parser *Parser) Node {
+	// Right associative
 	if parser.peekToken() == token.SUB {
 		tkn := parser.readToken()
 		other := readUnary(parser)
