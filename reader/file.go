@@ -51,5 +51,6 @@ func CompileFile(path string) {
 		return
 	}
 	l.Read()
+	fmt.Println(l.Tokens)
 	parser.Parse(l)
 }

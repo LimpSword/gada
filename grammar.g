@@ -17,7 +17,7 @@ decl
 
 decl_star
     : 'begin' instr_plus 'end' ident_opt ';' ;
-    
+
 init
     : ':=' expr
     | /*eps*/ ;
@@ -61,52 +61,61 @@ mode_opt
     | /*eps*/ ;
 
 expr
-    : and_expr or_expr2 ;
+    : or_expr ;
 
-or_expr2
-    : 'or' and_expr
+or_expr
+    : and_expr or_expr_tail
+    ;
+
+or_expr_tail
+    : 'or' and_expr or_expr_tail
     | /*eps*/ ;
 
 and_expr
-    : equality_expr and_expr2 ;
+    : equality_expr and_expr_tail
+    ;
 
-and_expr2
-    : 'and' equality_expr
+and_expr_tail
+    : 'and' equality_expr and_expr_tail
     | /*eps*/ ;
 
 equality_expr
-    : relational_expr equality_expr2 ;
+    : relational_expr equality_expr_tail
+    ;
 
-equality_expr2
-    : '=' relational_expr
-    | '/=' relational_expr
+equality_expr_tail
+    : '=' relational_expr equality_expr_tail
+    | '/=' relational_expr equality_expr_tail
     | /*eps*/ ;
 
 relational_expr
-    : additive_expr relational_expr2 ;
+    : additive_expr relational_expr_tail
+    ;
 
-relational_expr2
-    : '<' additive_expr
-    | '<=' additive_expr
-    | '>' additive_expr
-    | '>=' additive_expr
+relational_expr_tail
+    : '<' additive_expr relational_expr_tail
+    | '<=' additive_expr relational_expr_tail
+    | '>' additive_expr relational_expr_tail
+    | '>=' additive_expr relational_expr_tail
     | /*eps*/ ;
 
 additive_expr
-    : multiplicative_expr additive_expr2 ;
+    : multiplicative_expr additive_expr_tail
+    ;
 
-additive_expr2
-    : '+' multiplicative_expr
-    | '-' multiplicative_expr
+additive_expr_tail
+    : '+' multiplicative_expr additive_expr_tail
+    | '-' multiplicative_expr additive_expr_tail
     | /*eps*/ ;
 
 multiplicative_expr
-    : unary_expr multiplicative_expr2 ;
+    : unary_expr multiplicative_expr_tail
+    ;
 
-multiplicative_expr2
-    : '*' unary_expr
-    | '/' unary_expr
-    | 'rem' unary_expr
+multiplicative_expr_tail
+    : '*' unary_expr multiplicative_expr_tail
+    | '/' unary_expr multiplicative_expr_tail
+    | 'rem' unary_expr multiplicative_expr_tail
     | /*eps*/ ;
 
 unary_expr

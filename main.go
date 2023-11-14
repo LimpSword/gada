@@ -1,9 +1,9 @@
 package main
 
-import (
-	"gada/test/lexer"
-)
+import "gada/reader"
 
 func main() {
-	lexer.AllTest() // set parameter true to print lexical analysis
+	//lexer.AllTest() // set parameter true to print lexical analysis
+
+	reader.CompileFile("examples/expressions/expression.ada")
 }
