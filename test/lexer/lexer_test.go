@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"testing"
 )
 
 type testlexer struct {
@@ -24,37 +25,37 @@ func compareTokens(token1 lexer.Token, token2 lexer.Token, lexiDic1 []string, le
 		token1.End == token2.End
 }
 
-func AllTest(debug bool) {
-	files, err := os.ReadDir("examples/testLexer")
+func TestAll(t *testing.T) {
+	files, err := os.ReadDir("tests")
 	if err != nil {
 		log.Fatalf("the directory provided have this error : %s", err)
 	}
 	expected := getExpected()
 	for _, file := range files {
-		fmt.Printf("Test %s beginning\n", file.Name())
+		t.Logf("Test %s beginning\n", file.Name())
 		nameNoExt := strings.Split(file.Name(), ".")[0]
 		testPassed := true
-		fileLexer := reader.FileLexer("examples/testLexer/" + file.Name())
+		fileLexer := reader.FileLexer("tests/" + file.Name())
 		foundTokens, lexicon := fileLexer.Read()
 		for ind, tok := range foundTokens {
 
 			expecTokens, expecLexi := expected[nameNoExt].tokens, expected[nameNoExt].lexiDic
-			if debug {
-				if tok.Position != 0 {
-					fmt.Printf("(%s:%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], lexicon[tok.Position-1], tok.Beginning.Column, tok.End.Column)
-				} else {
-					fmt.Printf("(%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], tok.Beginning.Column, tok.End.Column)
-				}
-				if expecTokens[ind].Position != 0 {
-					fmt.Printf("(%s:%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], lexicon[expecTokens[ind].Position-1], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
-				} else {
-					fmt.Printf("(%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
-				}
-			}
+			//if debug {
+			//	if tok.Position != 0 {
+			//		fmt.Printf("(%s:%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], lexicon[tok.Position-1], tok.Beginning.Column, tok.End.Column)
+			//	} else {
+			//		fmt.Printf("(%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], tok.Beginning.Column, tok.End.Column)
+			//	}
+			//	if expecTokens[ind].Position != 0 {
+			//		fmt.Printf("(%s:%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], lexicon[expecTokens[ind].Position-1], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
+			//	} else {
+			//		fmt.Printf("(%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
+			//	}
+			//}
 			if ind >= len(expecTokens) || !compareTokens(tok, expecTokens[ind], lexicon, expecLexi) {
 				testPassed = false
 				if ind >= len(expecTokens) {
-					log.Fatalf("\nTest: %s There is more token than expected", file.Name())
+					t.Errorf("\nTest: %s There is more token than expected", file.Name())
 				}
 				tokenLit1, tokenLit2 := "", ""
 				if tok.Position != 0 {
@@ -65,22 +66,22 @@ func AllTest(debug bool) {
 				}
 				// tokenLit1 and tokenLit2 are the literals in case tokens are literals
 				// there here for the debug only
-				log.Fatalf("\ntoken number: %d token gen: %v %s is different than token expected: %v %s", ind, tok, tokenLit1, expecTokens[ind], tokenLit2)
+				t.Errorf("\ntoken number: %d token gen: %v %s is different than token expected: %v %s", ind, tok, tokenLit1, expecTokens[ind], tokenLit2)
 			} else {
 				//fmt.Printf("token number: %d token: %v lexi: %v\n", ind, expecTokens, expecLexi)
 			}
 		}
 		if testPassed {
-			fmt.Printf("Test %s: passed succesfully \n\n", file.Name())
+			t.Logf("Test %s: passed succesfully \n\n", file.Name())
 		} else {
-			fmt.Printf("Test %s: not passed\n", file.Name())
+			t.Errorf("Test %s: not passed\n", file.Name())
 		}
 
 	}
 }
 
 func DisplayLexer(name string) {
-	lexer := reader.FileLexer("examples/testLexer/" + name)
+	lexer := reader.FileLexer("gada/test/lexer/tests/" + name)
 	foundTokens, lexicon := lexer.Read()
 	line := -1
 	for _, tok := range foundTokens {
@@ -100,6 +101,6 @@ func DisplayLexer(name string) {
 		}
 	}
 	for _, lex := range lexicon {
-		fmt.Println(lex)
+		fmt.Printf("\n%s", lex)
 	}
 }

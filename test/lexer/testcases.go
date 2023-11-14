@@ -43,6 +43,46 @@ func getExpected() map[string]testlexer {
 		tokens:  tokens6,
 		lexiDic: lexi6}
 
+	// errorIllegalChar
+	tokens7 := make([]lexer.Token, 0)
+	lexi7 := make([]string, 0)
+	tokens7 = append(tokens7, lexer.Token{"", 1, token.IDENT, lexer.Position{1, 1}, lexer.Position{1, 6}})
+	lexi7 = append(lexi7, "notan")
+	tokens7 = append(tokens7, lexer.Token{"", 2, token.ILLEGAL, lexer.Position{1, 6}, lexer.Position{1, 7}})
+	lexi7 = append(lexi7, "Lexical error: unexpected character '$' at line 1 and column 6.")
+	tokens7 = append(tokens7, lexer.Token{"", 3, token.IDENT, lexer.Position{1, 7}, lexer.Position{1, 12}})
+	lexi7 = append(lexi7, "ident")
+	expected["errorIllegalChar"] = testlexer{
+		tokens:  tokens7,
+		lexiDic: lexi7}
+
+	// singlequote2
+	tokens8 := make([]lexer.Token, 0)
+	lexi8 := make([]string, 0)
+	tokens8 = append(tokens8, lexer.Token{"", 1, token.ILLEGAL, lexer.Position{1, 1}, lexer.Position{1, 11}})
+	lexi8 = append(lexi8, "Lexical error: new line in rune at line 1 and column 10.")
+	tokens8 = append(tokens8, lexer.Token{"", 2, token.IDENT, lexer.Position{2, 1}, lexer.Position{2, 4}})
+	lexi8 = append(lexi8, "hey")
+	expected["singlequote2"] = testlexer{
+		tokens:  tokens8,
+		lexiDic: lexi8}
+
+	// singlequote2
+	tokens9 := make([]lexer.Token, 0)
+	lexi9 := make([]string, 0)
+	tokens9 = append(tokens9, lexer.Token{"", 1, token.IDENT, lexer.Position{1, 1}, lexer.Position{1, 10}})
+	lexi9 = append(lexi9, "character")
+	tokens9 = append(tokens9, lexer.Token{"", 0, token.CAST, lexer.Position{1, 11}, lexer.Position{1, 12}})
+	tokens9 = append(tokens9, lexer.Token{"", 2, token.IDENT, lexer.Position{1, 13}, lexer.Position{1, 16}})
+	lexi9 = append(lexi9, "val")
+	tokens9 = append(tokens9, lexer.Token{"", 0, token.LPAREN, lexer.Position{1, 17}, lexer.Position{1, 18}})
+	tokens9 = append(tokens9, lexer.Token{"", 3, token.INT, lexer.Position{1, 18}, lexer.Position{1, 19}})
+	lexi9 = append(lexi9, "3")
+	tokens9 = append(tokens9, lexer.Token{"", 0, token.RPAREN, lexer.Position{1, 19}, lexer.Position{1, 20}})
+	expected["singlequote1"] = testlexer{
+		tokens:  tokens9,
+		lexiDic: lexi9}
+
 	// firstline
 	tokens3 := make([]lexer.Token, 0)
 	lexi3 := make([]string, 0)
