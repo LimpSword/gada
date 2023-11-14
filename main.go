@@ -5,5 +5,6 @@ import (
 )
 
 func main() {
-	lexer.AllTest() // set parameter true to print lexical analysis
+	lexer.AllTest()
+
 }

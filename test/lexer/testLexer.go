@@ -31,27 +31,39 @@ func AllTest() {
 	}
 	expected := getExpected()
 	for _, file := range files {
+		fmt.Printf("Test %s beginning\n", file.Name())
 		nameNoExt := strings.Split(file.Name(), ".")[0]
 		testPassed := true
 		fileLexer := reader.FileLexer("examples/" + file.Name())
 		foundTokens, lexicon := fileLexer.Read()
-		for ind, token := range foundTokens {
+		for ind, tok := range foundTokens {
+
 			expecTokens, expecLexi := expected[nameNoExt].tokens, expected[nameNoExt].lexiDic
-			if ind >= len(expecTokens) || !compareTokens(token, expecTokens[ind], lexicon, expecLexi) {
+			//if tok.Position != 0 {
+			//	fmt.Printf("(%s:%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], lexicon[tok.Position-1], tok.Beginning.Column, tok.End.Column)
+			//} else {
+			//	fmt.Printf("(%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], tok.Beginning.Column, tok.End.Column)
+			//}
+			//if expecTokens[ind].Position != 0 {
+			//	fmt.Printf("(%s:%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], lexicon[expecTokens[ind].Position-1], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
+			//} else {
+			//	fmt.Printf("(%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
+			//}
+			if ind >= len(expecTokens) || !compareTokens(tok, expecTokens[ind], lexicon, expecLexi) {
 				testPassed = false
 				if ind >= len(expecTokens) {
 					log.Fatalf("\nTest: %s There is more token than expected", file.Name())
 				}
 				tokenLit1, tokenLit2 := "", ""
-				if token.Position != 0 {
-					tokenLit1 = lexicon[token.Position-1]
+				if tok.Position != 0 {
+					tokenLit1 = lexicon[tok.Position-1]
 				}
 				if expecTokens[ind].Position != 0 {
 					tokenLit2 = expecLexi[expecTokens[ind].Position-1]
 				}
 				// tokenLit1 and tokenLit2 are the literals in case tokens are literals
 				// there here for the debug only
-				log.Fatalf("\ntoken number: %d token gen: %v %s is different than token expected: %v %s", ind, token, tokenLit1, expecTokens[ind], tokenLit2)
+				log.Fatalf("\ntoken number: %d token gen: %v %s is different than token expected: %v %s", ind, tok, tokenLit1, expecTokens[ind], tokenLit2)
 			} else {
 				//fmt.Printf("token number: %d token: %v lexi: %v\n", ind, expecTokens, expecLexi)
 			}
