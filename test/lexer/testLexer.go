@@ -24,8 +24,8 @@ func compareTokens(token1 lexer.Token, token2 lexer.Token, lexiDic1 []string, le
 		token1.End == token2.End
 }
 
-func AllTest() {
-	files, err := os.ReadDir("examples")
+func AllTest(debug bool) {
+	files, err := os.ReadDir("examples/testLexer")
 	if err != nil {
 		log.Fatalf("the directory provided have this error : %s", err)
 	}
@@ -34,21 +34,23 @@ func AllTest() {
 		fmt.Printf("Test %s beginning\n", file.Name())
 		nameNoExt := strings.Split(file.Name(), ".")[0]
 		testPassed := true
-		fileLexer := reader.FileLexer("examples/" + file.Name())
+		fileLexer := reader.FileLexer("examples/testLexer/" + file.Name())
 		foundTokens, lexicon := fileLexer.Read()
 		for ind, tok := range foundTokens {
 
 			expecTokens, expecLexi := expected[nameNoExt].tokens, expected[nameNoExt].lexiDic
-			//if tok.Position != 0 {
-			//	fmt.Printf("(%s:%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], lexicon[tok.Position-1], tok.Beginning.Column, tok.End.Column)
-			//} else {
-			//	fmt.Printf("(%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], tok.Beginning.Column, tok.End.Column)
-			//}
-			//if expecTokens[ind].Position != 0 {
-			//	fmt.Printf("(%s:%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], lexicon[expecTokens[ind].Position-1], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
-			//} else {
-			//	fmt.Printf("(%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
-			//}
+			if debug {
+				if tok.Position != 0 {
+					fmt.Printf("(%s:%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], lexicon[tok.Position-1], tok.Beginning.Column, tok.End.Column)
+				} else {
+					fmt.Printf("(%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], tok.Beginning.Column, tok.End.Column)
+				}
+				if expecTokens[ind].Position != 0 {
+					fmt.Printf("(%s:%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], lexicon[expecTokens[ind].Position-1], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
+				} else {
+					fmt.Printf("(%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
+				}
+			}
 			if ind >= len(expecTokens) || !compareTokens(tok, expecTokens[ind], lexicon, expecLexi) {
 				testPassed = false
 				if ind >= len(expecTokens) {
@@ -78,7 +80,7 @@ func AllTest() {
 }
 
 func DisplayLexer(name string) {
-	lexer := reader.FileLexer("examples/" + name)
+	lexer := reader.FileLexer("examples/testLexer/" + name)
 	foundTokens, lexicon := lexer.Read()
 	line := -1
 	for _, tok := range foundTokens {
