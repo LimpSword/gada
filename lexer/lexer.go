@@ -155,12 +155,21 @@ func (l *Lexer) Read() ([]Token, []string) {
 						} else {
 							// Send an error
 							unexpected := string(r)
+							eofBreaked := true
 							for {
 								r, _, err := l.reader.ReadRune()
 								l.column++
 								//l.column
 								if err == nil {
 									if r == '\'' {
+										break
+									} else if r == '\n' {
+										println("Lexical error: new line in rune at line" + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column)-1, 10) + ".")
+										tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
+										lexi = append(lexi, "Lexical error: new line in rune at line "+strconv.FormatInt(int64(l.line), 10)+" and column "+strconv.FormatInt(int64(l.column)-1, 10)+".")
+										position++
+										l.reader.UnreadRune()
+										l.column--
 										break
 									} else {
 										unexpected += string(r)
@@ -170,13 +179,16 @@ func (l *Lexer) Read() ([]Token, []string) {
 									tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
 									lexi = append(lexi, "Lexical error: unexpected end of file at line "+strconv.FormatInt(int64(l.line), 10)+" and column "+strconv.FormatInt(int64(l.column)-1, 10)+".")
 									position++
+									eofBreaked = true
 									break
 								}
 							}
-							println("Lexical error: unexpected character '" + char + unexpected + "' at line " + strconv.FormatInt(int64(l.line), 10) + " between column " + strconv.FormatInt(int64(beginPos.Column), 10) + " and " + strconv.FormatInt(int64(l.column), 10) + ".")
-							tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
-							lexi = append(lexi, "Lexical error: unexpected character '"+char+unexpected+"' at line "+strconv.FormatInt(int64(l.line), 10)+" between column "+strconv.FormatInt(int64(beginPos.Column), 10)+" and "+strconv.FormatInt(int64(l.column), 10)+".")
-							position++
+							if !eofBreaked {
+								println("Lexical error: unexpected character '" + char + unexpected + "' at line " + strconv.FormatInt(int64(l.line), 10) + " between column " + strconv.FormatInt(int64(beginPos.Column), 10) + " and " + strconv.FormatInt(int64(l.column), 10) + ".")
+								tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
+								lexi = append(lexi, "Lexical error: unexpected character '"+char+unexpected+"' at line "+strconv.FormatInt(int64(l.line), 10)+" between column "+strconv.FormatInt(int64(beginPos.Column), 10)+" and "+strconv.FormatInt(int64(l.column), 10)+".")
+								position++
+							}
 						}
 					}
 				}
