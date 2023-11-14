@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"fmt"
+	"encoding/json"
 	"gada/lexer"
 	"gada/token"
 )
@@ -14,7 +14,7 @@ type Parser struct {
 type Node struct {
 	Type  token.Token
 	Index int
-	child []Node
+	Child []Node
 }
 
 func (p *Parser) readToken() token.Token {
@@ -41,8 +41,12 @@ func Parse(lexer *lexer.Lexer) {
 
 func readFile(parser *Parser) {
 	node := readExpression(parser)
-	// print node
-	fmt.Println(node)
+	// print node json
+	b, err := json.MarshalIndent(node, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	println(string(b))
 }
 
 func readExpression(parser *Parser) Node {
@@ -54,7 +58,7 @@ func readOr(parser *Parser) Node {
 	for parser.peekToken() == token.OR {
 		parser.readToken()
 		other := readAnd(parser)
-		andExpr = Node{Type: token.OR, child: []Node{andExpr, other}}
+		andExpr = Node{Type: token.OR, Child: []Node{andExpr, other}}
 	}
 	return andExpr
 }
@@ -64,7 +68,7 @@ func readAnd(parser *Parser) Node {
 	for parser.peekToken() == token.AND {
 		parser.readToken()
 		other := readEquality(parser)
-		equalityExpr = Node{Type: token.AND, child: []Node{equalityExpr, other}}
+		equalityExpr = Node{Type: token.AND, Child: []Node{equalityExpr, other}}
 	}
 	return equalityExpr
 }
@@ -74,7 +78,7 @@ func readEquality(parser *Parser) Node {
 	for parser.peekToken() == token.EQL || parser.peekToken() == token.NEQ {
 		tkn := parser.readToken()
 		other := readRelational(parser)
-		relationalExpr = Node{Type: tkn, child: []Node{relationalExpr, other}}
+		relationalExpr = Node{Type: tkn, Child: []Node{relationalExpr, other}}
 	}
 	return relationalExpr
 }
@@ -85,7 +89,7 @@ func readRelational(parser *Parser) Node {
 		parser.peekToken() == token.GTR || parser.peekToken() == token.GEQ {
 		tkn := parser.readToken()
 		other := readAdditive(parser)
-		additiveExpr = Node{Type: tkn, child: []Node{additiveExpr, other}}
+		additiveExpr = Node{Type: tkn, Child: []Node{additiveExpr, other}}
 	}
 	return additiveExpr
 }
@@ -95,7 +99,7 @@ func readAdditive(parser *Parser) Node {
 	for parser.peekToken() == token.ADD || parser.peekToken() == token.SUB {
 		tkn := parser.readToken()
 		other := readMultiplicative(parser)
-		multiplicativeExpr = Node{Type: tkn, child: []Node{multiplicativeExpr, other}}
+		multiplicativeExpr = Node{Type: tkn, Child: []Node{multiplicativeExpr, other}}
 	}
 	return multiplicativeExpr
 }
@@ -105,7 +109,7 @@ func readMultiplicative(parser *Parser) Node {
 	for parser.peekToken() == token.MUL || parser.peekToken() == token.QUO || parser.peekToken() == token.REM_OP || parser.peekToken() == token.REM {
 		tkn := parser.readToken()
 		other := readUnary(parser)
-		unaryExpr = Node{Type: tkn, child: []Node{unaryExpr, other}}
+		unaryExpr = Node{Type: tkn, Child: []Node{unaryExpr, other}}
 	}
 	return unaryExpr
 }
@@ -114,7 +118,7 @@ func readUnary(parser *Parser) Node {
 	if parser.peekToken() == token.SUB {
 		tkn := parser.readToken()
 		other := readUnary(parser)
-		return Node{Type: tkn, child: []Node{other}}
+		return Node{Type: tkn, Child: []Node{other}}
 	}
 	return readPrimary(parser)
 }
