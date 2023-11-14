@@ -30,6 +30,19 @@ func getExpected() map[string]testlexer {
 		tokens:  tokens5,
 		lexiDic: lexi5}
 
+	// errorIllegalChar
+	tokens6 := make([]lexer.Token, 0)
+	lexi6 := make([]string, 0)
+	tokens6 = append(tokens6, lexer.Token{"", 1, token.IDENT, lexer.Position{1, 1}, lexer.Position{1, 6}})
+	lexi6 = append(lexi6, "notan")
+	tokens6 = append(tokens6, lexer.Token{"", 2, token.ILLEGAL, lexer.Position{1, 6}, lexer.Position{1, 7}})
+	lexi6 = append(lexi6, "Lexical error: unexpected character '$' at line 1 and column 6.")
+	tokens6 = append(tokens6, lexer.Token{"", 3, token.IDENT, lexer.Position{1, 7}, lexer.Position{1, 12}})
+	lexi6 = append(lexi6, "ident")
+	expected["errorIllegalChar"] = testlexer{
+		tokens:  tokens6,
+		lexiDic: lexi6}
+
 	// firstline
 	tokens3 := make([]lexer.Token, 0)
 	lexi3 := make([]string, 0)

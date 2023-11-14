@@ -239,6 +239,7 @@ func (l *Lexer) Read() ([]Token, []string) {
 								break
 							}
 						} else {
+							l.column--
 							break
 						}
 					}
@@ -250,7 +251,7 @@ func (l *Lexer) Read() ([]Token, []string) {
 							tokens = append(tokens, Token{Type: "Keyword", Value: int(token.LookupIdent(name)), Beginning: beginPos, End: Position{l.line, l.column}})
 						}
 					} else {
-						tokens = append(tokens, Token{Type: "Identifier", Position: position, Value: token.IDENT, Beginning: beginPos, End: Position{l.line, l.column}})
+						tokens = append(tokens, Token{Type: "Literals", Position: position, Value: token.IDENT, Beginning: beginPos, End: Position{l.line, l.column}})
 						lexi = append(lexi, name)
 						position++
 					}
