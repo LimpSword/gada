@@ -7,4 +7,5 @@ import (
 func main() {
 	lexer.AllTest()
 
+	//reader.CompileFile("examples/expressions/expression.ada")
 }

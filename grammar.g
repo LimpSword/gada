@@ -1,48 +1,6 @@
 %token in out true false null
 %% /* LL(1) */
 
-chiffre : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
-
-chiffre_plus
-    : chiffre chiffre_plus
-    | chiffre ;
-
-alpha
-    : 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q'
-    | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z'
-    | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q'
-    | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' ;
-
-ident
-    : alpha ident_tail_star ;
-
-ident_opt
-    : ident
-    | /*eps*/ ;
-
-ident_plus_comma
-    : ident ',' ident_plus_comma
-    | ident ;
-
-ident_tail
-    : alpha | chiffre | '_' ;
-
-ident_tail_star
-    : ident_tail ident_tail_star
-    | ident_tail
-    | /* eps */ ;
-
-entier
-    : chiffre_plus ;
-
-caractere
-    : ''' printable_caractere ''' ;
-
-printable_caractere
-    : ' ' | '!' | '"' | '#' | '$' | '%' | '&' | ''' | '(' | ')' | '*' | '+' | ',' | '-' | '.' | '/' 
-    | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | ':' | ';' | '=' | '?' | '@' 
-    | alpha | '[' | '\' | ']' | '^' | '_' | '`' | '{' | '|' | '}' | '~' ;
-
 fichier
     : 'with' 'Ada.Text_IO;' 'use' 'Ada.Text_IO;'
       'procedure' ident 'is' decl_star
@@ -59,7 +17,7 @@ decl
 
 decl_star
     : 'begin' instr_plus 'end' ident_opt ';' ;
-    
+
 init
     : ':=' expr
     | /*eps*/ ;
@@ -103,21 +61,79 @@ mode_opt
     | /*eps*/ ;
 
 expr
-    : entier expr_operator
-    | caractere expr_operator
-    | true expr_operator
-    | false expr_operator
-    | null expr_operator
-    | '(' expr ')' expr_operator
-    | access expr_operator
-    | 'not' expr expr_operator
-    | '-' expr expr_operator
-    | 'new' ident expr_operator
-    | ident '(' expr_plus_comma ')' expr_operator
-    | 'character' ''' 'val' '(' expr ')' expr_operator;
+    : or_expr ;
 
-expr_operator
-    : operateur expr expr_operator ;
+or_expr
+    : and_expr or_expr_tail
+    ;
+
+or_expr_tail
+    : 'or' and_expr or_expr_tail
+    | /*eps*/ ;
+
+and_expr
+    : equality_expr and_expr_tail
+    ;
+
+and_expr_tail
+    : 'and' equality_expr and_expr_tail
+    | /*eps*/ ;
+
+equality_expr
+    : relational_expr equality_expr_tail
+    ;
+
+equality_expr_tail
+    : '=' relational_expr equality_expr_tail
+    | '/=' relational_expr equality_expr_tail
+    | /*eps*/ ;
+
+relational_expr
+    : additive_expr relational_expr_tail
+    ;
+
+relational_expr_tail
+    : '<' additive_expr relational_expr_tail
+    | '<=' additive_expr relational_expr_tail
+    | '>' additive_expr relational_expr_tail
+    | '>=' additive_expr relational_expr_tail
+    | /*eps*/ ;
+
+additive_expr
+    : multiplicative_expr additive_expr_tail
+    ;
+
+additive_expr_tail
+    : '+' multiplicative_expr additive_expr_tail
+    | '-' multiplicative_expr additive_expr_tail
+    | /*eps*/ ;
+
+multiplicative_expr
+    : unary_expr multiplicative_expr_tail
+    ;
+
+multiplicative_expr_tail
+    : '*' unary_expr multiplicative_expr_tail
+    | '/' unary_expr multiplicative_expr_tail
+    | 'rem' unary_expr multiplicative_expr_tail
+    | /*eps*/ ;
+
+unary_expr
+    : '-' unary_expr
+    | primary_expr ;
+
+primary_expr
+    : entier
+    | caractere
+    | 'true'
+    | 'false'
+    | 'null'
+    | '(' expr ')'
+    | access
+    | 'not'
+    | 'new'
+    | ident '(' expr_plus_comma ')'
+    | 'character' ''' 'val' '(' expr ')' ;
 
 expr_plus_comma
     : expr ',' expr_plus_comma
@@ -158,23 +174,6 @@ else_instr_opt
     : 'else_instr'
     | /*eps*/ ;
 
-operateur
-    : '='
-    | '/='
-    | '>'
-    | '>='
-    | '<'
-    | '<='
-    | '+'
-    | '-'
-    | '*'
-    | '/'
-    | 'rem'
-    | 'and'
-    | 'and' 'then'
-    | 'or'
-    | 'or' 'else' ;
-
 access
     : ident
     | ident '.' expr ; /* A vérifier */
@@ -182,3 +181,45 @@ access
 reverse_instr
     : 'reverse'
     | /*eps*/ ;
+
+chiffre : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
+
+chiffre_plus
+    : chiffre chiffre_plus
+    | chiffre ;
+
+alpha
+    : 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q'
+    | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z'
+    | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q'
+    | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z' ;
+
+ident
+    : alpha ident_tail_star ;
+
+ident_opt
+    : ident
+    | /*eps*/ ;
+
+ident_plus_comma
+    : ident ',' ident_plus_comma
+    | ident ;
+
+ident_tail
+    : alpha | chiffre | '_' ;
+
+ident_tail_star
+    : ident_tail ident_tail_star
+    | ident_tail
+    | /* eps */ ;
+
+entier
+    : chiffre_plus ;
+
+caractere
+    : ''' printable_caractere ''' ;
+
+printable_caractere
+    : ' ' | '!' | '"' | '#' | '$' | '%' | '&' | ''' | '(' | ')' | '*' | '+' | ',' | '-' | '.' | '/'
+    | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | ':' | ';' | '=' | '?' | '@'
+    | alpha | '[' | '\' | ']' | '^' | '_' | '`' | '{' | '|' | '}' | '~' ;

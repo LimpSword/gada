@@ -3,6 +3,7 @@ package reader
 import (
 	"fmt"
 	"gada/lexer"
+	"gada/parser"
 	"os"
 )
 
@@ -42,4 +43,14 @@ func FileLexer(path string) *lexer.Lexer {
 		return nil
 	}
 	return lexer.NewLexer(content)
+}
+
+func CompileFile(path string) {
+	l := FileLexer(path)
+	if l == nil {
+		return
+	}
+	l.Read()
+	fmt.Println(l.Tokens)
+	parser.Parse(l)
 }
