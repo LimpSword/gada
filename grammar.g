@@ -7,16 +7,18 @@ fichier
       'begin' instr_plus 'end' ident_opt ';' 'EOF' ;
 
 decl
-    : 'type' ident ';'
-    | 'type' ident 'is' 'access' ident ';'
-    | 'type' ident 'is' 'record' champs_plus 'end' 'record' ';'
+    : 'type' ident decl2
     | ident_plus_comma ':' 'type' init ';'
-    | 'procedure' ident params_opt 'is' decl_star
-      'begin' instr_plus 'end' ident_opt ';'
-    | 'function' ident params_opt 'return' 'type' 'is' ;
+    | 'procedure' ident params_opt 'is' decl_star 'begin' instr_plus 'end' ident_opt ';'
+    | 'function' ident params_opt 'return' 'type' 'is' decl_star 'begin' instr_plus 'end' ident_opt ';' ;
 
-decl_star
-    : 'begin' instr_plus 'end' ident_opt ';' ;
+decl2
+    : ';'
+    | 'is' decl3 ;
+
+decl3
+    : 'access' ident ';'
+    | 'record' champs_plus 'end' 'record' ';' ;
 
 init
     : ':=' expr
@@ -24,15 +26,17 @@ init
 
 decl_star
     : decl decl_star
-    | decl
     | /*eps*/ ;
 
 champs
     : ident_plus_comma ':' 'type' ';' ;
 
 champs_plus
-    : champs champs_plus
-    | champs ;
+    : champs champs_plus2 ;
+
+champs_plus2
+    : champs champs_plus2
+    | /*eps*/ ;
 
 type
     : ident
@@ -49,12 +53,18 @@ param
     : ident_plus_comma ':' mode_opt type ;
 
 param_plus_semicolon
-    : param ';' param_plus_semicolon
-    | param ;
+    : param param_plus_semicolon2 ;
+
+param_plus_semicolon2
+    : ';' param param_plus_semicolon2
+    | /*eps*/ ;
 
 mode
-    : in
-    | in out ;
+    : in mode2 ;
+
+mode2
+    : out
+    | /*eps*/ ;
 
 mode_opt
     : mode
@@ -136,8 +146,11 @@ primary_expr
     | 'character' ''' 'val' '(' expr ')' ;
 
 expr_plus_comma
-    : expr ',' expr_plus_comma
-    | expr ;
+    : expr expr_plus_comma2 ;
+
+expr_plus_comma2
+    : ',' expr expr_plus_comma2
+    | /*eps*/ ;
 
 expr_opt
     : expr
@@ -145,8 +158,7 @@ expr_opt
 
 instr
     : 'access' ':=' expr ';'
-    | ident ';'
-    | ident '(' expr_plus_comma ')' ';'
+    | ident instr2
     | 'return' expr_opt ';'
     | 'begin' instr_plus 'end' ';'
     | 'if' expr 'then' instr_plus else_if_star
@@ -155,16 +167,22 @@ instr
       'loop' instr_plus 'end' 'loop' ';'
     | 'while' expr 'loop' instr_plus 'end' 'loop' ;
 
+instr2
+    : ';'
+    | '(' expr_plus_comma ')' ';' ;
+
 instr_plus
-    : instr instr_plus
-    | instr ;
+    : instr instr_plus2 ;
+
+instr_plus2
+    : instr instr_plus2
+    | /*eps*/ ;
 
 else_if
     : 'elsif' expr 'then' instr_plus ;
 
 else_if_star
     : else_if else_if_star
-    | else_if
     | /*eps*/ ;
 
 else_instr
@@ -176,7 +194,7 @@ else_instr_opt
 
 access
     : ident
-    | ident '.' expr ; /* A vérifier */
+    | expr '.' ident ;
 
 reverse_instr
     : 'reverse'
@@ -185,8 +203,11 @@ reverse_instr
 chiffre : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
 
 chiffre_plus
-    : chiffre chiffre_plus
-    | chiffre ;
+    : chiffre chiffre_plus2 ;
+
+chiffre_plus2
+    : chiffre chiffre_plus2
+    | /*eps*/ ;
 
 alpha
     : 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q'
@@ -202,15 +223,17 @@ ident_opt
     | /*eps*/ ;
 
 ident_plus_comma
-    : ident ',' ident_plus_comma
-    | ident ;
+    : ident ident_plus_comma2 ;
+
+ident_plus_comma2
+    : ',' ident ident_plus_comma2
+    | /*eps*/ ;
 
 ident_tail
     : alpha | chiffre | '_' ;
 
 ident_tail_star
     : ident_tail ident_tail_star
-    | ident_tail
     | /* eps */ ;
 
 entier
