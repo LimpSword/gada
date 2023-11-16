@@ -5,6 +5,11 @@ import (
 	"gada/token"
 )
 
+type testlexer struct {
+	tokens  []lexer.Token
+	lexiDic []string
+}
+
 func getExpected() map[string]testlexer {
 	expected := make(map[string]testlexer)
 
