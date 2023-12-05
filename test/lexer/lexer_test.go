@@ -11,11 +11,6 @@ import (
 	"testing"
 )
 
-type testlexer struct {
-	tokens  []lexer.Token
-	lexiDic []string
-}
-
 func compareTokens(token1 lexer.Token, token2 lexer.Token, lexiDic1 []string, lexiDic2 []string) bool {
 	return token1.Position == token2.Position &&
 		(token1.Position == 0 || lexiDic1[token1.Position-1] == lexiDic2[token2.Position-1]) &&
