@@ -78,15 +78,30 @@ or_expr
     ;
 
 or_expr_tail
-    : 'or' and_expr or_expr_tail
+    : 'or' or_expr_tail2
     | /*eps*/ ;
+
+or_expr_tail2
+    : 'else' and_expr or_expr_tail
+    | and_expr or_expr_tail ;
 
 and_expr
     : equality_expr and_expr_tail
     ;
 
 and_expr_tail
-    : 'and' equality_expr and_expr_tail
+    : 'and' and_expr_tail2
+    | /*eps*/ ;
+
+and_expr_tail2
+    : 'then' equality_expr and_expr_tail
+    | not_expr and_expr_tail ;
+
+not_expr
+    : equality_expr not_expr_tail ;
+
+not_expr_tail
+    : 'not' equality_expr not_expr_tail
     | /*eps*/ ;
 
 equality_expr
