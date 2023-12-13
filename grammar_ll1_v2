@@ -1,0 +1,291 @@
+fichier -> with Ada.Text_IO; use Ada.Text_IO; procedure ident is decl_star begin instr_plus end ident_opt ; EOF
+
+decl -> type ident decl2
+decl -> ident_plus_comma : type init ;
+decl -> procedure ident params_opt is decl_star begin instr_plus end ident_opt ;
+decl -> function ident params_opt return type is decl_star begin instr_plus end ident_opt ;
+
+decl2 -> ;
+decl2 -> is decl3
+
+decl3 -> access ident ;
+decl3 -> record champs_plus end record ;
+
+init -> := expr
+init -> ''
+
+decl_star -> decl decl_star
+decl_star -> ''
+
+champs -> ident_plus_comma : type ;
+
+champs_plus -> champs champs_plus2
+
+champs_plus2 -> champs champs_plus2
+champs_plus2 -> ''
+
+type_r -> ident
+type_r -> access ident
+
+params -> ( param_plus_semicolon ) ;
+
+params_opt -> params
+params_opt -> ''
+
+param -> ident_plus_comma : mode_opt type_r
+
+param_plus_semicolon -> param param_plus_semicolon2
+
+param_plus_semicolon2 -> ; param param_plus_semicolon2
+param_plus_semicolon2 -> ''
+
+mode -> in mode2
+
+mode2 -> out
+mode2 -> ''
+
+mode_opt -> mode
+mode_opt -> ''
+
+expr -> or_expr
+
+or_expr -> and_expr or_expr_tail
+
+or_expr_tail -> or or_expr_tail2
+or_expr_tail -> ''
+
+or_expr_tail2 -> else and_expr or_expr_tail
+or_expr_tail2 -> and_expr or_expr_tail
+
+and_expr -> equality_expr and_expr_tail
+
+and_expr_tail -> and and_expr_tail2
+and_expr_tail -> ''
+
+and_expr_tail2 -> then equality_expr and_expr_tail
+and_expr_tail2 -> not_expr and_expr_tail
+
+not_expr -> equality_expr not_expr_tail
+
+not_expr_tail -> not equality_expr not_expr_tail
+not_expr_tail -> ''
+
+equality_expr -> relational_expr equality_expr_tail
+
+equality_expr_tail -> = relational_expr equality_expr_tail
+equality_expr_tail -> /= relational_expr equality_expr_tail
+equality_expr_tail -> ''
+
+relational_expr -> additive_expr relational_expr_tail
+
+relational_expr_tail -> < additive_expr relational_expr_tail
+relational_expr_tail -> <= additive_expr relational_expr_tail
+relational_expr_tail -> > additive_expr relational_expr_tail
+relational_expr_tail -> >= additive_expr relational_expr_tail
+relational_expr_tail -> ''
+
+additive_expr -> multiplicative_expr additive_expr_tail
+
+additive_expr_tail -> + multiplicative_expr additive_expr_tail
+additive_expr_tail -> - multiplicative_expr additive_expr_tail
+additive_expr_tail -> ''
+
+multiplicative_expr -> unary_expr multiplicative_expr_tail
+
+multiplicative_expr_tail -> * unary_expr multiplicative_expr_tail
+multiplicative_expr_tail -> / unary_expr multiplicative_expr_tail
+multiplicative_expr_tail -> rem unary_expr multiplicative_expr_tail
+multiplicative_expr_tail -> ''
+
+unary_expr -> - unary_expr
+unary_expr -> primary_expr
+
+primary_expr -> entier
+primary_expr -> caractere
+primary_expr -> true
+primary_expr -> false
+primary_expr -> null
+primary_expr -> ( expr )
+primary_expr -> not
+primary_expr -> new ident
+primary_expr -> ident primary_expr2
+primary_expr -> character ' val ( expr )
+
+primary_expr2 -> access2
+primary_expr2 -> ( expr_plus_comma ) primary_expr3
+
+primary_expr3 -> . ident access2
+primary_expr3 -> ''
+
+access2 -> . ident access2
+access2 -> ''
+
+expr_plus_comma -> expr expr_plus_comma2
+
+expr_plus_comma2 -> , expr expr_plus_comma2
+expr_plus_comma2 -> ''
+
+expr_opt -> expr
+expr_opt -> ''
+
+instr -> access := expr ;
+instr -> ident instr2
+instr -> return expr_opt ;
+instr -> begin instr_plus end ;
+instr -> if expr then instr_plus else_if_star else_instr_opt end if ;
+instr -> for ident in reverse_instr expr .. expr loop instr_plus end loop ;
+instr -> while expr loop instr_plus end loop ;
+
+instr2 -> ;
+instr2 -> ( expr_plus_comma ) ;
+
+instr_plus -> instr instr_plus2
+
+instr_plus2 -> instr instr_plus2
+instr_plus2 -> ''
+
+else_if -> elsif expr then instr_plus
+
+else_if_star -> else_if else_if_star
+else_if_star -> ''
+
+else_instr -> else instr_plus
+
+else_instr_opt -> else_instr
+else_instr_opt -> ''
+
+reverse_instr -> reverse
+reverse_instr -> ''
+
+chiffre -> 0
+chiffre -> 1
+chiffre -> 2
+chiffre -> 3
+chiffre -> 4
+chiffre -> 5
+chiffre -> 6
+chiffre -> 7
+chiffre -> 8
+chiffre -> 9
+
+chiffre_plus -> chiffre chiffre_plus2
+
+chiffre_plus2 -> chiffre chiffre_plus2
+chiffre_plus2 -> ''
+
+alpha -> a
+alpha -> b
+alpha -> c
+alpha -> d
+alpha -> e
+alpha -> f
+alpha -> g
+alpha -> h
+alpha -> i
+alpha -> j
+alpha -> k
+alpha -> l
+alpha -> m
+alpha -> n
+alpha -> o
+alpha -> p
+alpha -> q
+alpha -> r
+alpha -> s
+alpha -> t
+alpha -> u
+alpha -> v
+alpha -> w
+alpha -> x
+alpha -> y
+alpha -> z
+alpha -> A
+alpha -> B
+alpha -> C
+alpha -> D
+alpha -> E
+alpha -> F
+alpha -> G
+alpha -> H
+alpha -> I
+alpha -> J
+alpha -> K
+alpha -> L
+alpha -> M
+alpha -> N
+alpha -> O
+alpha -> P
+alpha -> Q
+alpha -> R
+alpha -> S
+alpha -> T
+alpha -> U
+alpha -> V
+alpha -> W
+alpha -> X
+alpha -> Y
+alpha -> Z
+
+ident -> alpha ident_tail_star ;
+
+ident_opt -> ident
+ident_opt -> ''
+
+ident_plus_comma -> ident ident_plus_comma2 ;
+
+ident_plus_comma2 -> , ident ident_plus_comma2
+ident_plus_comma2 -> ''
+
+ident_tail -> alpha
+ident_tail -> chiffre
+ident_tail -> _
+
+ident_tail_star -> ident_tail ident_tail_star
+ident_tail_star -> ''
+
+entier -> chiffre_plus
+
+caractere -> ' printable_caractere '
+
+printable_caractere -> !
+printable_caractere -> "
+printable_caractere -> #
+printable_caractere -> $
+printable_caractere -> %
+printable_caractere -> &
+printable_caractere -> '
+printable_caractere -> (
+printable_caractere -> )
+printable_caractere -> *
+printable_caractere -> +
+printable_caractere -> ,
+printable_caractere -> -
+printable_caractere -> .
+printable_caractere -> /
+printable_caractere -> 0
+printable_caractere -> 1
+printable_caractere -> 2
+printable_caractere -> 3
+printable_caractere -> 4
+printable_caractere -> 5
+printable_caractere -> 6
+printable_caractere -> 7
+printable_caractere -> 8
+printable_caractere -> 9
+printable_caractere -> :
+printable_caractere -> ;
+printable_caractere -> =
+printable_caractere -> ?
+printable_caractere -> @
+printable_caractere -> alpha
+printable_caractere -> [
+printable_caractere -> \
+printable_caractere -> ]
+printable_caractere -> ^
+printable_caractere -> _
+printable_caractere -> `
+printable_caractere -> {
+printable_caractere -> |
+printable_caractere -> }
+printable_caractere -> ~
+printable_caractere ->

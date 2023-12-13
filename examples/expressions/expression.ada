@@ -1,1 +1,1 @@
-3 - 8 + 2 * 7 - 2
+with Ada.Text_IO; use Ada.Text_IO; procedure abc is begin air := 3 end ;
