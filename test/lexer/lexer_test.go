@@ -1,10 +1,9 @@
 package lexer
 
 import (
-	"fmt"
 	"gada/lexer"
 	"gada/reader"
-	"gada/token"
+	"github.com/stretchr/testify/assert"
 	"log"
 	"os"
 	"strings"
@@ -29,73 +28,27 @@ func TestAll(t *testing.T) {
 	for _, file := range files {
 		t.Logf("Test %s beginning\n", file.Name())
 		nameNoExt := strings.Split(file.Name(), ".")[0]
-		testPassed := true
 		fileLexer := reader.FileLexer("tests/" + file.Name())
 		foundTokens, lexicon := fileLexer.Read()
+		expecTokens, expecLexi := expected[nameNoExt].tokens, expected[nameNoExt].lexiDic
+
+		assert.Equalf(t, len(foundTokens), len(expecTokens), "The token count doesn't match in file %s", file.Name())
+
 		for ind, tok := range foundTokens {
 
-			expecTokens, expecLexi := expected[nameNoExt].tokens, expected[nameNoExt].lexiDic
-			//if debug {
-			//	if tok.Position != 0 {
-			//		fmt.Printf("(%s:%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], lexicon[tok.Position-1], tok.Beginning.Column, tok.End.Column)
-			//	} else {
-			//		fmt.Printf("(%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], tok.Beginning.Column, tok.End.Column)
-			//	}
-			//	if expecTokens[ind].Position != 0 {
-			//		fmt.Printf("(%s:%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], lexicon[expecTokens[ind].Position-1], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
-			//	} else {
-			//		fmt.Printf("(%s:%s from: %d to :%d )\n", expecTokens[ind].Type, token.Tokens[expecTokens[ind].Value], expecTokens[ind].Beginning.Column, expecTokens[ind].End.Column)
-			//	}
-			//}
-			if ind >= len(expecTokens) || !compareTokens(tok, expecTokens[ind], lexicon, expecLexi) {
-				testPassed = false
-				if ind >= len(expecTokens) {
-					t.Errorf("\nTest: %s There is more token than expected", file.Name())
-				}
-				tokenLit1, tokenLit2 := "", ""
-				if tok.Position != 0 {
-					tokenLit1 = lexicon[tok.Position-1]
-				}
-				if expecTokens[ind].Position != 0 {
-					tokenLit2 = expecLexi[expecTokens[ind].Position-1]
-				}
-				// tokenLit1 and tokenLit2 are the literals in case tokens are literals
-				// there here for the debug only
-				t.Errorf("\ntoken number: %d token gen: %v %s is different than token expected: %v %s", ind, tok, tokenLit1, expecTokens[ind], tokenLit2)
-			} else {
-				//fmt.Printf("token number: %d token: %v lexi: %v\n", ind, expecTokens, expecLexi)
+			tokenLit1, tokenLit2 := "", ""
+			if tok.Position != 0 {
+				tokenLit1 = lexicon[tok.Position-1]
 			}
-		}
-		if testPassed {
-			t.Logf("Test %s: passed succesfully \n\n", file.Name())
-		} else {
-			t.Errorf("Test %s: not passed\n", file.Name())
+			if expecTokens[ind].Position != 0 {
+				tokenLit2 = expecLexi[expecTokens[ind].Position-1]
+			}
+
+			assert.Truef(t, compareTokens(tok, expecTokens[ind], lexicon, expecLexi),
+				"The token doesn't match in file %s, token number: %d, token gen: %v %s is different than token expected: %v %s",
+				file.Name(), ind, tok, tokenLit1, expecTokens[ind], tokenLit2)
 		}
 
-	}
-}
-
-func DisplayLexer(name string) {
-	lexer := reader.FileLexer("gada/test/lexer/tests/" + name)
-	foundTokens, lexicon := lexer.Read()
-	line := -1
-	for _, tok := range foundTokens {
-		if tok.Beginning.Line != line {
-			line = tok.Beginning.Line
-			if tok.Position != 0 {
-				fmt.Printf("\nLine : %d (%s:%s:%s from: %d to :%d )", tok.Beginning.Line, tok.Type, token.Tokens[tok.Value], lexicon[tok.Position-1], tok.Beginning.Column, tok.End.Column)
-			} else {
-				fmt.Printf("\nLine : %d (%s:%s from: %d to :%d )", tok.Beginning.Line, tok.Type, token.Tokens[tok.Value], tok.Beginning.Column, tok.End.Column)
-			}
-		} else {
-			if tok.Position != 0 {
-				fmt.Printf("(%s:%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], lexicon[tok.Position-1], tok.Beginning.Column, tok.End.Column)
-			} else {
-				fmt.Printf("(%s:%s from: %d to :%d )", tok.Type, token.Tokens[tok.Value], tok.Beginning.Column, tok.End.Column)
-			}
-		}
-	}
-	for _, lex := range lexicon {
-		fmt.Printf("\n%s", lex)
+		t.Logf("Test %s ending\n", file.Name())
 	}
 }

@@ -163,6 +163,7 @@ func (l *Lexer) Read() ([]Token, []string) {
 								if err == nil {
 									l.column++
 									if r == '\'' {
+										eofBreaked = false
 										break
 									} else if r == '\n' {
 										println("Lexical error: new line in rune at line" + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column)-1, 10) + ".")
@@ -180,7 +181,6 @@ func (l *Lexer) Read() ([]Token, []string) {
 									tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
 									lexi = append(lexi, "Lexical error: unexpected end of file at line "+strconv.FormatInt(int64(l.line), 10)+" and column "+strconv.FormatInt(int64(l.column)-1, 10)+".")
 									position++
-									eofBreaked = true
 									break
 								}
 							}
