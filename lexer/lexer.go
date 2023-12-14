@@ -31,6 +31,7 @@ type Token struct {
 }
 
 func NewLexer(text string) *Lexer {
+	text = strings.Replace(text, "\r\n", "\n", -1)
 	reader := bufio.NewReader(strings.NewReader(text))
 	return &Lexer{reader: reader}
 }
@@ -164,12 +165,11 @@ func (l *Lexer) Read() ([]Token, []string) {
 									if r == '\'' {
 										break
 									} else if r == '\n' {
-										l.column--
-
 										println("Lexical error: new line in rune at line" + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column)-1, 10) + ".")
 										tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
 										lexi = append(lexi, "Lexical error: new line in rune at line "+strconv.FormatInt(int64(l.line), 10)+" and column "+strconv.FormatInt(int64(l.column)-1, 10)+".")
 										position++
+										l.column--
 										l.reader.UnreadRune()
 										break
 									} else {
