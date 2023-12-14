@@ -57,6 +57,7 @@ const (
 	ACCESS
 	AND
 	BEGIN
+	CHAR_TOK
 	ELSE
 	ELSIF
 	END
@@ -121,6 +122,7 @@ var Tokens = [...]string{
 	ACCESS:    "access",
 	AND:       "and",
 	BEGIN:     "begin",
+	CHAR_TOK:  "character",
 	ELSE:      "else",
 	ELSIF:     "elsif",
 	END:       "end",
