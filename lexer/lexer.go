@@ -135,7 +135,7 @@ func (l *Lexer) Read() ([]Token, []string) {
 			case '\'':
 				// Check if the keyword 'character' is present before.
 				if len(tokens) > 0 {
-					if tokens[len(tokens)-1].Value == token.IDENT && lexi[len(lexi)-1] == "character" {
+					if tokens[len(tokens)-1].Value == token.CHAR_TOK {
 						tokens = append(tokens, Token{Type: "Operator", Value: token.CAST, Beginning: beginPos, End: Position{l.line, l.column}})
 						break
 					}
@@ -146,8 +146,8 @@ func (l *Lexer) Read() ([]Token, []string) {
 				if err == nil {
 					char := string(r)
 					r, _, err := l.reader.ReadRune()
-					l.column++
 					if err == nil {
+						l.column++
 						if r == '\'' {
 							tokens = append(tokens, Token{Type: "Literal", Position: position, Value: token.CHAR, Beginning: beginPos, End: Position{l.line, l.column}})
 							lexi = append(lexi, char)
@@ -158,18 +158,19 @@ func (l *Lexer) Read() ([]Token, []string) {
 							eofBreaked := true
 							for {
 								r, _, err := l.reader.ReadRune()
-								l.column++
 								//l.column
 								if err == nil {
+									l.column++
 									if r == '\'' {
 										break
 									} else if r == '\n' {
+										l.column--
+
 										println("Lexical error: new line in rune at line" + strconv.FormatInt(int64(l.line), 10) + " and column " + strconv.FormatInt(int64(l.column)-1, 10) + ".")
 										tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
 										lexi = append(lexi, "Lexical error: new line in rune at line "+strconv.FormatInt(int64(l.line), 10)+" and column "+strconv.FormatInt(int64(l.column)-1, 10)+".")
 										position++
 										l.reader.UnreadRune()
-										l.column--
 										break
 									} else {
 										unexpected += string(r)

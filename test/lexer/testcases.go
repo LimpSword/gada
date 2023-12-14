@@ -72,16 +72,15 @@ func getExpected() map[string]testlexer {
 		tokens:  tokens8,
 		lexiDic: lexi8}
 
-	// singlequote2
+	// singlequote1
 	tokens9 := make([]lexer.Token, 0)
 	lexi9 := make([]string, 0)
-	tokens9 = append(tokens9, lexer.Token{"", 1, token.IDENT, lexer.Position{1, 1}, lexer.Position{1, 10}})
-	lexi9 = append(lexi9, "character")
+	tokens9 = append(tokens9, lexer.Token{"", 0, token.CHAR_TOK, lexer.Position{1, 1}, lexer.Position{1, 10}})
 	tokens9 = append(tokens9, lexer.Token{"", 0, token.CAST, lexer.Position{1, 11}, lexer.Position{1, 12}})
-	tokens9 = append(tokens9, lexer.Token{"", 2, token.IDENT, lexer.Position{1, 13}, lexer.Position{1, 16}})
+	tokens9 = append(tokens9, lexer.Token{"", 1, token.IDENT, lexer.Position{1, 13}, lexer.Position{1, 16}})
 	lexi9 = append(lexi9, "val")
 	tokens9 = append(tokens9, lexer.Token{"", 0, token.LPAREN, lexer.Position{1, 17}, lexer.Position{1, 18}})
-	tokens9 = append(tokens9, lexer.Token{"", 3, token.INT, lexer.Position{1, 18}, lexer.Position{1, 19}})
+	tokens9 = append(tokens9, lexer.Token{"", 2, token.INT, lexer.Position{1, 18}, lexer.Position{1, 19}})
 	lexi9 = append(lexi9, "3")
 	tokens9 = append(tokens9, lexer.Token{"", 0, token.RPAREN, lexer.Position{1, 19}, lexer.Position{1, 20}})
 	expected["singlequote1"] = testlexer{
