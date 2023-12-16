@@ -488,7 +488,7 @@ func readNot_expr_tail(parser *Parser) Node {
 	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.COMMA, token.DOUBLEPERIOD, token.LOOP:
 		node = Node{Type: "NotExprTail"}
 	default:
-		panic(fmt.Sprintf("Expected SEMICOLON, RPAREN, OR, AND, THEN, COMMA, DOUBLEPERIOD, or LOOP, got %s", parser.peekToken()))
+		panic(fmt.Sprintf("Expected NOT, SEMICOLON, RPAREN, OR, AND, THEN, COMMA, DOUBLEPERIOD, or LOOP, got %s", parser.peekToken()))
 	}
 	return node
 }
@@ -497,7 +497,9 @@ func readEquality_expr(parser *Parser) Node {
 	var node Node
 	switch parser.peekToken() {
 	case token.IDENT, token.LPAREN, token.NOT, token.SUB, token.INT, token.CHAR, token.TRUE, token.FALSE, token.NULL, token.NEW, token.CHAR_TOK:
-		node = Node{Type: "NotExprTail"}
+		node = Node{Type: "EqualityExpr"}
+		node.addChild(readRelational_expr(parser))
+		node.addChild(readEquality_expr(parser))
 	default:
 		panic(fmt.Sprintf("Expected IDENT, LPAREN, NOT, SUB, INT, CHAR, TRUE, FALSE, NULL, NEW or CHAR_TOK, got %s", parser.peekToken()))
 	}
@@ -505,39 +507,183 @@ func readEquality_expr(parser *Parser) Node {
 }
 
 func readEquality_expr_tail(parser *Parser) Node {
-	return Node{}
+	var node Node
+	switch parser.peekToken() {
+	case token.EQL:
+		parser.readToken()
+		node = Node{Type: "EqualityExprTailEql"}
+		node.addChild(readRelational_expr(parser))
+		node.addChild(readEquality_expr(parser))
+	case token.NEQ:
+		parser.readToken()
+		node = Node{Type: "EqualityExprTailNeq"}
+		node.addChild(readRelational_expr(parser))
+		node.addChild(readEquality_expr(parser))
+	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.COMMA, token.DOUBLEPERIOD, token.LOOP:
+		node = Node{Type: "EqualityExprTail"}
+	default:
+		panic(fmt.Sprintf("Expected EQL, NEQ, SEMICOLON, RPAREN, OR, AND, THEN, NOT, COMMA, DOUBLEPERIOD, or LOOP, got %s", parser.peekToken()))
+	}
+	return node
 }
 
 func readRelational_expr(parser *Parser) Node {
-	return Node{}
+	var node Node
+	switch parser.peekToken() {
+	case token.IDENT, token.LPAREN, token.NOT, token.SUB, token.INT, token.CHAR, token.TRUE, token.FALSE, token.NULL, token.NEW, token.CHAR_TOK:
+		node = Node{Type: "RelationalExpr"}
+		node.addChild(readAdditive_expr(parser))
+		node.addChild(readRelational_expr_tail(parser))
+	default:
+		panic(fmt.Sprintf("Expected IDENT, LPAREN, NOT, SUB, INT, CHAR, TRUE, FALSE, NULL, NEW or CHAR_TOK, got %s", parser.peekToken()))
+	}
+	return node
 }
 
 func readRelational_expr_tail(parser *Parser) Node {
-	return Node{}
+	var node Node
+	switch parser.peekToken() {
+	case token.LSS:
+		parser.readToken()
+		node = Node{Type: "RelationalExprTailLss"}
+		node.addChild(readAdditive_expr(parser))
+		node.addChild(readRelational_expr_tail(parser))
+	case token.LEQ:
+		parser.readToken()
+		node = Node{Type: "RelationalExprTailLeq"}
+		node.addChild(readAdditive_expr(parser))
+		node.addChild(readRelational_expr_tail(parser))
+	case token.GTR:
+		parser.readToken()
+		node = Node{Type: "RelationalExprTailGtr"}
+		node.addChild(readAdditive_expr(parser))
+		node.addChild(readRelational_expr_tail(parser))
+	case token.GEQ:
+		parser.readToken()
+		node = Node{Type: "RelationalExprTailGeq"}
+		node.addChild(readAdditive_expr(parser))
+		node.addChild(readRelational_expr_tail(parser))
+	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.COMMA, token.DOUBLEPERIOD, token.LOOP:
+		node = Node{Type: "RelationalExprTail"}
+	default:
+		panic(fmt.Sprintf("Expected LSS, LEQ, GTR, GEQ, SEMICOLON, RPAREN, OR, AND, THEN, NOT, EQL, NEQ, COMMA, DOUBLEPERIOD, or LOOP, got %s", parser.peekToken()))
+	}
+	return node
 }
 
 func readAdditive_expr(parser *Parser) Node {
-	return Node{}
+	var node Node
+	switch parser.peekToken() {
+	case token.IDENT, token.LPAREN, token.NOT, token.SUB, token.INT, token.CHAR, token.TRUE, token.FALSE, token.NULL, token.NEW, token.CHAR_TOK:
+		node = Node{Type: "AdditiveExpr"}
+		node.addChild(readMultiplicative_expr(parser))
+		node.addChild(readAdditive_expr_tail(parser))
+	default:
+		panic(fmt.Sprintf("Expected IDENT, LPAREN, NOT, SUB, INT, CHAR, TRUE, FALSE, NULL, NEW or CHAR_TOK, got %s", parser.peekToken()))
+	}
+	return node
 }
 
 func readAdditive_expr_tail(parser *Parser) Node {
-	return Node{}
+	var node Node
+	switch parser.peekToken() {
+	case token.ADD:
+		parser.readToken()
+		node = Node{Type: "AdditiveExprTailAdd"}
+		node.addChild(readMultiplicative_expr(parser))
+		node.addChild(readAdditive_expr_tail(parser))
+	case token.SUB:
+		parser.readToken()
+		node = Node{Type: "AdditiveExprTailSub"}
+		node.addChild(readMultiplicative_expr(parser))
+		node.addChild(readAdditive_expr_tail(parser))
+	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ, token.COMMA, token.DOUBLEPERIOD, token.LOOP:
+		node = Node{Type: "AdditiveExprTail"}
+	default:
+		panic(fmt.Sprintf("Expected ADD, SUB, SEMICOLON, RPAREN, OR, AND, THEN, NOT, EQL, NEQ, LSS, LEQ, GTR, GEQ, COMMA, DOUBLEPERIOD, or LOOP, got %s", parser.peekToken()))
+	}
+	return node
 }
 
 func readMultiplicative_expr(parser *Parser) Node {
-	return Node{}
+	var node Node
+	switch parser.peekToken() {
+	case token.IDENT, token.LPAREN, token.NOT, token.SUB, token.INT, token.CHAR, token.TRUE, token.FALSE, token.NULL, token.NEW, token.CHAR_TOK:
+		node = Node{Type: "MultiplicativeExpr"}
+		node.addChild(readUnary_expr(parser))
+		node.addChild(readMultiplicative_expr(parser))
+	default:
+		panic(fmt.Sprintf("Expected IDENT, LPAREN, NOT, SUB, INT, CHAR, TRUE, FALSE, NULL, NEW or CHAR_TOK, got %s", parser.peekToken()))
+	}
+	return node
 }
 
 func readMultiplicative_expr_tail(parser *Parser) Node {
-	return Node{}
+	var node Node
+	switch parser.peekToken() {
+	case token.MUL:
+		parser.readToken()
+		node = Node{Type: "MultiplicativeExprTailMul"}
+		node.addChild(readUnary_expr(parser))
+		node.addChild(readMultiplicative_expr(parser))
+	case token.QUO:
+		parser.readToken()
+		node = Node{Type: "MultiplicativeExprTailQuo"}
+		node.addChild(readUnary_expr(parser))
+		node.addChild(readMultiplicative_expr(parser))
+	case token.REM:
+		parser.readToken()
+		node = Node{Type: "MultiplicativeExprTailRem"}
+		node.addChild(readUnary_expr(parser))
+		node.addChild(readMultiplicative_expr(parser))
+	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ, token.SUB, token.COMMA, token.DOUBLEPERIOD, token.LOOP:
+		node = Node{Type: "MultiplicativeExprTail"}
+	default:
+		panic(fmt.Sprintf("Expected MUL, QUO, REM, SEMICOLON, RPAREN, OR, AND, THEN, NOT, EQL, NEQ, LSS, LEQ, GTR, GEQ, COMMA, DOUBLEPERIOD, or LOOP, got %s", parser.peekToken()))
+	}
+	return node
 }
 
 func readUnary_expr(parser *Parser) Node {
-	return Node{}
+	var node Node
+	switch parser.peekToken() {
+	case token.SUB:
+		parser.readToken()
+		node = Node{Type: "UnaryExprSub"}
+		node.addChild(readUnary_expr(parser))
+	case token.IDENT, token.LPAREN, token.NOT, token.INT, token.CHAR, token.TRUE, token.FALSE, token.NULL, token.NEW, token.CHAR_TOK:
+		node = Node{Type: "UnaryExpr"}
+		node.addChild(readPrimary_expr(parser))
+	default:
+		panic(fmt.Sprintf("Expected SUB, IDENT, LPAREN, NOT, INT, CHAR, TRUE, FALSE, NULL, NEW or CHAR_TOK, got %s", parser.peekToken()))
+	}
+	return node
 }
 
 func readPrimary_expr(parser *Parser) Node {
-	return Node{}
+	var node Node
+	switch parser.peekToken() {
+	case token.INT:
+		parser.readToken()
+		node = Node{Type: "PrimaryExprInt"}
+	case token.CHAR:
+		parser.readToken()
+		node = Node{Type: "PrimaryExprChar"}
+	case token.TRUE:
+		parser.readToken()
+		node = Node{Type: "PrimaryExprTrue"}
+	case token.FALSE:
+		parser.readToken()
+		node = Node{Type: "PrimaryExprFalse"}
+	case token.NULL:
+		parser.readToken()
+		node = Node{Type: "PrimaryExprNull"}
+	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ, token.SUB, token.COMMA, token.DOUBLEPERIOD, token.LOOP:
+		node = Node{Type: "MultiplicativeExprTail"}
+	default:
+		panic(fmt.Sprintf("Expected MUL, QUO, REM, SEMICOLON, RPAREN, OR, AND, THEN, NOT, EQL, NEQ, LSS, LEQ, GTR, GEQ, COMMA, DOUBLEPERIOD, or LOOP, got %s", parser.peekToken()))
+	}
+	return node
 }
 
 func readPrimary_expr2(parser *Parser) Node {
