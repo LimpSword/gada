@@ -776,10 +776,16 @@ func readPrimary_expr3(parser *Parser) Node {
 	switch parser.peekToken() {
 	case token.PERIOD:
 		parser.readToken()
-		node = Node{Type: "PrimaryExpr3Period"}
-		node.addChild(readIdent(parser))
-		node.addChild(readAccess2(parser))
-	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ, token.ADD, token.SUB, token.MUL, token.QUO, token.REM, token.COMMA, token.DOUBLEPERIOD, token.LOOP:
+		if parser.peekToken()==token.PERIOD {
+			node = Node{Type: "PrimaryExpr3DoublePeriod"}
+			parser.readToken()
+			node.addChild(readAccess2(parser))
+		} else {
+			node = Node{Type: "PrimaryExpr3Period"}
+			node.addChild(readIdent(parser))
+			node.addChild(readAccess2(parser))
+		}
+	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ, token.ADD, token.SUB, token.MUL, token.QUO, token.REM, token.COMMA, token.LOOP:
 		node = Node{Type: "PrimaryExpr3"}
 	default:
 		panic(fmt.Sprintf("Expected PERIOD, SEMICOLON, RPAREN, OR, AND, THEN, NOT, EQL, NEQ, LSS, LEQ, GTR, GEQ, ADD, SUB, MUL, QUO, REM, COMMA, DOUBLEPERIOD, or LOOP, got %s", parser.peekToken()))
@@ -792,10 +798,14 @@ func readAccess2(parser *Parser) Node {
 	switch parser.peekToken() {
 	case token.PERIOD:
 		parser.readToken()
-		node = Node{Type: "Access2Period"}
-		node.addChild(readIdent(parser))
-		node.addChild(readAccess2(parser))
-	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ, token.ADD, token.SUB, token.MUL, token.QUO, token.REM, token.COMMA, token.DOUBLEPERIOD, token.LOOP:
+		if parser.peekToken()==token.PERIOD {
+			node = Node{Type: "Access2DoublePeriod"}
+		} else {
+			node = Node{Type: "Access2Period"}
+			node.addChild(readIdent(parser))
+			node.addChild(readAccess2(parser))
+		}
+	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ, token.ADD, token.SUB, token.MUL, token.QUO, token.REM, token.COMMA, token.LOOP:
 		node = Node{Type: "Access2"}
 	default:
 		panic(fmt.Sprintf("Expected PERIOD, SEMICOLON, RPAREN, OR, AND, THEN, NOT, EQL, NEQ, LSS, LEQ, GTR, GEQ, ADD, SUB, MUL, QUO, REM, COMMA, DOUBLEPERIOD, or LOOP, got %s", parser.peekToken()))
@@ -922,7 +932,20 @@ func readInstr2(parser *Parser) Node {
 }
 
 func readInstr_plus(parser *Parser) Node {
-	node := Node{Type: "InstrPlus"}
+	var node Node
+	switch parser.peekToken() {
+	case token.BEGIN, token.RETURN, token.ACCESS, token.IF, token.FOR, token.WHILE, token.IDENT:
+		node = Node{Type: "InstrPlus"}
+		node.addChild(readInstr(parser))
+		node.addChild(readInstr_plus2(parser))
+	default:
+		panic(fmt.Sprintf("Expected BEGIN, RETURN, ACCESS, IF, FOR, WHILE or IDENT, got %s", parser.peekToken()))
+	}
+	return node
+}
+
+func readInstr_plus2(parser *Parser) Node {
+	node := Node{Type: "InstrPlus2"}
 	switch parser.peekToken() {
 	case token.BEGIN, token.RETURN, token.ACCESS, token.IF, token.FOR, token.WHILE, token.IDENT:
 		node.addChild(readInstr(parser))
@@ -933,16 +956,23 @@ func readInstr_plus(parser *Parser) Node {
 	return node
 }
 
-func readInstr_plus2(parser *Parser) Node {
-	return Node{}
-}
-
 func readElse_if(parser *Parser) Node {
 	return Node{}
 }
 
 func readElse_if_star(parser *Parser) Node {
-	return Node{}
+	var node Node
+	switch parser.peekToken() {
+	case token.ELSIF:
+		node = Node{Type: "ElseIfStarElsif"}
+		node.addChild(readElse_if(parser))
+		node.addChild(readElse_if_star(parser))
+	case token.ELSE, token.END:
+		node = Node{Type: "ElseIfStar"}
+	default:
+		panic(fmt.Sprintf("Expected BEGIN, RETURN, ACCESS, IF, FOR, WHILE or IDENT, got %s", parser.peekToken()))
+	}
+	return node
 }
 
 func readElse_instr(parser *Parser) Node {
