@@ -82,6 +82,7 @@ const (
 	TRUE
 	TYPE
 	USE
+	VAL
 	WHILE
 	WITH
 	keywords_end
@@ -147,6 +148,7 @@ var Tokens = [...]string{
 	TRUE:      "true",
 	TYPE:      "type",
 	USE:       "use",
+	VAL:       "val",
 	WHILE:     "while",
 	WITH:      "with",
 }

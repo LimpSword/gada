@@ -64,6 +64,9 @@ func Parse(lexer *lexer.Lexer) {
 
 func expectToken(parser *Parser, tkn token.Token) {
 	if parser.peekToken() != tkn {
+		if parser.peekToken() == token.IDENT {
+			fmt.Println("Expected", tkn, "got", parser.lexer.Lexi[parser.lexer.Tokens[parser.index].Position-1])
+		}
 		panic(fmt.Sprintf("Expected %s, got %s", tkn, parser.peekToken()))
 	}
 	parser.readToken()
@@ -103,7 +106,9 @@ func readFichier(parser *Parser) Node {
 	expectTokens(parser, []any{token.WITH, "Ada", token.PERIOD, "Text_IO", token.SEMICOLON, token.USE, "Ada", token.PERIOD, "Text_IO", token.SEMICOLON, token.PROCEDURE})
 
 	node.addChild(readIdent(parser))
-	expectTokens(parser, []any{token.IS, token.BEGIN})
+	expectTokens(parser, []any{token.IS})
+	node.addChild(readDeclStar(parser))
+	expectTokens(parser, []any{token.BEGIN})
 	node.addChild(readInstr_plus(parser))
 	expectTokens(parser, []any{token.END})
 	node.addChild(readIdent_opt(parser))
@@ -113,8 +118,9 @@ func readFichier(parser *Parser) Node {
 
 func readDecl(parser *Parser) Node {
 	var node Node
-	switch parser.readToken() {
+	switch parser.peekToken() {
 	case token.PROCEDURE:
+		parser.readToken()
 		node = Node{Type: "DeclProcedure"}
 		node.addChild(readIdent(parser))
 		node.addChild(readParams_opt(parser))
@@ -124,16 +130,20 @@ func readDecl(parser *Parser) Node {
 		node.addChild(readInstr_plus(parser))
 		expectTokens(parser, []any{token.END})
 		node.addChild(readIdent_opt(parser))
-		excpectTokens(parser, []any{token.SEMICOLON})
+		expectTokens(parser, []any{token.SEMICOLON})
 	case token.TYPE:
+		parser.readToken()
 		node = Node{Type: "DeclType"}
 		node.addChild(readIdent(parser))
 		node.addChild(readDecl2(parser))
 	case token.FUNCTION:
+		parser.readToken()
 		node = Node{Type: "DeclFunction"}
 		node.addChild(readIdent(parser))
 		node.addChild(readParams_opt(parser))
-		expectTokens(parser, []any{token.RETURN, token.TYPE, token.IS})
+		expectTokens(parser, []any{token.RETURN})
+		node.addChild(readType_r(parser))
+		expectTokens(parser, []any{token.IS})
 		node.addChild(readDeclStar(parser))
 		expectTokens(parser, []any{token.BEGIN})
 		node.addChild(readInstr_plus(parser))
@@ -143,7 +153,8 @@ func readDecl(parser *Parser) Node {
 	case token.IDENT:
 		node = Node{Type: "DeclVar"}
 		node.addChild(readIdent_plus_comma(parser))
-		expectTokens(parser, []any{token.COLON, token.TYPE})
+		expectTokens(parser, []any{token.COLON})
+		node.addChild(readType_r(parser))
 		node.addChild(readInit(parser))
 		expectTokens(parser, []any{token.SEMICOLON})
 	default:
@@ -185,11 +196,11 @@ func readDecl3(parser *Parser) Node {
 
 func readInit(parser *Parser) Node {
 	var node Node
-	switch parser.readToken() {
+	switch parser.peekToken() {
 	case token.SEMICOLON:
 		node = Node{Type: "InitSemicolon"}
 	case token.COLON:
-		expectTokens(parser, []any{token.EQL})
+		expectTokens(parser, []any{token.COLON, token.EQL})
 		node = Node{Type: "Init"}
 		node.addChild(readExpr(parser))
 	default:
@@ -200,7 +211,8 @@ func readInit(parser *Parser) Node {
 
 func readDeclStar(parser *Parser) Node {
 	var node Node
-	switch parser.readToken() {
+	fmt.Println(parser.peekToken())
+	switch parser.peekToken() {
 	case token.PROCEDURE, token.IDENT, token.TYPE, token.FUNCTION:
 		node = Node{Type: "DeclStarProcedure"}
 		node.addChild(readDecl(parser))
@@ -219,7 +231,9 @@ func readChamps(parser *Parser) Node {
 	node := Node{Type: "Champs"}
 	node.addChild(readIdent_plus_comma(parser))
 
-	expectTokens(parser, []any{token.COLON, token.TYPE, token.SEMICOLON})
+	expectTokens(parser, []any{token.COLON})
+	node.addChild(readType_r(parser))
+	expectTokens(parser, []any{token.SEMICOLON})
 	return node
 }
 
@@ -270,7 +284,7 @@ func readParams(parser *Parser) Node {
 	node := Node{Type: "Params"}
 	node.addChild(readParamPlusSemicolon(parser))
 
-	expectTokens(parser, []any{token.RPAREN, token.SEMICOLON})
+	expectTokens(parser, []any{token.RPAREN})
 	return node
 }
 
@@ -733,7 +747,7 @@ func readPrimary_expr(parser *Parser) Node {
 	case token.CHAR_TOK:
 		parser.readToken()
 		node = Node{Type: "PrimaryExprChar"}
-		expectTokens(parser, []any{token.CAST,token.VAL, token.LPAREN})
+		expectTokens(parser, []any{token.CAST, token.VAL, token.LPAREN})
 		node.addChild(readExpr(parser))
 		expectTokens(parser, []any{token.RPAREN})
 	default:
@@ -756,7 +770,7 @@ func readPrimary_expr2(parser *Parser) Node {
 		node.addChild(readAccess2(parser))
 	case token.PERIOD:
 		parser.readToken()
-		if parser.peekToken()==token.PERIOD {
+		if parser.peekToken() == token.PERIOD {
 			node = Node{Type: "PrimaryExpr2DoublePeriod"}
 			parser.readToken()
 			node.addChild(readAccess2(parser))
@@ -775,7 +789,7 @@ func readPrimary_expr3(parser *Parser) Node {
 	switch parser.peekToken() {
 	case token.PERIOD:
 		parser.readToken()
-		if parser.peekToken()==token.PERIOD {
+		if parser.peekToken() == token.PERIOD {
 			node = Node{Type: "PrimaryExpr3DoublePeriod"}
 			parser.readToken()
 		} else {
@@ -796,7 +810,7 @@ func readAccess2(parser *Parser) Node {
 	switch parser.peekToken() {
 	case token.PERIOD:
 		parser.readToken()
-		if parser.peekToken()==token.PERIOD {
+		if parser.peekToken() == token.PERIOD {
 			node = Node{Type: "Access2DoublePeriod"}
 		} else {
 			node = Node{Type: "Access2Period"}
@@ -1053,7 +1067,6 @@ func readIdent_plus_comma(parser *Parser) Node {
 		node = Node{Type: "IdentPlusComma"}
 		node.addChild(readIdent(parser))
 		node.addChild(readIdent_plus_comma2(parser))
-		expectTokens(parser, []any{token.SEMICOLON})
 	default:
 		panic(fmt.Sprintf("Expected IDENT, got %s", parser.peekToken()))
 	}
@@ -1070,9 +1083,11 @@ func readIdent_plus_comma2(parser *Parser) Node {
 		parser.readToken()
 		node.addChild(readIdent(parser))
 		node.addChild(readIdent_plus_comma2(parser))
+	case token.COLON:
+		node = Node{Type: "IdentPlusComma2Colon"}
 	default:
-		panic(fmt.Sprintf("Expected SEMICOLON or COMMA, got %s", parser.peekToken()))
+		panic(fmt.Sprintf("Expected SEMICOLON or COMMA, got %s", parser.peekToken().String()))
 	}
 	return node
-	
+
 }

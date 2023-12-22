@@ -1,7 +1,7 @@
 fichier -> with Ada.Text_IO; use Ada.Text_IO; procedure ident is decl_star begin instr_plus end ident_opt ; EOF
 
 decl -> type ident decl2
-decl -> ident_plus_comma : type init ;
+decl -> ident_plus_comma : type_r init ;
 decl -> procedure ident params_opt is decl_star begin instr_plus end ident_opt ;
 decl -> function ident params_opt return type is decl_star begin instr_plus end ident_opt ;
 
@@ -17,7 +17,7 @@ init -> ''
 decl_star -> decl decl_star
 decl_star -> ''
 
-champs -> ident_plus_comma : type ;
+champs -> ident_plus_comma : type_r ;
 
 champs_plus -> champs champs_plus2
 
@@ -27,7 +27,7 @@ champs_plus2 -> ''
 type_r -> ident
 type_r -> access ident
 
-params -> ( param_plus_semicolon ) ;
+params -> ( param_plus_semicolon )
 
 params_opt -> params
 params_opt -> ''
@@ -159,7 +159,7 @@ reverse_instr -> ''
 ident_opt -> ident
 ident_opt -> ''
 
-ident_plus_comma -> ident ident_plus_comma2 ;
+ident_plus_comma -> ident ident_plus_comma2
 
 ident_plus_comma2 -> , ident ident_plus_comma2
 ident_plus_comma2 -> ''
