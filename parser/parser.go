@@ -13,21 +13,35 @@ type Parser struct {
 }
 
 type Node struct {
-	Type  string
-	Index int
-	child []Node
+	Type     string
+	Index    int
+	Children []*Node
 }
 
-func (n Node) addChild(child Node) {
-	n.child = append(n.child, child)
+func (n *Node) addChild(child Node) {
+	n.Children = append(n.Children, &child)
 }
 
-func (n Node) toJson() string {
+func (n *Node) toJson() string {
 	b, err := json.MarshalIndent(n, "", "  ")
 	if err != nil {
 		fmt.Println(err)
 	}
 	return string(b)
+}
+
+func (p *Parser) unreadToken() {
+	if p.index <= 0 {
+		panic("Cannot unread token")
+	}
+	p.index--
+}
+
+func (p *Parser) unreadTokens(nb int) {
+	if p.index-nb < 0 {
+		panic("Cannot unread token")
+	}
+	p.index -= nb
 }
 
 func (p *Parser) readToken() token.Token {
@@ -51,6 +65,18 @@ func (p *Parser) peekToken() token.Token {
 		return token.EOF
 	}
 	return token.Token(p.lexer.Tokens[p.index].Value)
+}
+
+func (p *Parser) printTokensBefore(i int) {
+	for j := i - 1; j >= 0; j-- {
+		t := token.Token(p.lexer.Tokens[p.index-j].Value)
+		if t == token.IDENT {
+			fmt.Print(p.lexer.Lexi[p.lexer.Tokens[p.index-j].Position-1], " ")
+			continue
+		}
+		fmt.Print(token.Token(p.lexer.Tokens[p.index-j].Value), " ")
+	}
+	fmt.Println()
 }
 
 func Parse(lexer *lexer.Lexer) {
@@ -211,7 +237,6 @@ func readInit(parser *Parser) Node {
 
 func readDeclStar(parser *Parser) Node {
 	var node Node
-	fmt.Println(parser.peekToken())
 	switch parser.peekToken() {
 	case token.PROCEDURE, token.IDENT, token.TYPE, token.FUNCTION:
 		node = Node{Type: "DeclStarProcedure"}
@@ -928,6 +953,15 @@ func readInstr(parser *Parser) Node {
 func readInstr2(parser *Parser) Node {
 	var node Node
 	switch parser.peekToken() {
+	case token.IDENT, token.BEGIN, token.END, token.RETURN, token.ACCESS, token.COLON, token.ELSE, token.PERIOD, token.IF, token.FOR, token.WHILE, token.ELSIF:
+		if parser.peekToken() != token.COLON {
+			parser.readToken()
+		}
+		node = Node{Type: "Instr2Ident"}
+		node.addChild(readInstr3(parser))
+		expectTokens(parser, []any{token.COLON, token.EQL})
+		node.addChild(readExpr(parser))
+		expectTokens(parser, []any{token.SEMICOLON})
 	case token.SEMICOLON:
 		parser.readToken()
 		node = Node{Type: "Instr2Semicolon"}
@@ -936,9 +970,41 @@ func readInstr2(parser *Parser) Node {
 		node = Node{Type: "Instr2Lparen"}
 		node.addChild(readExpr_plus_comma(parser))
 		expectTokens(parser, []any{token.RPAREN})
+		node.addChild(readInstr4(parser))
 		expectTokens(parser, []any{token.SEMICOLON})
 	default:
 		panic(fmt.Sprintf("Expected SEMICOLON or LPAREN, got %s", parser.peekToken()))
+	}
+	return node
+}
+
+func readInstr3(parser *Parser) Node {
+	var node Node
+	switch parser.peekToken() {
+	case token.COLON:
+		expectTokens(parser, []any{token.COLON, token.EQL})
+		parser.unreadTokens(2)
+	case token.PERIOD:
+		parser.readToken()
+		node = Node{Type: "Instr3Period"}
+		node.addChild(readIdent(parser))
+		node.addChild(readInstr3(parser))
+	default:
+		panic(fmt.Sprintf("Expected COLON or PERIOD, got %s", parser.peekToken()))
+	}
+	return node
+}
+
+func readInstr4(parser *Parser) Node {
+	var node Node
+	switch parser.peekToken() {
+	case token.SEMICOLON:
+	case token.COLON:
+		expectTokens(parser, []any{token.COLON, token.EQL})
+		node = Node{Type: "Instr4Colon"}
+		node.addChild(readExpr(parser))
+	default:
+		panic(fmt.Sprintf("Expected SEMICOLON or COLON, got %s", parser.peekToken()))
 	}
 	return node
 }
@@ -959,9 +1025,10 @@ func readInstr_plus(parser *Parser) Node {
 func readInstr_plus2(parser *Parser) Node {
 	node := Node{Type: "InstrPlus2"}
 	switch parser.peekToken() {
-	case token.BEGIN, token.RETURN, token.ACCESS, token.IF, token.FOR, token.WHILE, token.IDENT:
+	case token.BEGIN, token.RETURN, token.ACCESS, token.IF, token.FOR, token.ELSIF /*, token.IF, token.FOR*/, token.WHILE, token.IDENT:
 		node.addChild(readInstr(parser))
 		node.addChild(readInstr_plus2(parser))
+	case token.END, token.ELSE:
 	default:
 		panic(fmt.Sprintf("Expected BEGIN, RETURN, ACCESS, IF, FOR, WHILE or IDENT, got %s", parser.peekToken()))
 	}

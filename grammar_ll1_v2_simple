@@ -137,7 +137,14 @@ instr -> for ident in reverse_instr expr .. expr loop instr_plus end loop ;
 instr -> while expr loop instr_plus end loop ;
 
 instr2 -> ;
-instr2 -> ( expr_plus_comma ) ;
+instr2 -> instr3 := expr ;
+instr2 -> ( expr_plus_comma ) instr4 ;
+
+instr4 -> := expr
+instr4 -> ''
+
+instr3 -> . ident instr3
+instr3 -> ''
 
 instr_plus -> instr instr_plus2
 
