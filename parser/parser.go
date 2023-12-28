@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"gada/lexer"
 	"gada/token"
+	"github.com/charmbracelet/log"
+	"os"
 )
 
 type Parser struct {
@@ -16,6 +18,12 @@ type Node struct {
 	Type     string
 	Index    int
 	Children []*Node
+}
+
+var logger *log.Logger
+
+func init() {
+	logger = log.New(os.Stderr)
 }
 
 func (n *Node) addChild(child Node) {
@@ -79,13 +87,14 @@ func (p *Parser) printTokensBefore(i int) {
 	fmt.Println()
 }
 
-func Parse(lexer *lexer.Lexer) {
+func Parse(lexer *lexer.Lexer, printAst bool) {
 	parser := Parser{lexer: lexer, index: 0}
 	node := readFichier(&parser)
 
-	fmt.Println("Compilation successful")
-	fmt.Println("AST:")
-	fmt.Println(node.toJson())
+	logger.Info("Compilation successful")
+	if printAst {
+		logger.Info("Compilation output", "ast", node.toJson())
+	}
 }
 
 func expectToken(parser *Parser, tkn token.Token) {
@@ -93,24 +102,24 @@ func expectToken(parser *Parser, tkn token.Token) {
 		if parser.peekToken() == token.IDENT {
 			fmt.Println("Expected", tkn, "got", parser.lexer.Lexi[parser.lexer.Tokens[parser.index].Position-1])
 		}
-		panic(fmt.Sprintf("Expected %s, got %s", tkn, parser.peekToken()))
+		logger.Fatal("Unexpected token", "expected", tkn, "got", parser.peekToken())
 	}
 	parser.readToken()
 }
 
 func peekExpectToken(parser *Parser, tkn token.Token) {
 	if parser.peekToken() != tkn {
-		panic(fmt.Sprintf("Expected %s, got %s", tkn, parser.peekToken()))
+		logger.Fatal("Unexpected token", "expected", tkn, "got", parser.peekToken())
 	}
 }
 
 func expectTokenIdent(parser *Parser, ident string) string {
 	if parser.peekToken() != token.IDENT {
-		panic(fmt.Sprintf("Expected IDENT, got %s", parser.peekToken()))
+		logger.Fatal("Unexpected token", "expected", token.IDENT, "got", parser.peekToken())
 	}
 	_, index := parser.readFullToken()
 	if parser.lexer.Lexi[index-1] != ident {
-		panic(fmt.Sprintf("Expected IDENT %s, got %s", ident, parser.lexer.Lexi[index-1]))
+		logger.Fatal("Unexpected token", "expected", ident, "got", parser.lexer.Lexi[index-1])
 	}
 	return parser.lexer.Lexi[index-1]
 }

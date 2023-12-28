@@ -4,8 +4,14 @@ import (
 	"fmt"
 	"gada/lexer"
 	"gada/parser"
+	"gada/token"
 	"os"
 )
+
+type CompileConfig struct {
+	Path     string
+	PrintAst bool
+}
 
 func ReadFile(path string) (string, error) {
 	file, err := os.Open(path)
@@ -45,12 +51,19 @@ func FileLexer(path string) *lexer.Lexer {
 	return lexer.NewLexer(content)
 }
 
-func CompileFile(path string) {
-	l := FileLexer(path)
+func CompileFile(config CompileConfig) {
+	l := FileLexer(config.Path)
 	if l == nil {
 		return
 	}
 	l.Read()
-	//fmt.Println(l.Tokens)
-	parser.Parse(l)
+
+	// remove illegal tokens
+	for i := 0; i < len(l.Tokens); i++ {
+		if l.Tokens[i].Value == token.ILLEGAL {
+			l.Tokens = append(l.Tokens[:i], l.Tokens[i+1:]...)
+			i--
+		}
+	}
+	parser.Parse(l, config.PrintAst)
 }
