@@ -11,6 +11,8 @@ import (
 )
 
 type Lexer struct {
+	FileName    string
+	fullText    string
 	line        int
 	column      int
 	reader      *bufio.Reader
@@ -39,10 +41,10 @@ func init() {
 	logger = log.New(os.Stderr)
 }
 
-func NewLexer(text string) *Lexer {
+func NewLexer(fileName, text string) *Lexer {
 	text = strings.Replace(text, "\r\n", "\n", -1)
 	reader := bufio.NewReader(strings.NewReader(text))
-	return &Lexer{reader: reader}
+	return &Lexer{reader: reader, FileName: fileName, fullText: text}
 }
 
 func (l *Lexer) readRune() (rune, int, error) {
@@ -194,7 +196,7 @@ func (l *Lexer) Read() ([]Token, []string) {
 										eofBreaked = false
 										break
 									} else if r == '\n' {
-										l.logUnexpected(l.line, l.column, unexpected)
+										l.logUnexpected(l, l.line, l.column, unexpected)
 										tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
 										lexi = append(lexi, "Lexical error: new line in rune at line "+strconv.FormatInt(int64(l.line), 10)+" and column "+strconv.FormatInt(int64(l.column)-1, 10)+".")
 										position++
@@ -205,7 +207,7 @@ func (l *Lexer) Read() ([]Token, []string) {
 										unexpected += string(r)
 									}
 								} else {
-									l.logUnexpected(l.line, l.column, unexpected)
+									l.logUnexpected(l, l.line, l.column, unexpected)
 									tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
 									lexi = append(lexi, "Lexical error: unexpected end of file at line "+strconv.FormatInt(int64(l.line), 10)+" and column "+strconv.FormatInt(int64(l.column)-1, 10)+".")
 									position++
@@ -213,7 +215,7 @@ func (l *Lexer) Read() ([]Token, []string) {
 								}
 							}
 							if !eofBreaked {
-								l.logUnexpectedChar(l.line, l.column, unexpected)
+								l.logUnexpectedChar(l, l.line, l.column, unexpected)
 								tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
 								lexi = append(lexi, "Lexical error: unexpected character '"+char+unexpected+"' at line "+strconv.FormatInt(int64(l.line), 10)+" between column "+strconv.FormatInt(int64(beginPos.Column), 10)+" and "+strconv.FormatInt(int64(l.column), 10)+".")
 								position++
@@ -234,7 +236,7 @@ func (l *Lexer) Read() ([]Token, []string) {
 							str += string(r)
 						}
 					} else {
-						l.logUnexpected(l.line, l.column, str)
+						l.logUnexpected(l, l.line, l.column, str)
 						tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
 						lexi = append(lexi, "Lexical error: unexpected end of file at line "+strconv.FormatInt(int64(l.line), 10)+" and column "+strconv.FormatInt(int64(l.column)-1, 10)+".")
 						position++
@@ -306,7 +308,7 @@ func (l *Lexer) Read() ([]Token, []string) {
 				} else {
 					// Check if we have a lexical error.
 					if !unicode.IsSpace(r) {
-						l.logUnexpected(l.line, l.column, string(r))
+						l.logUnexpected(l, l.line, l.column, string(r))
 						tokens = append(tokens, Token{Type: "ILLEGAL", Position: position, Value: token.ILLEGAL, Beginning: beginPos, End: Position{l.line, l.column}})
 						lexi = append(lexi, "Lexical error: unexpected character '"+string(r)+"' at line "+strconv.FormatInt(int64(l.line), 10)+" and column "+strconv.FormatInt(int64(l.column)-1, 10)+".")
 						position++
@@ -325,22 +327,33 @@ func (l *Lexer) Read() ([]Token, []string) {
 	return tokens, lexi
 }
 
-func (l *Lexer) logUnexpectedChar(line, column int, unexpected string) {
-	red := "\x1b[31;1m"
+func (l *Lexer) logUnexpectedChar(lexer *Lexer, line, column int, unexpected string) {
+	red := "\x1b[0;31m"
 	reset := "\x1b[0m"
 
 	startedLine := l.startedLine[:len(l.startedLine)-len(unexpected)-2]
 	startedLine = strings.TrimLeft(startedLine, " ")
-	logger.Warn("Unexpected character: "+startedLine+red+"'"+unexpected+"'"+reset,
-		"line", line, "column", column)
+	logger.Warn(lexer.FileName + ":" + strconv.Itoa(line) + ":" + strconv.Itoa(column) + " Unexpected character: " + startedLine + red + "'" + unexpected + "'" + reset)
 }
 
-func (l *Lexer) logUnexpected(line, column int, unexpected string) {
-	red := "\x1b[31;1m"
+func (l *Lexer) logUnexpected(lexer *Lexer, line, column int, unexpected string) {
+	red := "\x1b[0;31m"
 	reset := "\x1b[0m"
 
 	startedLine := l.startedLine[:len(l.startedLine)-len(unexpected)]
 	startedLine = strings.TrimSpace(startedLine)
-	logger.Warn("Unexpected token: "+startedLine+red+unexpected+reset,
-		"line", line, "column", column)
+	logger.Warn(lexer.FileName + ":" + strconv.Itoa(line) + ":" + strconv.Itoa(column) + " Unexpected token: " + startedLine + red + unexpected + reset)
+}
+
+func (l *Lexer) GetLineUpToToken(tkn Token) string {
+	line := tkn.Beginning.Line
+	maxColumn := tkn.Beginning.Column
+	return strings.Split(l.fullText, "\n")[line-1][:maxColumn-1]
+}
+
+func (l *Lexer) GetToken(tkn Token) string {
+	line := tkn.Beginning.Line
+	minColumn := tkn.Beginning.Column
+	maxColumn := tkn.End.Column
+	return strings.Split(l.fullText, "\n")[line-1][minColumn-1 : maxColumn-1]
 }

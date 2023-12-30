@@ -48,7 +48,7 @@ func FileLexer(path string) *lexer.Lexer {
 		fmt.Println(fmt.Errorf("error while reading file %s: %s", path, err))
 		return nil
 	}
-	return lexer.NewLexer(content)
+	return lexer.NewLexer(path, content)
 }
 
 func CompileFile(config CompileConfig) {
