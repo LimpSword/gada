@@ -35,6 +35,36 @@ def generate_graph_from_json(json_data):
     node_id += 1
     add_nodes(root_id, json_data['Children'], -1)
 
+    def drawGraph(G, savePath, drawpath):
+        plt.figure()
+
+        # Création d'un dictionnaire d'identifiants uniques et de leurs types pour référence
+        node_ids = {node: str(node) for node in G.nodes}
+        # pos = nx.multipartite_layout(G, subset_key='depth', align='horizontal', scale=40)
+        nx.drawing.nx_pydot.write_dot(G, "graph.dot")
+        pos = graphviz_layout(G, prog="dot")
+        colors = [G.nodes[node]['color'] for node in G.nodes]
+
+        offset = -10
+        pos_labels = {}
+        keys = pos.keys()
+        for key in keys:
+            x, y = pos[key]
+            pos_labels[key] = (x, y + offset * ((key % 4) - 1.5))
+        nx.draw_networkx_nodes(G, pos, node_size=50, node_color=colors)
+        nx.draw_networkx_edges(G, pos, arrows=True)
+        nx.draw_networkx_labels(G, labels=node_ids, pos=pos_labels, font_color='black', font_size=8, font_weight='bold')
+
+        if savePath:
+            with open(savePath, 'w') as f:
+                f.write(str(json_graph.node_link_data(G)))
+
+        plt.savefig(drawpath)
+        plt.show()
+
+
+    drawGraph(G,"","parsetree.png")
+
     def count_terminal_childs(node):
         successors = list(G.successors(node))
         count_terminal = 0
@@ -68,7 +98,9 @@ def generate_graph_from_json(json_data):
 
     def delete_chain_nodes():
         continue_delete = True
+        i = 0
         while continue_delete:
+            print(i)
             continue_delete = False
             L = []
             for node in G.nodes:
@@ -79,33 +111,17 @@ def generate_graph_from_json(json_data):
                     G.add_edge(list(G.predecessors(node))[0], list(G.successors(node))[0])
                     continue_delete = True
             G.remove_nodes_from(L)
+            i+=1
 
     for j in range(10):
         up_terminal_nodes()
         delete_nodes()
         delete_chain_nodes()
 
-    # Création d'un dictionnaire d'identifiants uniques et de leurs types pour référence
-    node_types = {node: G.nodes[node]['type'] for node in G.nodes}
-    # pos = nx.multipartite_layout(G, subset_key='depth', align='horizontal', scale=40)
-    nx.drawing.nx_pydot.write_dot(G, "graph.dot")
-    pos = graphviz_layout(G, prog="dot")
-    colors = [G.nodes[node]['color'] for node in G.nodes]
 
-    offset = -10
-    pos_labels = {}
-    keys = pos.keys()
-    for key in keys:
-        x, y = pos[key]
-        pos_labels[key] = (x, y + offset * ((key % 4) - 1.5))
-    nx.draw_networkx_nodes(G, pos, node_size=50, node_color=colors)
-    nx.draw_networkx_edges(G, pos, arrows=True)
-    nx.draw_networkx_labels(G, labels=node_types, pos=pos_labels, font_color='black', font_size=8, font_weight='bold')
-    # nx.draw(G, pos,labels=node_types, node_size=20, node_color=colors, font_size=9, font_color='black', with_labels=True )
-    with open('new_graph.json','w') as f:
-        f.write(str(json_graph.node_link_data(G)))
-    plt.savefig("graph.png")
-    plt.show()
+
+    drawGraph(G,"new_graph.json","ast.png")
+
 
 
 # Chargement des données depuis le fichier JSON

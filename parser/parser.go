@@ -102,13 +102,14 @@ func Parse(lexer *lexer.Lexer) {
 
 	fmt.Println("Compilation successful")
 	fmt.Println("AST:")
-	fmt.Println(node.toJson())
+	graph, err := toAst("./test/parser/return.json")
+	fmt.Println(graph.toJson())
 	// Save node.toJson() to file
-	err := os.WriteFile("./test/parser/return.json", []byte(node.toJson()), 0644)
+	err = os.WriteFile("./test/parser/return.json", []byte(node.toJson()), 0644)
 	if err != nil {
 		panic(err)
 	}
-	
+
 }
 
 func expectToken(parser *Parser, tkn token.Token) {
