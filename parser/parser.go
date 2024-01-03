@@ -107,10 +107,10 @@ func (p *Parser) printTokensBefore(i int) {
 func Parse(lexer *lexer.Lexer, printAst bool) {
 	parser := Parser{lexer: lexer, index: 0}
 	node := readFichier(&parser)
-
+	graph := toAst(node)
 	logger.Info("Compilation successful")
 	if printAst {
-		logger.Info("Compilation output", "ast", node.toJson())
+		logger.Info("Compilation output", "ast", graph.toJson())
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+
 	argsWithoutProg := os.Args[1:]
 	if len(argsWithoutProg) > 0 {
 		reader.CompileFile(reader.CompileConfig{Path: argsWithoutProg[0], PrintAst: containsArgument(argsWithoutProg, "--print-ast")})

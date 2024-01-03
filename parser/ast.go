@@ -3,7 +3,6 @@ package parser
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 )
 
 type Graph struct {
@@ -37,13 +36,10 @@ func fromJSON(jsonStr string) (*Node, error) {
 
 func addNodes(node *Node, graph *Graph) {
 	fatherId := index
-	fmt.Printf("Processing node: %v, Index: %v, Type: %v, Children: %v\n", node, index, node.Type, node.Children)
 	graph.gmap[index] = make(map[int]struct{})
 	graph.types[index] = node.Type
 	if len(node.Children) == 0 {
-		fmt.Printf("Adding terminal: %v\n", index)
 		graph.terminals = append(graph.terminals, index)
-		fmt.Printf("Terminals: %v\n", graph.terminals)
 	}
 	for _, child := range node.Children {
 		index++
@@ -54,27 +50,21 @@ func addNodes(node *Node, graph *Graph) {
 
 var index int = 0
 
-func createGraph(filePath string) (Graph, error) {
-	jsonData, err := os.ReadFile(filePath)
-	if err != nil {
-		return Graph{}, err
-	}
-
-	node, err := fromJSON(string(jsonData))
+func createGraph(node Node) Graph {
 
 	graph := Graph{}
 	graph.gmap = make(map[int]map[int]struct{})
 	graph.types = make(map[int]string)
 	graph.terminals = make([]int, 0)
-	addNodes(node, &graph)
+	addNodes(&node, &graph)
 
-	return graph, nil
+	return graph
 }
 
-func toAst(filePath string) (Graph, error) {
+func toAst(node Node) Graph {
 
-	graph, err := createGraph(filePath)
+	graph := createGraph(node)
 
-	return graph, err
+	return graph
 
 }
