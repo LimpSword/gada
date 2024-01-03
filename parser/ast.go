@@ -9,6 +9,7 @@ type Graph struct {
 	gmap      map[int]map[int]struct{}
 	types     map[int]string
 	terminals []int
+	fathers   map[int]int
 }
 
 func (g Graph) toJson() string {
@@ -16,6 +17,7 @@ func (g Graph) toJson() string {
 	result["gmap"] = g.gmap
 	result["types"] = g.types
 	result["terminals"] = g.terminals
+	result["fathers"] = g.fathers
 
 	b, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
@@ -43,6 +45,7 @@ func addNodes(node *Node, graph *Graph) {
 	}
 	for _, child := range node.Children {
 		index++
+		graph.fathers[index] = fatherId
 		graph.gmap[fatherId][index] = struct{}{}
 		addNodes(child, graph)
 	}
@@ -56,15 +59,31 @@ func createGraph(node Node) Graph {
 	graph.gmap = make(map[int]map[int]struct{})
 	graph.types = make(map[int]string)
 	graph.terminals = make([]int, 0)
+	graph.fathers = make(map[int]int)
 	addNodes(&node, &graph)
 
 	return graph
 }
 
+func clearchains(g Graph) {
+	for _, term := range g.terminals {
+		fmt.Println(term)
+		tpTo := term
+		for len(g.gmap[g.fathers[tpTo]]) == 1 {
+			fmt.Println(term, tpTo)
+			tpTo = g.fathers[tpTo]
+		}
+		if tpTo != term {
+			delete(g.gmap[g.fathers[tpTo]], tpTo)
+			g.gmap[g.fathers[tpTo]][term] = struct{}{}
+		}
+	}
+}
+
 func toAst(node Node) Graph {
 
 	graph := createGraph(node)
-
+	clearchains(graph)
 	return graph
 
 }

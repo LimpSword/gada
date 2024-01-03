@@ -108,6 +108,7 @@ func Parse(lexer *lexer.Lexer, printAst bool) {
 	parser := Parser{lexer: lexer, index: 0}
 	node := readFichier(&parser)
 	graph := toAst(node)
+	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
 	logger.Info("Compilation successful")
 	if printAst {
 		logger.Info("Compilation output", "ast", graph.toJson())
@@ -275,7 +276,7 @@ func readInit(parser *Parser) Node {
 	case token.SEMICOLON:
 	case token.COLON:
 		expectTokens(parser, []any{token.COLON, token.EQL})
-		node.addTerminalChilds([]string{":", "="})
+		node.addTerminalChilds([]string{":="})
 		node.addChild(readExpr(parser))
 	default:
 		logger.Fatal("Unexpected token", "possible", "; :", "got", parser.peekToken())
@@ -921,7 +922,7 @@ func readInstr(parser *Parser) Node {
 		parser.readToken()
 		node.addTerminalChild("access")
 		expectTokens(parser, []any{token.COLON, token.EQL})
-		node.addTerminalChilds([]string{":", "="})
+		node.addTerminalChilds([]string{":="})
 		node.addChild(readExpr(parser))
 		expectTokens(parser, []any{token.SEMICOLON})
 		node.addTerminalChild(";")
@@ -991,7 +992,7 @@ func readInstr2(parser *Parser) Node {
 		}
 		node.addChild(readInstr3(parser))
 		expectTokens(parser, []any{token.COLON, token.EQL})
-		node.addTerminalChilds([]string{":", "="})
+		node.addTerminalChilds([]string{":="})
 		node.addChild(readExpr(parser))
 		expectTokens(parser, []any{token.SEMICOLON})
 		node.addTerminalChild(";")
@@ -1036,7 +1037,7 @@ func readInstr4(parser *Parser) Node {
 	case token.SEMICOLON:
 	case token.COLON:
 		expectTokens(parser, []any{token.COLON, token.EQL})
-		node.addTerminalChilds([]string{":", "="})
+		node.addTerminalChilds([]string{":="})
 		node.addChild(readExpr(parser))
 	default:
 		logger.Fatal("Unexpected token", "possible", "; :", "got", parser.peekToken())

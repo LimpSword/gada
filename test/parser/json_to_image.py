@@ -135,6 +135,8 @@ def get_Types(types,key):
     r = types.get(str(key), None)
     if r == ":":
         return '":"'
+    elif r == ":=":
+        return '":="'
     elif r == ",":
         return '","'
     else:
@@ -148,11 +150,14 @@ def gen_graph_jsongraph(graphStruct):
 
     print(graph,types)
 
-    def drawGraph(G, savePath, drawpath):
+    def drawGraph(G, savePath, drawpath,id=False):
         plt.figure()
 
         # Création d'un dictionnaire d'identifiants uniques et de leurs types pour référence
-        node_ids = {node: G.nodes[node]['type'] for node in G.nodes}
+        if id:
+            node_ids = {node: str(node) for node in G.nodes}
+        else:
+            node_ids = {node: G.nodes[node]['type'] for node in G.nodes}
         # pos = nx.multipartite_layout(G, subset_key='depth', align='horizontal', scale=40)
         nx.drawing.nx_pydot.write_dot(G, "graph.dot")
         pos = graphviz_layout(G, prog="dot")
@@ -173,7 +178,6 @@ def gen_graph_jsongraph(graphStruct):
                 f.write(str(json_graph.node_link_data(G)))
 
         plt.savefig(drawpath)
-        plt.show()
 
     stack = [(0,0)]
 
@@ -187,10 +191,10 @@ def gen_graph_jsongraph(graphStruct):
         for child in graph[str(ind)].keys():
             G.add_edge(ind,child)
             stack.append((child,depth+1))
+    print([G.nodes[node]['type'] for node in G.nodes])
+    drawGraph(G,"","ast.png")
 
-    drawGraph(G,"","parsetree.png")
-
-with open('graph.json', 'r') as file:
+with open('ast.json', 'r') as file:
     json_data = json.load(file)
 
 gen_graph_jsongraph(json_data)
