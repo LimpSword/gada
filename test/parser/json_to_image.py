@@ -125,7 +125,72 @@ def generate_graph_from_json(json_data):
 
 
 # Chargement des données depuis le fichier JSON
-with open('return.json', 'r') as file:
+# with open('return.json', 'r') as file:
+#     json_data = json.load(file)
+#
+# generate_graph_from_json(json_data)
+
+
+def get_Types(types,key):
+    r = types.get(str(key), None)
+    if r == ":":
+        return '":"'
+    elif r == ",":
+        return '","'
+    else:
+        return r
+
+def gen_graph_jsongraph(graphStruct):
+    G = nx.DiGraph()
+
+    graph = graphStruct["gmap"]
+    types = graphStruct["types"]
+
+    print(graph,types)
+
+    def drawGraph(G, savePath, drawpath):
+        plt.figure()
+
+        # Création d'un dictionnaire d'identifiants uniques et de leurs types pour référence
+        node_ids = {node: G.nodes[node]['type'] for node in G.nodes}
+        # pos = nx.multipartite_layout(G, subset_key='depth', align='horizontal', scale=40)
+        nx.drawing.nx_pydot.write_dot(G, "graph.dot")
+        pos = graphviz_layout(G, prog="dot")
+        colors = [G.nodes[node]['color'] for node in G.nodes]
+
+        offset = -10
+        pos_labels = {}
+        keys = pos.keys()
+        for key in keys:
+            x, y = pos[key]
+            pos_labels[key] = (x, y)
+        nx.draw_networkx_nodes(G, pos, node_size=50, node_color=colors)
+        nx.draw_networkx_edges(G, pos, arrows=True)
+        nx.draw_networkx_labels(G, labels=node_ids, pos=pos_labels, font_color='black', font_size=8, font_weight='bold')
+
+        if savePath:
+            with open(savePath, 'w') as f:
+                f.write(str(json_graph.node_link_data(G)))
+
+        plt.savefig(drawpath)
+        plt.show()
+
+    stack = [(0,0)]
+
+    while stack:
+        ind,depth = stack.pop()
+        print(ind,depth)
+        if len(graph[str(ind)].keys())==0:
+            G.add_node(ind, type=get_Types(types,ind), depth=depth,color='red')
+        else:
+            G.add_node(ind, type=get_Types(types,ind), depth=depth,color='skyblue')
+        for child in graph[str(ind)].keys():
+            G.add_edge(ind,child)
+            stack.append((child,depth+1))
+
+    drawGraph(G,"","parsetree.png")
+
+with open('graph.json', 'r') as file:
     json_data = json.load(file)
 
-generate_graph_from_json(json_data)
+gen_graph_jsongraph(json_data)

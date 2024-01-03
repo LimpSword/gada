@@ -103,6 +103,7 @@ func Parse(lexer *lexer.Lexer) {
 	fmt.Println("Compilation successful")
 	fmt.Println("AST:")
 	graph, err := toAst("./test/parser/return.json")
+	err = os.WriteFile("./test/parser/graph.json", []byte(graph.toJson()), 0644)
 	fmt.Println(graph.toJson())
 	// Save node.toJson() to file
 	err = os.WriteFile("./test/parser/return.json", []byte(node.toJson()), 0644)
