@@ -133,10 +133,8 @@ def generate_graph_from_json(json_data):
 
 def get_Types(types,key):
     r = types.get(str(key), None)
-    if r == ":":
-        return '":"'
-    elif r == ":=":
-        return '":="'
+    if ":" in r:
+        return f'"{r}"'
     elif r == ",":
         return '","'
     else:
@@ -150,34 +148,34 @@ def gen_graph_jsongraph(graphStruct):
 
     print(graph,types)
 
-    def drawGraph(G, savePath, drawpath,id=False):
-        plt.figure()
+    def drawGraph(G, savePath, drawpath, id=False):
+        plt.figure(figsize=(10, 8))  # Adjust figure size for better visibility
 
-        # Création d'un dictionnaire d'identifiants uniques et de leurs types pour référence
+        # Create a dictionary of unique identifiers and types for reference
         if id:
             node_ids = {node: str(node) for node in G.nodes}
         else:
             node_ids = {node: G.nodes[node]['type'] for node in G.nodes}
-        # pos = nx.multipartite_layout(G, subset_key='depth', align='horizontal', scale=40)
-        nx.drawing.nx_pydot.write_dot(G, "graph.dot")
+
+        # Use a circular layout for better organization
         pos = graphviz_layout(G, prog="dot")
         colors = [G.nodes[node]['color'] for node in G.nodes]
 
-        offset = -10
-        pos_labels = {}
-        keys = pos.keys()
-        for key in keys:
-            x, y = pos[key]
-            pos_labels[key] = (x, y)
-        nx.draw_networkx_nodes(G, pos, node_size=50, node_color=colors)
-        nx.draw_networkx_edges(G, pos, arrows=True)
-        nx.draw_networkx_labels(G, labels=node_ids, pos=pos_labels, font_color='black', font_size=8, font_weight='bold')
+        offset = 40  # Increase the offset for better label positioning
+        pos_labels = {key: (x, y + offset) for key, (x, y) in pos.items()}
+
+        # Adjust node size and edge width for better visibility
+        nx.draw_networkx_nodes(G, pos, node_size=100, node_color=colors, alpha=0.8)
+        nx.draw_networkx_edges(G, pos, arrows=True, width=1.0, alpha=0.5)
+
+        # Adjust font size and weight for better label readability
+        nx.draw_networkx_labels(G, labels=node_ids, pos=pos_labels, font_color='black', font_size=6, font_weight='bold')
 
         if savePath:
             with open(savePath, 'w') as f:
                 f.write(str(json_graph.node_link_data(G)))
 
-        plt.savefig(drawpath)
+        plt.savefig(drawpath, format="png", dpi=300)
 
     stack = [(0,0)]
 
@@ -192,9 +190,9 @@ def gen_graph_jsongraph(graphStruct):
             G.add_edge(ind,child)
             stack.append((child,depth+1))
     print([G.nodes[node]['type'] for node in G.nodes])
-    drawGraph(G,"","ast.png")
+    drawGraph(G,"","./test/parser/ast.png")
 
-with open('ast.json', 'r') as file:
+with open('./test/parser/ast.json', 'r') as file:
     json_data = json.load(file)
 
 gen_graph_jsongraph(json_data)

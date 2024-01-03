@@ -10,6 +10,7 @@ type Graph struct {
 	types     map[int]string
 	terminals []int
 	fathers   map[int]int
+	nbNode    int
 }
 
 func (g Graph) toJson() string {
@@ -37,21 +38,24 @@ func fromJSON(jsonStr string) (*Node, error) {
 }
 
 func addNodes(node *Node, graph *Graph) {
-	fatherId := index
-	graph.gmap[index] = make(map[int]struct{})
-	graph.types[index] = node.Type
+	fatherId := graph.nbNode
+	graph.gmap[graph.nbNode] = make(map[int]struct{})
+	if node.Type == "Ident" {
+
+	}
 	if len(node.Children) == 0 {
-		graph.terminals = append(graph.terminals, index)
+		graph.types[graph.nbNode] = node.Type
+		graph.terminals = append(graph.terminals, graph.nbNode)
+	} else {
+		graph.types[graph.nbNode] = ""
 	}
 	for _, child := range node.Children {
-		index++
-		graph.fathers[index] = fatherId
-		graph.gmap[fatherId][index] = struct{}{}
+		graph.nbNode++
+		graph.fathers[graph.nbNode] = fatherId
+		graph.gmap[fatherId][graph.nbNode] = struct{}{}
 		addNodes(child, graph)
 	}
 }
-
-var index int = 0
 
 func createGraph(node Node) Graph {
 
@@ -60,6 +64,7 @@ func createGraph(node Node) Graph {
 	graph.types = make(map[int]string)
 	graph.terminals = make([]int, 0)
 	graph.fathers = make(map[int]int)
+	graph.nbNode = 0
 	addNodes(&node, &graph)
 
 	return graph

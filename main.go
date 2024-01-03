@@ -12,7 +12,7 @@ func main() {
 		reader.CompileFile(reader.CompileConfig{Path: argsWithoutProg[0], PrintAst: containsArgument(argsWithoutProg, "--print-ast")})
 		return
 	}
-	reader.CompileFile(reader.CompileConfig{Path: "examples/expressions/expression.ada", PrintAst: true})
+	reader.CompileFile(reader.CompileConfig{Path: "examples/expressions/helloWorld.ada", PrintAst: true})
 }
 
 func containsArgument(args []string, arg string) bool {
