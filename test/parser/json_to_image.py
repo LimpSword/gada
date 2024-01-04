@@ -145,13 +145,14 @@ def gen_graph_jsongraph(graphStruct):
     G = nx.DiGraph()
     graph = graphStruct["gmap"]
     types = graphStruct["types"]
-    print(graphStruct)
+    terminals = graphStruct["terminals"]
+    meaningful = graphStruct["meaningful"]
     def drawGraph(G, savePath, drawpath, id=False):
         plt.figure(figsize=(10, 8))  # Adjust figure size for better visibility
 
         # Create a dictionary of unique identifiers and types for reference
         if id:
-            node_ids = {node: str(node) for node in G.nodes}
+            node_ids = {node: f"{node} : {G.nodes[node]['type']}" for node in G.nodes}
         else:
             node_ids = {node: G.nodes[node]['type'] for node in G.nodes}
 
@@ -179,14 +180,16 @@ def gen_graph_jsongraph(graphStruct):
 
     while stack:
         ind,depth = stack.pop()
-        if len(graph[ind])==0:
+        if ind in terminals.keys():
             G.add_node(ind, type=get_Types(types,ind), depth=depth,color='red')
+        elif ind in meaningful.keys():
+            G.add_node(ind, type=get_Types(types,ind), depth=depth,color='orange')
         else:
             G.add_node(ind, type=get_Types(types,ind), depth=depth,color='skyblue')
         for child in graph[ind]:
             G.add_edge(ind,child)
             stack.append((child,depth+1))
-    drawGraph(G,"","./test/parser/ast.png")
+    drawGraph(G,"","./test/parser/ast.png",True)
 
 # def toInt(s):
 #     result = OrderedDict()

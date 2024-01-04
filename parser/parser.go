@@ -91,7 +91,7 @@ func (p *Parser) printTokensBefore(i int) {
 func Parse(lexer *lexer.Lexer, printAst bool) {
 	parser := Parser{lexer: lexer, index: 0}
 	node := readFichier(&parser)
-	graph := toAst(node)
+	graph := toAst(node, *lexer)
 	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
 	logger.Info("Compilation successful")
 	if printAst {
@@ -757,11 +757,11 @@ func readPrimary_expr(parser *Parser) Node {
 	var node Node
 	switch parser.peekToken() {
 	case token.INT:
-		parser.readToken()
-		node = Node{Type: "PrimaryExprInt"}
+		_, index := parser.readFullToken()
+		node = Node{Type: "PrimaryExprInt", Index: index}
 	case token.CHAR:
-		parser.readToken()
-		node = Node{Type: "PrimaryExprChar"}
+		_, index := parser.readFullToken()
+		node = Node{Type: "PrimaryExprChar", Index: index}
 	case token.TRUE:
 		parser.readToken()
 		node = Node{Type: "PrimaryExprTrue"}
@@ -1001,6 +1001,7 @@ func readInstr3(parser *Parser) Node {
 	switch parser.peekToken() {
 	case token.COLON:
 		expectTokens(parser, []any{token.COLON, token.EQL})
+		node = Node{Type: ":="}
 		parser.unreadTokens(2)
 	case token.PERIOD:
 		parser.readToken()
