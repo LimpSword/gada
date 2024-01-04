@@ -3,6 +3,7 @@ package parser
 import (
 	"encoding/json"
 	"fmt"
+	"gada/lexer"
 )
 
 type Graph struct {
@@ -11,6 +12,7 @@ type Graph struct {
 	terminals []int
 	fathers   map[int]int
 	nbNode    int
+	lexer     *lexer.Lexer
 }
 
 func (g Graph) toJson() string {
@@ -37,27 +39,36 @@ func fromJSON(jsonStr string) (*Node, error) {
 	return &node, nil
 }
 
-func addNodes(node *Node, graph *Graph) {
-	fatherId := graph.nbNode
-	graph.gmap[graph.nbNode] = make(map[int]struct{})
-	if node.Type == "Ident" {
+func complementType(node Node, lexer lexer.Lexer) string {
 
+	if node.Type == "Ident" {
+		fmt.Println(node.Type)
+		return "Ident : " + lexer.Lexi[node.Index-1]
 	}
+	return node.Type
+}
+
+func addNodes(node *Node, graph *Graph, lexer lexer.Lexer) {
+	fatherId := graph.nbNode
 	if len(node.Children) == 0 {
-		graph.types[graph.nbNode] = node.Type
+		graph.types[graph.nbNode] = complementType(*node, lexer)
 		graph.terminals = append(graph.terminals, graph.nbNode)
 	} else {
-		graph.types[graph.nbNode] = ""
+		graph.types[graph.nbNode] = node.Type
 	}
+	graph.gmap[graph.nbNode] = make(map[int]struct{})
 	for _, child := range node.Children {
+		//if len(child.Children) == 0 && strings.Contains(child.Type, "Tail") {
+		//	return // we don't want to add the tail node
+		//}
 		graph.nbNode++
 		graph.fathers[graph.nbNode] = fatherId
 		graph.gmap[fatherId][graph.nbNode] = struct{}{}
-		addNodes(child, graph)
+		addNodes(child, graph, lexer)
 	}
 }
 
-func createGraph(node Node) Graph {
+func createGraph(node Node, lexer lexer.Lexer) Graph {
 
 	graph := Graph{}
 	graph.gmap = make(map[int]map[int]struct{})
@@ -65,17 +76,15 @@ func createGraph(node Node) Graph {
 	graph.terminals = make([]int, 0)
 	graph.fathers = make(map[int]int)
 	graph.nbNode = 0
-	addNodes(&node, &graph)
+	addNodes(&node, &graph, lexer)
 
 	return graph
 }
 
 func clearchains(g Graph) {
 	for _, term := range g.terminals {
-		fmt.Println(term)
 		tpTo := term
 		for len(g.gmap[g.fathers[tpTo]]) == 1 {
-			fmt.Println(term, tpTo)
 			tpTo = g.fathers[tpTo]
 		}
 		if tpTo != term {
@@ -85,9 +94,9 @@ func clearchains(g Graph) {
 	}
 }
 
-func toAst(node Node) Graph {
+func toAst(node Node, lexer lexer.Lexer) Graph {
 
-	graph := createGraph(node)
+	graph := createGraph(node, lexer)
 	clearchains(graph)
 	return graph
 

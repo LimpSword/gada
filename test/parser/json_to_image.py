@@ -1,4 +1,5 @@
 import json
+from collections import OrderedDict
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -132,7 +133,7 @@ def generate_graph_from_json(json_data):
 
 
 def get_Types(types,key):
-    r = types.get(str(key), None)
+    r = types.get(key, None)
     if ":" in r:
         return f'"{r}"'
     elif r == ",":
@@ -142,12 +143,9 @@ def get_Types(types,key):
 
 def gen_graph_jsongraph(graphStruct):
     G = nx.DiGraph()
-
     graph = graphStruct["gmap"]
     types = graphStruct["types"]
-
-    print(graph,types)
-
+    print(graphStruct)
     def drawGraph(G, savePath, drawpath, id=False):
         plt.figure(figsize=(10, 8))  # Adjust figure size for better visibility
 
@@ -161,7 +159,7 @@ def gen_graph_jsongraph(graphStruct):
         pos = graphviz_layout(G, prog="dot")
         colors = [G.nodes[node]['color'] for node in G.nodes]
 
-        offset = 40  # Increase the offset for better label positioning
+        offset = -20  # Increase the offset for better label positioning
         pos_labels = {key: (x, y + offset) for key, (x, y) in pos.items()}
 
         # Adjust node size and edge width for better visibility
@@ -181,18 +179,37 @@ def gen_graph_jsongraph(graphStruct):
 
     while stack:
         ind,depth = stack.pop()
-        print(ind,depth)
-        if len(graph[str(ind)].keys())==0:
+        if len(graph[ind])==0:
             G.add_node(ind, type=get_Types(types,ind), depth=depth,color='red')
         else:
             G.add_node(ind, type=get_Types(types,ind), depth=depth,color='skyblue')
-        for child in graph[str(ind)].keys():
+        for child in graph[ind]:
             G.add_edge(ind,child)
             stack.append((child,depth+1))
-    print([G.nodes[node]['type'] for node in G.nodes])
     drawGraph(G,"","./test/parser/ast.png")
 
+# def toInt(s):
+#     result = OrderedDict()
+#     for key, value in s.items():
+#         if key == "gmap":
+#             result[key] = OrderedDict(sorted((int(k), v) for k, v in value.items()))
+#         elif key[0] in "0123456789":
+#             result[int(key)] = value
+#         else:
+#             result[key] = value
+
+def parse_int_keys(pairs):
+    result = OrderedDict()
+    for key, value in pairs:
+        if key == "gmap":
+            result[key] = OrderedDict(sorted((int(k), sorted(v)) for k, v in value.items()))
+        elif key[0] in "0123456789":
+            result[int(key)] = value
+        else:
+            result[key] = value
+    return result
+
 with open('./test/parser/ast.json', 'r') as file:
-    json_data = json.load(file)
+    json_data = json.load(file, object_pairs_hook=parse_int_keys)
 
 gen_graph_jsongraph(json_data)
