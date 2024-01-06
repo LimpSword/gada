@@ -13,6 +13,7 @@ type Graph struct {
 	terminals  map[int]struct{}
 	meaningful map[int]struct{}
 	fathers    map[int]int
+	depth      map[int]int
 	nbNode     int
 	lexer      *lexer.Lexer
 }
@@ -43,6 +44,7 @@ func fromJSON(jsonStr string) (*Node, error) {
 }
 
 func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
+	// this change node Types deppending of his current type and childs
 	switch {
 	//case strings.HasSuffix(node.Type, "Tail"):
 	//	return ""
@@ -85,16 +87,19 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 }
 
 func meaningfulNode(node Node) bool {
+	// check if a node is important on the graph
 	return !(strings.HasSuffix(node.Type, "Tail")) // || node.Type == "Access2")
 }
 
-func addNodes(node *Node, graph *Graph, lexer lexer.Lexer) {
+func addNodes(node *Node, graph *Graph, lexer lexer.Lexer, depth int) {
+	// add a tree recursively
 	fatherId := graph.nbNode
 
 	newType, meaningfull := nodeManagement(*node, lexer)
 
 	graph.gmap[graph.nbNode] = make(map[int]struct{})
 	graph.types[graph.nbNode] = newType
+	graph.depth[graph.nbNode] = depth
 
 	if len(node.Children) == 0 {
 		meaningfull = true
@@ -110,47 +115,72 @@ func addNodes(node *Node, graph *Graph, lexer lexer.Lexer) {
 			graph.nbNode++
 			graph.fathers[graph.nbNode] = fatherId
 			graph.gmap[fatherId][graph.nbNode] = struct{}{}
-			addNodes(child, graph, lexer)
+			addNodes(child, graph, lexer, depth+1)
 		}
 	}
 }
 
-func createGraph(node Node, lexer lexer.Lexer) Graph {
-
+func createGraph(node Node, lexer lexer.Lexer) *Graph {
+	// initialyze the graph with the parsetree
 	graph := Graph{}
 	graph.gmap = make(map[int]map[int]struct{})
 	graph.types = make(map[int]string)
 	graph.terminals = make(map[int]struct{})
 	graph.meaningful = make(map[int]struct{})
 	graph.fathers = make(map[int]int)
+	graph.depth = make(map[int]int)
 	graph.nbNode = 0
-	addNodes(&node, &graph, lexer)
+	addNodes(&node, &graph, lexer, 1)
 
-	return graph
+	return &graph
 }
 
-func clearchains(g Graph) {
+func clearchains(g *Graph) {
+	// remove chains of single node link to each other
 	for term, _ := range g.meaningful {
 		tpTo := term
 		for len(g.gmap[g.fathers[tpTo]]) == 1 {
 			tpTo = g.fathers[tpTo]
 		}
 		if tpTo != term {
+			fmt.Println(tpTo, term)
 			delete(g.gmap[g.fathers[tpTo]], tpTo)
+			delete(g.gmap[g.fathers[term]], term)
 			g.gmap[g.fathers[tpTo]][term] = struct{}{}
 			g.fathers[term] = g.fathers[tpTo]
+			g.depth[term] = g.depth[tpTo]
 		}
 	}
 }
 
+func goUpNode(g *Graph, node int, name string) {
+	// make a node replace his father keeping father childs
+	dadNode := g.fathers[node]
+	delete(g.gmap[g.fathers[dadNode]], dadNode)
+	delete(g.gmap[dadNode], node)
+	g.gmap[g.fathers[dadNode]][node] = struct{}{}
+	for child, _ := range g.gmap[dadNode] {
+		if child != node {
+			delete(g.gmap[dadNode], child)
+			g.gmap[node][child] = struct{}{}
+			g.fathers[child] = node
+		}
+	}
+	g.meaningful[dadNode] = struct{}{}
+	g.fathers[node] = g.fathers[dadNode]
+	upTheNode(g, node)
+}
+
 func removeUselessTerminals(g *Graph) {
+
+	//remove Terminals that are not usefull to the graph
 
 	//uselessKeywords := make(map[string]struct{})
 	//uselessKeywords["Access2"] = struct{}{}
 	//uselessKeywords["InstrPlus2"] = struct{}{}
 
 	for term, _ := range g.terminals {
-		if g.types[term] == "Access2" || g.types[term] == "InstrPlus2" {
+		if g.types[term] == "Access2" || g.types[term] == "InstrPlus2" || g.types[term] == "DeclStarBegin" {
 			delete(g.gmap[g.fathers[term]], term)
 			delete(g.terminals, term)
 			delete(g.meaningful, term)
@@ -158,12 +188,32 @@ func removeUselessTerminals(g *Graph) {
 	}
 }
 
-func toAst(node Node, lexer lexer.Lexer) Graph {
+func upTheNode(g *Graph, node int) {
+	switch g.types[node] {
+	case ":=":
+		if g.types[g.fathers[node]] == "Instr2Ident" {
+			goUpNode(g, node, ":=")
+		}
+		if g.types[g.fathers[node]] == "InstrIdent" {
+			goUpNode(g, node, ":=")
+		}
+	}
+}
 
+func compactNodes(g *Graph) {
+	for term, _ := range g.meaningful {
+		upTheNode(g, term)
+	}
+}
+
+func toAst(node Node, lexer lexer.Lexer) Graph {
+	// return the ast as a graph structure (similar to a tree but not recursive)
 	graph := createGraph(node, lexer)
-	clearchains(graph)
-	removeUselessTerminals(&graph)
-	clearchains(graph)
-	return graph
+	compactNodes(graph)
+	//clearchains(graph)
+	//removeUselessTerminals(graph)
+	//clearchains(graph)
+
+	return *graph
 
 }
