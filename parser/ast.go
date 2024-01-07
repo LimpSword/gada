@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"gada/lexer"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -140,24 +142,51 @@ func clearchains(g *Graph) {
 	for term, _ := range g.meaningful {
 		tpTo := term
 		for len(g.gmap[g.fathers[tpTo]]) == 1 {
+			pastNode := tpTo
 			tpTo = g.fathers[tpTo]
+			if pastNode != term {
+				cleanNode(g, pastNode)
+			}
 		}
 		if tpTo != term {
-			fmt.Println(tpTo, term)
 			delete(g.gmap[g.fathers[tpTo]], tpTo)
 			delete(g.gmap[g.fathers[term]], term)
 			g.gmap[g.fathers[tpTo]][term] = struct{}{}
 			g.fathers[term] = g.fathers[tpTo]
 			g.depth[term] = g.depth[tpTo]
+			cleanNode(g, tpTo)
 		}
 	}
 }
 
-func goUpNode(g *Graph, node int, name string) {
-	// make a node replace his father keeping father childs
+func cleanNode(g *Graph, node int) {
+	fmt.Println(strconv.FormatInt(int64(node), 10) + " was cleaned")
+	// remove a node from the graph
+	delete(g.gmap[g.fathers[node]], node)
+	delete(g.fathers, node)
+	delete(g.terminals, node)
+	delete(g.meaningful, node)
+	delete(g.types, node)
+	delete(g.gmap, node)
+}
+
+func goUpChilds(g *Graph, node int) {
+	fmt.Println("upChilds"+strconv.FormatInt(int64(node), 10), g.fathers[node], len(g.gmap[g.fathers[node]]))
+	dadNode := g.fathers[node]
+	for child, _ := range g.gmap[node] {
+		g.gmap[dadNode][child] = struct{}{}
+		g.fathers[child] = dadNode
+	}
+	cleanNode(g, node)
+}
+
+func goUpReplaceNode(g *Graph, node int, name string) {
+	// make a node replace his father keeping father childs can also change name
+	fmt.Println("goUp for " + strconv.FormatInt(int64(node), 10))
 	dadNode := g.fathers[node]
 	delete(g.gmap[g.fathers[dadNode]], dadNode)
 	delete(g.gmap[dadNode], node)
+	fmt.Println(dadNode, node, g.gmap[dadNode])
 	g.gmap[g.fathers[dadNode]][node] = struct{}{}
 	for child, _ := range g.gmap[dadNode] {
 		if child != node {
@@ -168,11 +197,19 @@ func goUpNode(g *Graph, node int, name string) {
 	}
 	g.meaningful[dadNode] = struct{}{}
 	g.fathers[node] = g.fathers[dadNode]
+	cleanNode(g, dadNode)
+	fmt.Println(g.fathers[node], node, g.gmap[dadNode])
+	if !checkTerminal(g, node) {
+		delete(g.terminals, node)
+	}
 	upTheNode(g, node)
 }
 
-func removeUselessTerminals(g *Graph) {
+func checkTerminal(g *Graph, node int) bool {
+	return len(g.gmap[node]) == 0
+}
 
+func removeUselessTerminals(g *Graph) {
 	//remove Terminals that are not usefull to the graph
 
 	//uselessKeywords := make(map[string]struct{})
@@ -181,9 +218,7 @@ func removeUselessTerminals(g *Graph) {
 
 	for term, _ := range g.terminals {
 		if g.types[term] == "Access2" || g.types[term] == "InstrPlus2" || g.types[term] == "DeclStarBegin" {
-			delete(g.gmap[g.fathers[term]], term)
-			delete(g.terminals, term)
-			delete(g.meaningful, term)
+			cleanNode(g, term)
 		}
 	}
 }
@@ -192,16 +227,32 @@ func upTheNode(g *Graph, node int) {
 	switch g.types[node] {
 	case ":=":
 		if g.types[g.fathers[node]] == "Instr2Ident" {
-			goUpNode(g, node, ":=")
+			goUpReplaceNode(g, node, ":=")
 		}
 		if g.types[g.fathers[node]] == "InstrIdent" {
-			goUpNode(g, node, ":=")
+			goUpReplaceNode(g, node, ":=")
+		}
+		if g.types[g.fathers[node]] == "InstrPlus2" {
+			goUpChilds(g, g.fathers[node])
 		}
 	}
+
 }
 
 func compactNodes(g *Graph) {
-	for term, _ := range g.meaningful {
+	// Create a slice of keys from g.meaningful
+	keys := make([]int, 0, len(g.meaningful))
+	for key := range g.meaningful {
+		keys = append(keys, key)
+	}
+
+	// Define a custom sorting function based on g.depth
+	sort.Slice(keys, func(i, j int) bool {
+		return g.depth[keys[i]] > g.depth[keys[j]]
+	})
+
+	// Iterate through sorted keys
+	for _, term := range keys {
 		upTheNode(g, term)
 	}
 }
@@ -210,9 +261,9 @@ func toAst(node Node, lexer lexer.Lexer) Graph {
 	// return the ast as a graph structure (similar to a tree but not recursive)
 	graph := createGraph(node, lexer)
 	compactNodes(graph)
-	//clearchains(graph)
-	//removeUselessTerminals(graph)
-	//clearchains(graph)
+	clearchains(graph)
+	removeUselessTerminals(graph)
+	clearchains(graph)
 
 	return *graph
 
