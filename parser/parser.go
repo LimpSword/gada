@@ -1044,10 +1044,10 @@ func readInstr_plus(parser *Parser) Node {
 func readInstr_plus2(parser *Parser) Node {
 	node := Node{Type: "InstrPlus2"}
 	switch parser.peekToken() {
-	case token.BEGIN, token.RETURN, token.ACCESS, token.IF, token.FOR, token.ELSIF /*, token.IF, token.FOR*/, token.WHILE, token.IDENT:
+	case token.BEGIN, token.RETURN, token.ACCESS, token.IF, token.FOR /*, token.ELSIF , token.IF, token.FOR*/, token.WHILE, token.IDENT:
 		node.addChild(readInstr(parser))
 		node.addChild(readInstr_plus2(parser))
-	case token.END, token.ELSE:
+	case token.END, token.ELSE, token.ELSIF:
 	default:
 		logger.Fatal("Unexpected token", "possible", "begin return access if for while ident", "got", parser.peekToken())
 	}
