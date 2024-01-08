@@ -133,7 +133,7 @@ def generate_graph_from_json(json_data):
 
 
 def get_Types(types,key):
-    r = types.get(key, None)
+    r = types.get(key, "")
     if ":" in r:
         return f'"{r}"'
     elif r == ",":
@@ -190,16 +190,6 @@ def gen_graph_jsongraph(graphStruct):
             G.add_edge(ind,child)
             stack.append((child,depth+1))
     drawGraph(G,"","./test/parser/ast.png",True)
-
-# def toInt(s):
-#     result = OrderedDict()
-#     for key, value in s.items():
-#         if key == "gmap":
-#             result[key] = OrderedDict(sorted((int(k), v) for k, v in value.items()))
-#         elif key[0] in "0123456789":
-#             result[int(key)] = value
-#         else:
-#             result[key] = value
 
 def parse_int_keys(pairs):
     result = OrderedDict()

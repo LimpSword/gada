@@ -82,6 +82,8 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			}
 		}
 		return node.Type, false
+	case node.Type == "DeclFunction":
+		return "function", true
 	default:
 		return node.Type, false
 	}
@@ -217,7 +219,7 @@ func removeUselessTerminals(g *Graph) {
 	//uselessKeywords["InstrPlus2"] = struct{}{}
 
 	for term, _ := range g.terminals {
-		if g.types[term] == "Access2" || g.types[term] == "InstrPlus2" || g.types[term] == "DeclStarBegin" {
+		if g.types[term] == "Access2" || g.types[term] == "InstrPlus2" || g.types[term] == "DeclStarBegin" || g.types[term] == "Instr2Semicolon" {
 			cleanNode(g, term)
 		}
 	}
