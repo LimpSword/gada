@@ -46,10 +46,9 @@ func fromJSON(jsonStr string) (*Node, error) {
 }
 
 func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
-	// this change node Types deppending of his current type and childs
+	// this change node Types depending on his current type and childs
+	// this is the function choosing if a node has some interest and change their name
 	switch {
-	//case strings.HasSuffix(node.Type, "Tail"):
-	//	return ""
 	case node.Type == "Ident":
 		return "Ident : " + lexer.Lexi[node.Index-1], true
 	case node.Type == "PrimaryExprInt":
@@ -82,6 +81,20 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			}
 		}
 		return node.Type, false
+	case node.Type == "RelationalExpr":
+		for _, child := range node.Children {
+			if child.Type == "RelationalExprTailLss" {
+				return "<", true
+			} else if child.Type == "RelationalExprTailLeq" {
+				return "<=", true
+			} else if child.Type == "RelationalExprTailGtr" {
+				return ">", true
+			} else if child.Type == "RelationalExprTailGeq" {
+				return ">=", true
+			}
+		}
+	case node.Type == "InstrIf":
+		return "if", true
 	case node.Type == "DeclFunction":
 		return "function", true
 	default:
