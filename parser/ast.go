@@ -61,8 +61,13 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return "False", true
 	case node.Type == "PrimaryExprNull":
 		return "Null", true
+
 	case node.Type == ":=":
 		return ":=", true
+	case node.Type == "EqualityExpr":
+		return "=", true
+	case node.Type == "EqualityExprTailEql":
+		return "=", true
 	case node.Type == "AdditiveExpr":
 		for _, child := range node.Children {
 			if child.Type == "AdditiveExprTailAdd" {
@@ -93,10 +98,22 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 				return ">=", true
 			}
 		}
+	case node.Type == "InstrIdent":
+		for _, child := range node.Children {
+			if child.Type == "Instr2Lparen" {
+				return "call", true
+			}
+		}
 	case node.Type == "InstrIf":
 		return "if", true
+	case node.Type == "ElseInstr":
+		return "else", true
+	case node.Type == "ElseIf":
+		return "elif", true
 	case node.Type == "DeclFunction":
 		return "function", true
+	case node.Type == "DeclVar":
+		return "var", true
 	default:
 		return node.Type, false
 	}
@@ -224,15 +241,20 @@ func checkTerminal(g *Graph, node int) bool {
 	return len(g.gmap[node]) == 0
 }
 
+func Contains(slice []string, term string) bool {
+	for _, value := range slice {
+		if term == value {
+			return true
+		}
+	}
+	return false
+}
+
 func removeUselessTerminals(g *Graph) {
-	//remove Terminals that are not usefull to the graph
+	uselessKeywords := []string{"Access2", "InstrPlus2", "DeclStarBegin", "Instr2Semicolon", "ExprPlusComma2Rparen", "", "ElseIfStar", "IdentPlusComma2Colon"}
 
-	//uselessKeywords := make(map[string]struct{})
-	//uselessKeywords["Access2"] = struct{}{}
-	//uselessKeywords["InstrPlus2"] = struct{}{}
-
-	for term, _ := range g.terminals {
-		if g.types[term] == "Access2" || g.types[term] == "InstrPlus2" || g.types[term] == "DeclStarBegin" || g.types[term] == "Instr2Semicolon" {
+	for term := range g.terminals {
+		if Contains(uselessKeywords, g.types[term]) {
 			cleanNode(g, term)
 		}
 	}
@@ -250,8 +272,11 @@ func upTheNode(g *Graph, node int) {
 		if g.types[g.fathers[node]] == "InstrPlus2" {
 			goUpChilds(g, g.fathers[node])
 		}
+	case "elif":
+		if g.types[g.fathers[node]] == "ElseIfStarElsif" {
+			goUpChilds(g, g.fathers[node])
+		}
 	}
-
 }
 
 func compactNodes(g *Graph) {
