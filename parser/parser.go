@@ -91,6 +91,7 @@ func (p *Parser) printTokensBefore(i int) {
 func Parse(lexer *lexer.Lexer, printAst bool) {
 	parser := Parser{lexer: lexer, index: 0}
 	node := readFichier(&parser)
+	os.WriteFile("./test/parser/parsetree.json", []byte(node.toJson()), 0644)
 	graph := toAst(node, *lexer)
 	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
 	logger.Info("Compilation successful")
@@ -1059,7 +1060,8 @@ func readElse_if(parser *Parser) Node {
 	switch parser.peekToken() {
 	case token.ELSIF:
 		parser.readToken()
-		node := Node{Type: "ElseIf"}
+		node = Node{Type: "ElseIf"}
+		fmt.Println("readElse_if", parser.peekToken())
 		node.addChild(readExpr(parser))
 		expectTokens(parser, []any{token.THEN})
 		node.addChild(readInstr_plus(parser))
@@ -1071,6 +1073,7 @@ func readElse_if(parser *Parser) Node {
 
 func readElse_if_star(parser *Parser) Node {
 	var node Node
+	fmt.Println("readElse_if_star", parser.peekToken())
 	switch parser.peekToken() {
 	case token.ELSIF:
 		node = Node{Type: "ElseIfStarElsif"}
