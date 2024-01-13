@@ -358,6 +358,14 @@ func upTheNode(g *Graph, node int) {
 				goUpChilds(g, child)
 			}
 		}
+	case "for":
+		if g.types[g.fathers[node]] == "InstrPlus2" {
+			goUpReplaceNode(g, node, "for")
+		}
+	case "call":
+		if g.types[g.fathers[node]] == "InstrPlus2" {
+			goUpReplaceNode(g, node, "call")
+		}
 	}
 }
 
