@@ -862,12 +862,6 @@ func readPrimary_expr2(parser *Parser) Node {
 		if parser.peekTokenFurther(1) == token.PERIOD {
 			node = Node{Type: "OrExprTail"}
 			return node
-		}
-		parser.readToken()
-		if parser.peekToken() == token.PERIOD {
-			node = Node{Type: "PrimaryExpr2DoublePeriod"}
-			parser.readToken()
-			node.addChild(readAccess2(parser))
 		} else {
 			node = Node{Type: "PrimaryExpr2Period"}
 			node.addChild(readAccess2(parser))
@@ -905,6 +899,7 @@ func readPrimary_expr3(parser *Parser) Node {
 
 func readAccess2(parser *Parser) Node {
 	var node Node
+	fmt.Println("access2", parser.peekToken())
 	switch parser.peekToken() {
 	case token.PERIOD:
 		if parser.peekTokenFurther(1) == token.PERIOD {

@@ -143,7 +143,10 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 				return "call", true
 			}
 		}
-		// call multiple args
+		// call ident.ident
+	//case node.Type == "Instr3Period":
+	//	return "call", true
+	// call multiple args
 	case node.Type == "ExprPlusComma":
 		return "args", true
 		// procedure
@@ -273,6 +276,28 @@ func goUpChilds(g *Graph, node int) {
 	cleanNode(g, node)
 }
 
+func fromChildToFather(g *Graph, node int) {
+	//fmt.Println("upChilds"+strconv.FormatInt(int64(node), 10), g.fathers[node], len(g.gmap[g.fathers[node]]))
+	dadNode := g.fathers[node]
+	daddaddyNode := g.fathers[dadNode]
+	// removing previous link
+	delete(g.gmap[dadNode], node)
+	delete(g.gmap[daddaddyNode], dadNode)
+	// linking to father
+	g.gmap[daddaddyNode][node] = struct{}{}
+	g.fathers[node] = daddaddyNode
+	// moving childs
+	for child, _ := range g.gmap[node] {
+		g.gmap[dadNode][child] = struct{}{}
+		g.fathers[child] = dadNode
+		delete(g.gmap[node], child)
+	}
+	// link to previous father
+	g.gmap[node][dadNode] = struct{}{}
+	g.fathers[dadNode] = node
+	upTheNode(g, node)
+}
+
 func goUpReplaceNode(g *Graph, node int, name string) {
 	// make a node replace his father keeping father childs can also change name
 	//fmt.Println("goUp for " + strconv.FormatInt(int64(node), 10))
@@ -331,6 +356,9 @@ func upTheNode(g *Graph, node int) {
 		}
 		if g.types[g.fathers[node]] == "InstrIdent" {
 			goUpReplaceNode(g, node, ":=")
+		}
+		if g.types[g.fathers[node]] == "Instr3Period" {
+			fromChildToFather(g, node)
 		}
 		if g.types[g.fathers[node]] == "" {
 			goUpReplaceNode(g, node, ":=")
@@ -391,9 +419,9 @@ func toAst(node Node, lexer lexer.Lexer) Graph {
 	// return the ast as a graph structure (similar to a tree but not recursive)
 	graph := createGraph(node, lexer)
 	compactNodes(graph)
-	clearchains(graph)
-	removeUselessTerminals(graph)
-	clearchains(graph)
+	//clearchains(graph)
+	//removeUselessTerminals(graph)
+	//clearchains(graph)
 
 	return *graph
 
