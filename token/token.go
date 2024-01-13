@@ -1,6 +1,7 @@
 package token
 
 import (
+	"strings"
 	"unicode"
 )
 
@@ -200,7 +201,7 @@ func init() {
 }
 
 func LookupIdent(ident string) Token {
-	if tok, ok := keywords[ident]; ok {
+	if tok, ok := keywords[strings.ToLower(ident)]; ok {
 		// The token is a keyword.
 		return tok
 	}
@@ -238,7 +239,7 @@ func IsKeyword(tok Token) bool {
 }
 
 func IsKeywordString(s string) bool {
-	if _, ok := keywords[s]; ok {
+	if _, ok := keywords[strings.ToLower(s)]; ok {
 		return true
 	}
 	return false

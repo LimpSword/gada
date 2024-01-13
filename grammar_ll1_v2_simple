@@ -63,12 +63,7 @@ and_expr_tail -> and and_expr_tail2
 and_expr_tail -> ''
 
 and_expr_tail2 -> then equality_expr and_expr_tail
-and_expr_tail2 -> not_expr and_expr_tail
-
-not_expr -> equality_expr not_expr_tail
-
-not_expr_tail -> not equality_expr not_expr_tail
-not_expr_tail -> ''
+and_expr_tail2 -> equality_expr and_expr_tail
 
 equality_expr -> relational_expr equality_expr_tail
 
@@ -98,6 +93,7 @@ multiplicative_expr_tail -> rem unary_expr multiplicative_expr_tail
 multiplicative_expr_tail -> ''
 
 unary_expr -> - unary_expr
+unary_expr -> not unary_expr
 unary_expr -> primary_expr
 
 primary_expr -> entier
@@ -106,7 +102,6 @@ primary_expr -> true
 primary_expr -> false
 primary_expr -> null
 primary_expr -> ( expr )
-primary_expr -> not
 primary_expr -> new ident
 primary_expr -> ident primary_expr2
 primary_expr -> character ' val ( expr )

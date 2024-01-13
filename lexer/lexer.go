@@ -348,7 +348,13 @@ func (l *Lexer) logUnexpected(lexer *Lexer, line, column int, unexpected string)
 func (l *Lexer) GetLineUpToToken(tkn Token) string {
 	line := tkn.Beginning.Line
 	maxColumn := tkn.Beginning.Column
-	return strings.Split(l.fullText, "\n")[line-1][:maxColumn-1]
+	return strings.TrimLeft(strings.Split(l.fullText, "\n")[line-1][:maxColumn-1], " ")
+}
+
+func (l *Lexer) GetLineUpToTokenIncluded(tkn Token) string {
+	line := tkn.Beginning.Line
+	maxColumn := tkn.End.Column
+	return strings.TrimLeft(strings.Split(l.fullText, "\n")[line-1][:maxColumn-1], " ")
 }
 
 func (l *Lexer) GetToken(tkn Token) string {
