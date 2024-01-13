@@ -73,9 +73,28 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return ":=", true
 		// equality
 	case node.Type == "EqualityExpr":
-		return "=", true
+		for _, child := range node.Children {
+			if child.Type == "EqualityExprTailEql" {
+				return "=", true
+			}
+		}
 	case node.Type == "EqualityExprTailEql":
 		return "=", true
+	// and or
+	case node.Type == "AndExpr":
+		for _, child := range node.Children {
+			if child.Type == "AndExprTailAnd" {
+				return "and", true
+			}
+		}
+		return node.Type, false
+	case node.Type == "AndExprTail2Then": // always after the node and
+		for _, child := range node.Children {
+			if child.Type == "AndExprTailAnd" {
+				return "and", true
+			}
+		}
+		return node.Type, false
 		// operators
 	case node.Type == "AdditiveExpr":
 		for _, child := range node.Children {
@@ -90,11 +109,14 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		for _, child := range node.Children {
 			if child.Type == "MultiplicativeExprTailMul" {
 				return "*", true
-			} else if child.Type == "MultiplicativeExprTailDiv" {
+			} else if child.Type == "MultiplicativeExprTailQuo" {
 				return "/", true
+			} else if child.Type == "MultiplicativeExprTailRem" {
+				return "rem", true
 			}
 		}
 		return node.Type, false
+
 		// relational expr
 	case node.Type == "RelationalExpr":
 		for _, child := range node.Children {
@@ -121,6 +143,9 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 				return "call", true
 			}
 		}
+		// call multiple args
+	case node.Type == "ExprPlusComma":
+		return "args", true
 		// procedure
 	case node.Type == "DeclStarBegin":
 		return "decl", true
@@ -142,9 +167,14 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return "param", true
 	case node.Type == "ParamPlusSemicolon": // always after Params node easier way to handle
 		return "params", true
+	case node.Type == "IdentPlusComma":
+		return "sameType", true
 		// variable declaration
 	case node.Type == "DeclVar":
 		return "var", true
+		// for loop
+	case node.Type == "InstrFor":
+		return "for", true
 	default:
 		return node.Type, false
 	}
@@ -284,7 +314,7 @@ func Contains(slice []string, term string) bool {
 func removeUselessTerminals(g *Graph) {
 	uselessKeywords := []string{"Access2", "InstrPlus2", "DeclStarBegin", "Instr2Semicolon", "ExprPlusComma2Rparen", "",
 		"ElseIfStar", "IdentPlusComma2Colon", "ParamPlusSemicolon2RParen", "PrimaryExpr3", "InitSemicolon", "ParamsOpt",
-		"ModeOpt"}
+		"ModeOpt", "ReverseInstr"}
 
 	for term := range g.terminals {
 		if Contains(uselessKeywords, g.types[term]) {
@@ -315,6 +345,18 @@ func upTheNode(g *Graph, node int) {
 	case "decl":
 		if g.types[g.fathers[node]] == "DeclStarProcedure" {
 			goUpReplaceNode(g, node, "decl")
+		}
+	case "sameType":
+		for child, _ := range g.gmap[node] {
+			if g.types[child] == "IdentPlusComma2Comma" {
+				goUpChilds(g, child)
+			}
+		}
+	case "args":
+		for child, _ := range g.gmap[node] {
+			if g.types[child] == "ExprPlusComma2Comma" {
+				goUpChilds(g, child)
+			}
 		}
 	}
 }
