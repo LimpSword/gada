@@ -351,6 +351,12 @@ func (l *Lexer) GetLineUpToToken(tkn Token) string {
 	return strings.Split(l.fullText, "\n")[line-1][:maxColumn-1]
 }
 
+func (l *Lexer) GetLineUpToTokenIncluded(tkn Token) string {
+	line := tkn.Beginning.Line
+	maxColumn := tkn.End.Column
+	return strings.Split(l.fullText, "\n")[line-1][:maxColumn-1]
+}
+
 func (l *Lexer) GetToken(tkn Token) string {
 	line := tkn.Beginning.Line
 	minColumn := tkn.Beginning.Column

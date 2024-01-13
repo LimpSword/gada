@@ -76,6 +76,13 @@ func (p *Parser) peekToken() token.Token {
 	return token.Token(p.lexer.Tokens[p.index].Value)
 }
 
+func (p *Parser) peekTokenFurther(i int) token.Token {
+	if p.index+i >= len(p.lexer.Tokens) {
+		return token.EOF
+	}
+	return token.Token(p.lexer.Tokens[p.index+i].Value)
+}
+
 func (p *Parser) printTokensBefore(i int) {
 	for j := i - 1; j >= 0; j-- {
 		t := token.Token(p.lexer.Tokens[p.index-j].Value)
@@ -108,38 +115,72 @@ func expectToken(parser *Parser, tkn token.Token) {
 		line := parser.lexer.Tokens[parser.index].Beginning.Line
 		column := parser.lexer.Tokens[parser.index].Beginning.Column
 		file := parser.lexer.FileName + ":" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
-		if parser.peekToken() == token.IDENT {
-			logger.Fatal("Unexpected token", "expected", tkn, "got", parser.lexer.Lexi[parser.lexer.Tokens[parser.index].Position-1])
+		if tkn == token.SEMICOLON {
+			// There is a missing semicolon, specific message and line/column
+			// We can just continue parsing
+			parser.unreadToken()
+			line := parser.lexer.Tokens[parser.index].Beginning.Line
+			column := parser.lexer.Tokens[parser.index].End.Column
+			file := parser.lexer.FileName + ":" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
+			logger.Error(file + " " + "Missing semicolon after: " + parser.lexer.GetLineUpToTokenIncluded(parser.lexer.Tokens[parser.index]))
+			parser.readToken()
+			return
+		} else if parser.peekToken() == token.IDENT {
+			logger.Error(file+" "+"Unexpected token: "+parser.lexer.GetLineUpToToken(parser.lexer.Tokens[parser.index])+red+parser.lexer.GetToken(parser.lexer.Tokens[parser.index])+reset, "expected", tkn, "got", parser.lexer.Lexi[parser.lexer.Tokens[parser.index].Position-1])
+		} else {
+			logger.Error(file+" "+"Unexpected token: "+parser.lexer.GetLineUpToToken(parser.lexer.Tokens[parser.index])+red+parser.lexer.GetToken(parser.lexer.Tokens[parser.index])+reset, "expected", tkn, "got", parser.peekToken())
 		}
-		logger.Fatal(file+" "+"Unexpected token: "+parser.lexer.GetLineUpToToken(parser.lexer.Tokens[parser.index])+red+parser.lexer.GetToken(parser.lexer.Tokens[parser.index])+reset, "expected", tkn, "got", parser.peekToken())
 	}
 	parser.readToken()
 }
 
 func peekExpectToken(parser *Parser, tkn token.Token) {
 	if parser.peekToken() != tkn {
-		logger.Fatal("Unexpected token", "expected", tkn, "got", parser.peekToken())
+		red := "\x1b[0;31m"
+		reset := "\x1b[0m"
+		line := parser.lexer.Tokens[parser.index].Beginning.Line
+		column := parser.lexer.Tokens[parser.index].Beginning.Column
+		file := parser.lexer.FileName + ":" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
+		logger.Error(file+" "+"Unexpected token: "+parser.lexer.GetLineUpToToken(parser.lexer.Tokens[parser.index])+red+parser.lexer.GetToken(parser.lexer.Tokens[parser.index])+reset, "expected", tkn, "got", parser.peekToken())
 	}
 }
 
-func expectTokenIdent(parser *Parser, ident string) string {
+func expectTokenIdent(parser *Parser, ident string, recovery []any) string {
+	red := "\x1b[0;31m"
+	reset := "\x1b[0m"
+	line := parser.lexer.Tokens[parser.index].Beginning.Line
+	column := parser.lexer.Tokens[parser.index].Beginning.Column
+	file := parser.lexer.FileName + ":" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
 	if parser.peekToken() != token.IDENT {
-		logger.Fatal("Unexpected token", "expected", token.IDENT, "got", parser.peekToken())
+		// don't read, just assume it's there and raise the error
+		logger.Error(file+" "+"Unexpected token: "+parser.lexer.GetLineUpToToken(parser.lexer.Tokens[parser.index])+red+parser.lexer.GetToken(parser.lexer.Tokens[parser.index])+reset, "expected", ident, "got", parser.peekToken())
+		// if next token is the right one (in recovery), assume the current token is right to continue parsing
+		for _, r := range recovery {
+			if parser.peekTokenFurther(1) == token.Token(r.(int)) {
+				parser.readToken()
+				return ""
+			}
+		}
+		return ""
 	}
 	_, index := parser.readFullToken()
 	if parser.lexer.Lexi[index-1] != ident {
-		logger.Fatal("Unexpected token", "expected", ident, "got", parser.lexer.Lexi[index-1])
+		logger.Error(file+" "+"Unexpected token: "+parser.lexer.GetLineUpToToken(parser.lexer.Tokens[parser.index-1])+red+parser.lexer.GetToken(parser.lexer.Tokens[parser.index-1])+reset, "expected", ident, "got", parser.lexer.Lexi[index-1])
 	}
 	return parser.lexer.Lexi[index-1]
 }
 
 func expectTokens(parser *Parser, tkns []any) {
-	for _, tkn := range tkns {
+	for i, tkn := range tkns {
 		if t, ok := tkn.(int); ok {
 			expectToken(parser, token.Token(t))
 		} else {
 			// expect identifier with name tkn
-			expectTokenIdent(parser, tkn.(string))
+			if i < len(tkns)-1 {
+				expectTokenIdent(parser, tkn.(string), []any{tkns[i+1]})
+			} else {
+				expectTokenIdent(parser, tkn.(string), []any{})
+			}
 		}
 	}
 }
@@ -1061,7 +1102,6 @@ func readElse_if(parser *Parser) Node {
 	case token.ELSIF:
 		parser.readToken()
 		node = Node{Type: "ElseIf"}
-		fmt.Println("readElse_if", parser.peekToken())
 		node.addChild(readExpr(parser))
 		expectTokens(parser, []any{token.THEN})
 		node.addChild(readInstr_plus(parser))
@@ -1073,7 +1113,6 @@ func readElse_if(parser *Parser) Node {
 
 func readElse_if_star(parser *Parser) Node {
 	var node Node
-	fmt.Println("readElse_if_star", parser.peekToken())
 	switch parser.peekToken() {
 	case token.ELSIF:
 		node = Node{Type: "ElseIfStarElsif"}
