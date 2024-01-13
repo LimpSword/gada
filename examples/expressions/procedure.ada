@@ -4,7 +4,7 @@ procedure Test is
    procedure P is
       X: Character;
    begin
-      Put(X);
+      Put('1');
       x := 2+5;
    end;
    -- Z: Character;

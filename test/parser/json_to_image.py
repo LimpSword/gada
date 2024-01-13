@@ -160,8 +160,8 @@ def gen_graph_jsongraph(graphStruct):
         pos = graphviz_layout(G, prog="dot")
         colors = [G.nodes[node]['color'] for node in G.nodes]
 
-        offset = 0  # Increase the offset for better label positioning
-        pos_labels = {key: (x, y + offset) for key, (x, y) in pos.items()}
+        offset = 3  # Increase the offset for better label positioning
+        pos_labels = {key: (x, y + offset * (((x+y)%7)-3)) for key, (x, y) in pos.items()}
 
         # Adjust node size and edge width for better visibility
         nx.draw_networkx_nodes(G, pos, node_size=100, node_color=colors, alpha=0.8)
