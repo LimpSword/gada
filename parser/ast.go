@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"gada/lexer"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -49,25 +48,35 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 	// this change node Types depending on his current type and childs
 	// this is the function choosing if a node has some interest and change their name
 	switch {
+	case node.Type == "Fichier":
+		return "file", true
+		// ident
 	case node.Type == "Ident":
 		return "Ident : " + lexer.Lexi[node.Index-1], true
+		// Int
 	case node.Type == "PrimaryExprInt":
 		return "Int : " + lexer.Lexi[node.Index-1], true
+		// Char
 	case node.Type == "PrimaryExprChar":
 		return "Char : " + lexer.Lexi[node.Index-1], true
+		// True
 	case node.Type == "PrimaryExprTrue":
 		return "True", true
+		// False
 	case node.Type == "PrimaryExprFalse":
 		return "False", true
+		//Null
 	case node.Type == "PrimaryExprNull":
 		return "Null", true
-
+		// assignation
 	case node.Type == ":=":
 		return ":=", true
+		// equality
 	case node.Type == "EqualityExpr":
 		return "=", true
 	case node.Type == "EqualityExprTailEql":
 		return "=", true
+		// operators
 	case node.Type == "AdditiveExpr":
 		for _, child := range node.Children {
 			if child.Type == "AdditiveExprTailAdd" {
@@ -86,6 +95,7 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			}
 		}
 		return node.Type, false
+		// relational expr
 	case node.Type == "RelationalExpr":
 		for _, child := range node.Children {
 			if child.Type == "RelationalExprTailLss" {
@@ -98,20 +108,41 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 				return ">=", true
 			}
 		}
+		// procedure call
 	case node.Type == "InstrIdent":
 		for _, child := range node.Children {
 			if child.Type == "Instr2Lparen" {
 				return "call", true
 			}
 		}
+	case node.Type == "PrimaryExprIdent":
+		for _, child := range node.Children {
+			if child.Type == "PrimaryExpr2Lparen" {
+				return "call", true
+			}
+		}
+		// procedure
+	case node.Type == "DeclStarBegin":
+		return "decl", true
+	case node.Type == "DeclProcedure":
+		return "procedure", true
+	case node.Type == "InstrPlus":
+		return "body", true
+		// if else
 	case node.Type == "InstrIf":
 		return "if", true
 	case node.Type == "ElseInstr":
 		return "else", true
 	case node.Type == "ElseIf":
 		return "elif", true
+		// function
 	case node.Type == "DeclFunction":
 		return "function", true
+	case node.Type == "Param":
+		return "param", true
+	case node.Type == "ParamPlusSemicolon": // always after Params node easier way to handle
+		return "params", true
+		// variable declaration
 	case node.Type == "DeclVar":
 		return "var", true
 	default:
@@ -192,7 +223,7 @@ func clearchains(g *Graph) {
 }
 
 func cleanNode(g *Graph, node int) {
-	fmt.Println(strconv.FormatInt(int64(node), 10) + " was cleaned")
+	//fmt.Println(strconv.FormatInt(int64(node), 10) + " was cleaned")
 	// remove a node from the graph
 	delete(g.gmap[g.fathers[node]], node)
 	delete(g.fathers, node)
@@ -203,7 +234,7 @@ func cleanNode(g *Graph, node int) {
 }
 
 func goUpChilds(g *Graph, node int) {
-	fmt.Println("upChilds"+strconv.FormatInt(int64(node), 10), g.fathers[node], len(g.gmap[g.fathers[node]]))
+	//fmt.Println("upChilds"+strconv.FormatInt(int64(node), 10), g.fathers[node], len(g.gmap[g.fathers[node]]))
 	dadNode := g.fathers[node]
 	for child, _ := range g.gmap[node] {
 		g.gmap[dadNode][child] = struct{}{}
@@ -214,11 +245,11 @@ func goUpChilds(g *Graph, node int) {
 
 func goUpReplaceNode(g *Graph, node int, name string) {
 	// make a node replace his father keeping father childs can also change name
-	fmt.Println("goUp for " + strconv.FormatInt(int64(node), 10))
+	//fmt.Println("goUp for " + strconv.FormatInt(int64(node), 10))
 	dadNode := g.fathers[node]
 	delete(g.gmap[g.fathers[dadNode]], dadNode)
 	delete(g.gmap[dadNode], node)
-	fmt.Println(dadNode, node, g.gmap[dadNode])
+	//fmt.Println(dadNode, node, g.gmap[dadNode])
 	g.gmap[g.fathers[dadNode]][node] = struct{}{}
 	for child, _ := range g.gmap[dadNode] {
 		if child != node {
@@ -230,7 +261,7 @@ func goUpReplaceNode(g *Graph, node int, name string) {
 	g.meaningful[dadNode] = struct{}{}
 	g.fathers[node] = g.fathers[dadNode]
 	cleanNode(g, dadNode)
-	fmt.Println(g.fathers[node], node, g.gmap[dadNode])
+	//fmt.Println(g.fathers[node], node, g.gmap[dadNode])
 	if !checkTerminal(g, node) {
 		delete(g.terminals, node)
 	}
@@ -251,7 +282,9 @@ func Contains(slice []string, term string) bool {
 }
 
 func removeUselessTerminals(g *Graph) {
-	uselessKeywords := []string{"Access2", "InstrPlus2", "DeclStarBegin", "Instr2Semicolon", "ExprPlusComma2Rparen", "", "ElseIfStar", "IdentPlusComma2Colon"}
+	uselessKeywords := []string{"Access2", "InstrPlus2", "DeclStarBegin", "Instr2Semicolon", "ExprPlusComma2Rparen", "",
+		"ElseIfStar", "IdentPlusComma2Colon", "ParamPlusSemicolon2RParen", "PrimaryExpr3", "InitSemicolon", "ParamsOpt",
+		"ModeOpt"}
 
 	for term := range g.terminals {
 		if Contains(uselessKeywords, g.types[term]) {
@@ -269,12 +302,19 @@ func upTheNode(g *Graph, node int) {
 		if g.types[g.fathers[node]] == "InstrIdent" {
 			goUpReplaceNode(g, node, ":=")
 		}
+		if g.types[g.fathers[node]] == "" {
+			goUpReplaceNode(g, node, ":=")
+		}
 		if g.types[g.fathers[node]] == "InstrPlus2" {
 			goUpChilds(g, g.fathers[node])
 		}
 	case "elif":
 		if g.types[g.fathers[node]] == "ElseIfStarElsif" {
 			goUpChilds(g, g.fathers[node])
+		}
+	case "decl":
+		if g.types[g.fathers[node]] == "DeclStarProcedure" {
+			goUpReplaceNode(g, node, "decl")
 		}
 	}
 }
