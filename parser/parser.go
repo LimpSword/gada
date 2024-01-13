@@ -7,6 +7,7 @@ import (
 	"gada/token"
 	"github.com/charmbracelet/log"
 	"os"
+	"os/exec"
 	"strconv"
 )
 
@@ -103,7 +104,15 @@ func Parse(lexer *lexer.Lexer, printAst bool) {
 	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
 	logger.Info("Compilation successful")
 	if printAst {
-		logger.Info("Compilation output", "ast", graph.toJson())
+		cmd := exec.Command("python", "./test/parser/json_to_image.py")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Start()
+		if err != nil {
+			logger.Error("Error while running python script", "error", err)
+		}
+		err = cmd.Wait()
+		//logger.Info("Compilation output", "ast", graph.toJson())
 	}
 }
 

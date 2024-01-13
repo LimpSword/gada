@@ -6,6 +6,9 @@ import networkx as nx
 from networkx.drawing.nx_pydot import graphviz_layout
 from networkx.readwrite import json_graph
 
+import warnings
+warnings.filterwarnings("ignore")
+
 def get_Types(types,key):
     r = types.get(key, "")
     if ":" in r:
