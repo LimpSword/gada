@@ -1031,7 +1031,7 @@ func readInstr2(parser *Parser) Node {
 	var node Node
 	switch parser.peekToken() {
 	case token.IDENT, token.BEGIN, token.END, token.RETURN, token.ACCESS, token.COLON, token.ELSE, token.PERIOD, token.IF, token.FOR, token.WHILE, token.ELSIF:
-		if parser.peekToken() != token.COLON {
+		if parser.peekToken() != token.COLON && parser.peekToken() != token.PERIOD {
 			parser.readToken()
 		}
 		node = Node{Type: "Instr2Ident"}
