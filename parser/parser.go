@@ -124,12 +124,14 @@ func expectToken(parser *Parser, tkn token.Token) {
 			file := parser.lexer.FileName + ":" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
 			logger.Error(file + " " + "Missing semicolon after: " + parser.lexer.GetLineUpToTokenIncluded(parser.lexer.Tokens[parser.index]))
 			parser.readToken()
-			return
 		} else if parser.peekToken() == token.IDENT {
 			logger.Error(file+" "+"Unexpected token: "+parser.lexer.GetLineUpToToken(parser.lexer.Tokens[parser.index])+red+parser.lexer.GetToken(parser.lexer.Tokens[parser.index])+reset, "expected", tkn, "got", parser.lexer.Lexi[parser.lexer.Tokens[parser.index].Position-1])
+			// no read to continue parsing
 		} else {
 			logger.Error(file+" "+"Unexpected token: "+parser.lexer.GetLineUpToToken(parser.lexer.Tokens[parser.index])+red+parser.lexer.GetToken(parser.lexer.Tokens[parser.index])+reset, "expected", tkn, "got", parser.peekToken())
+			// no read to continue parsing
 		}
+		return
 	}
 	parser.readToken()
 }
