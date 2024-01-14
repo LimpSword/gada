@@ -94,7 +94,20 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			}
 		}
 		return node.Type, false
-	case "AndExprTail2Then": // always after the node and
+	case "OrExprTail2":
+		for _, child := range node.Children {
+			if child.Type == "OrExprTailOr" {
+				return "or", true
+			}
+		}
+	case "OrExprTail2Else":
+		for _, child := range node.Children {
+			if child.Type == "OrExprTailOr" {
+				return "or", true
+			}
+		}
+		return node.Type, false
+	case "AndExprTail2Then":
 		for _, child := range node.Children {
 			if child.Type == "AndExprTailAnd" {
 				return "and", true
@@ -108,6 +121,12 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			}
 		}
 		return node.Type, false
+	case "AndExprTail2":
+		for _, child := range node.Children {
+			if child.Type == "AndExprTailAnd" {
+				return "and", true
+			}
+		}
 		// operators
 	case "AdditiveExpr":
 		for _, child := range node.Children {
