@@ -201,6 +201,9 @@ func init() {
 }
 
 func LookupIdent(ident string) Token {
+	if ident == "Character" {
+		return IDENT
+	}
 	if tok, ok := keywords[strings.ToLower(ident)]; ok {
 		// The token is a keyword.
 		return tok
@@ -239,6 +242,9 @@ func IsKeyword(tok Token) bool {
 }
 
 func IsKeywordString(s string) bool {
+	if s == "Character" {
+		return false
+	}
 	if _, ok := keywords[strings.ToLower(s)]; ok {
 		return true
 	}

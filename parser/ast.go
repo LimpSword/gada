@@ -386,9 +386,6 @@ func upTheNode(g *Graph, node int) {
 		if g.types[g.fathers[node]] == "call" {
 			fromChildToFather(g, node)
 		}
-		if g.types[g.fathers[node]] == "" {
-			goUpReplaceNode(g, node, ":=")
-		}
 		if g.types[g.fathers[node]] == "InstrPlus2" {
 			goUpChilds(g, g.fathers[node])
 		}
