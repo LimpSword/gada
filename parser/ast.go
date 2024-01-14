@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"gada/lexer"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -78,11 +77,15 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		for _, child := range node.Children {
 			if child.Type == "EqualityExprTailEql" {
 				return "=", true
+			} else if child.Type == "EqualityExprTailNeq" {
+				return "!=", true
 			}
 		}
 		return node.Type, false
 	case "EqualityExprTailEql":
 		return "=", true
+	case "EqualityExprTailNeq":
+		return "!=", true
 	// and or
 	case "OrExpr":
 		for _, child := range node.Children {
@@ -130,6 +133,8 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			}
 		}
 		return node.Type, false
+	case "MultiplicativeExprTailRem":
+		return "rem", true
 	case "MultiplicativeExprTailQuo":
 		return "/", true
 	case "MultiplicativeExprTailMul":
@@ -169,6 +174,11 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return "call", true
 	case "Instr3Period":
 		return "call", true
+		// unaryExpr
+	case "UnaryExprNot":
+		return "callNot", true
+	case "UnaryExprSub":
+		return "callSub", true
 	// call multiple args
 	case "ExprPlusComma":
 		return "args", true
@@ -201,6 +211,10 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		// for loop
 	case "InstrFor":
 		return "for", true
+		// while loop
+	case "InstrWhile":
+		return "while", true
+
 	default:
 		return node.Type, false
 	}
@@ -321,8 +335,7 @@ func fromChildToFather(g *Graph, node int) {
 	upTheNode(g, node)
 }
 
-func darkMagic(g *Graph, node int) { // manage Instr3Period
-	fmt.Println("darkMagic for " + strconv.FormatInt(int64(node), 10))
+func moveDown(g *Graph, node int) { // manage Instr3Period
 	dadNode := g.fathers[node]
 	smallestChild := -1
 	for child := range g.gmap[dadNode] {
@@ -336,6 +349,19 @@ func darkMagic(g *Graph, node int) { // manage Instr3Period
 	delete(g.gmap[dadNode], smallestChild)
 	g.gmap[node][smallestChild] = struct{}{}
 	g.fathers[smallestChild] = node
+}
+
+func handleUnary(g *Graph, node int, exp string, newExpr string) {
+	g.nbNode++
+	newNode := g.nbNode
+	g.gmap[newNode] = make(map[int]struct{})
+	g.types[newNode] = newExpr
+	g.fathers[newNode] = node
+	g.gmap[node][newNode] = struct{}{}
+	g.depth[newNode] = g.depth[node] + 1
+	g.types[node] = exp
+	g.terminals[newNode] = struct{}{}
+	g.meaningful[newNode] = struct{}{}
 }
 
 func goUpReplaceNode(g *Graph, node int, name string) {
@@ -431,8 +457,12 @@ func upTheNode(g *Graph, node int) {
 		if g.types[g.fathers[node]] == "InstrPlus2" {
 			goUpReplaceNode(g, node, "call")
 		} else if g.types[g.fathers[node]] == ":=" || g.types[g.fathers[node]] == "call" {
-			darkMagic(g, node)
+			moveDown(g, node)
 		}
+	case "callNot":
+		handleUnary(g, node, "call", "not")
+	case "callSub":
+		handleUnary(g, node, "call", "-")
 	}
 }
 
@@ -457,10 +487,10 @@ func compactNodes(g *Graph) {
 func toAst(node Node, lexer lexer.Lexer) Graph {
 	// return the ast as a graph structure (similar to a tree but not recursive)
 	graph := createGraph(node, lexer)
-	//compactNodes(graph)
-	//clearchains(graph)
-	//removeUselessTerminals(graph)
-	//clearchains(graph)
+	compactNodes(graph)
+	clearchains(graph)
+	removeUselessTerminals(graph)
+	clearchains(graph)
 
 	return *graph
 

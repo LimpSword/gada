@@ -25,7 +25,7 @@ def gen_graph_jsongraph(graphStruct):
     terminals = graphStruct["terminals"]
     meaningful = graphStruct["meaningful"]
     def drawGraph(G, savePath, drawpath, id=False):
-        plt.figure(figsize=(len(G.nodes)**0.7,len(G.nodes)**0.7))  # Adjust figure size for better visibility
+        plt.figure(figsize=(len(G.nodes)**0.5,len(G.nodes)**0.5))  # Adjust figure size for better visibility
         # Create a dictionary of unique identifiers and types for reference
         if id:
             node_ids = {node: f"{node} : {G.nodes[node]['type']}" for node in G.nodes}
