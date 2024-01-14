@@ -825,28 +825,27 @@ func readMultiplicative_expr_tail(parser *Parser, nd *Node) Node {
 			node = Node{Type: "MultiplicativeExprTailRem"}
 			node.addChild(prev)
 			node.addChild(readUnary_expr(parser))
-		case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ, token.ADD, token.SUB, token.COMMA, token.LOOP:
-			node = Node{Type: "MultiplicativeExprTail"}
-			return node
-		case token.PERIOD:
-			if parser.peekTokenFurther(1) == token.PERIOD {
-				node = Node{Type: "OrExprTail"}
-				return node
-			}
-			node = Node{Type: "MultiplicativeExprTailPeriod"}
-			parser.readToken()
-			expectTokens(parser, []any{token.PERIOD})
-			parser.readToken()
-			return node
-		default:
-			if !parser.exprError {
-				logger.Error("Unexpected token", "possible", "* / rem ; ) or and then not = /= < <= > >= + - , loop .", "got", parser.peekToken())
-				parser.exprError = true
-			}
-			return node
 		}
 	}
-	return node
+	if parser.peekToken() == token.SEMICOLON || parser.peekToken() == token.RPAREN || parser.peekToken() == token.OR || parser.peekToken() == token.AND || parser.peekToken() == token.THEN || parser.peekToken() == token.NOT || parser.peekToken() == token.EQL || parser.peekToken() == token.NEQ || parser.peekToken() == token.LSS || parser.peekToken() == token.LEQ || parser.peekToken() == token.GTR || parser.peekToken() == token.GEQ || parser.peekToken() == token.ADD || parser.peekToken() == token.SUB || parser.peekToken() == token.COMMA || parser.peekToken() == token.LOOP {
+		return node
+	} else if parser.peekToken() == token.PERIOD {
+		if parser.peekTokenFurther(1) == token.PERIOD {
+			node.Type = "OrExprTail"
+			return node
+		}
+		node.Type = "MultiplicativeExprTailPeriod"
+		parser.readToken()
+		expectTokens(parser, []any{token.PERIOD})
+		parser.readToken()
+		return node
+	} else {
+		if !parser.exprError {
+			logger.Error("Unexpected token", "possible", "* / rem ; ) or and then not = /= < <= > >= + - , loop .", "got", parser.peekToken())
+			parser.exprError = true
+		}
+		return node
+	}
 }
 
 func readUnary_expr(parser *Parser) Node {
