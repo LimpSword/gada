@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gada/lexer"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -47,48 +48,50 @@ func fromJSON(jsonStr string) (*Node, error) {
 func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 	// this change node Types depending on his current type and childs
 	// this is the function choosing if a node has some interest and change their name
-	switch {
-	case node.Type == "Fichier":
+	//return node.Type, false
+	switch node.Type {
+	case "Fichier":
 		return "file", true
 		// ident
-	case node.Type == "Ident":
+	case "Ident":
 		return "Ident : " + lexer.Lexi[node.Index-1], true
 		// Int
-	case node.Type == "PrimaryExprInt":
+	case "PrimaryExprInt":
 		return "Int : " + lexer.Lexi[node.Index-1], true
 		// Char
-	case node.Type == "PrimaryExprChar":
+	case "PrimaryExprChar":
 		return "Char : " + lexer.Lexi[node.Index-1], true
 		// True
-	case node.Type == "PrimaryExprTrue":
+	case "PrimaryExprTrue":
 		return "True", true
 		// False
-	case node.Type == "PrimaryExprFalse":
+	case "PrimaryExprFalse":
 		return "False", true
 		//Null
-	case node.Type == "PrimaryExprNull":
+	case "PrimaryExprNull":
 		return "Null", true
 		// assignation
-	case node.Type == ":=":
+	case ":=":
 		return ":=", true
 		// equality
-	case node.Type == "EqualityExpr":
+	case "EqualityExpr":
 		for _, child := range node.Children {
 			if child.Type == "EqualityExprTailEql" {
 				return "=", true
 			}
 		}
-	case node.Type == "EqualityExprTailEql":
+		return node.Type, false
+	case "EqualityExprTailEql":
 		return "=", true
 	// and or
-	case node.Type == "AndExpr":
+	case "AndExpr":
 		for _, child := range node.Children {
 			if child.Type == "AndExprTailAnd" {
 				return "and", true
 			}
 		}
 		return node.Type, false
-	case node.Type == "AndExprTail2Then": // always after the node and
+	case "AndExprTail2Then": // always after the node and
 		for _, child := range node.Children {
 			if child.Type == "AndExprTailAnd" {
 				return "and", true
@@ -96,7 +99,7 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		}
 		return node.Type, false
 		// operators
-	case node.Type == "AdditiveExpr":
+	case "AdditiveExpr":
 		for _, child := range node.Children {
 			if child.Type == "AdditiveExprTailAdd" {
 				return "+", true
@@ -105,7 +108,7 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			}
 		}
 		return node.Type, false
-	case node.Type == "MultiplicativeExpr":
+	case "MultiplicativeExpr":
 		for _, child := range node.Children {
 			if child.Type == "MultiplicativeExprTailMul" {
 				return "*", true
@@ -118,7 +121,7 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return node.Type, false
 
 		// relational expr
-	case node.Type == "RelationalExpr":
+	case "RelationalExpr":
 		for _, child := range node.Children {
 			if child.Type == "RelationalExprTailLss" {
 				return "<", true
@@ -130,53 +133,59 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 				return ">=", true
 			}
 		}
+		return node.Type, false
 		// procedure call
-	case node.Type == "InstrIdent":
+	case "InstrIdent":
 		for _, child := range node.Children {
 			if child.Type == "Instr2Lparen" {
 				return "call", true
 			}
 		}
-	case node.Type == "PrimaryExprIdent":
+		return node.Type, false
+	case "PrimaryExprIdent":
 		for _, child := range node.Children {
 			if child.Type == "PrimaryExpr2Lparen" {
 				return "call", true
+			} else if child.Type == "PrimaryExpr2Period" { // call ident.ident
+				return "call", true
 			}
 		}
-		// call ident.ident
-	//case node.Type == "Instr3Period":
-	//	return "call", true
+		return node.Type, false
+	case "Access2Period":
+		return "call", true
+	case "Instr3Period":
+		return "call", true
 	// call multiple args
-	case node.Type == "ExprPlusComma":
+	case "ExprPlusComma":
 		return "args", true
 		// procedure
-	case node.Type == "DeclStarBegin":
+	case "DeclStarBegin":
 		return "decl", true
-	case node.Type == "DeclProcedure":
+	case "DeclProcedure":
 		return "procedure", true
-	case node.Type == "InstrPlus":
+	case "InstrPlus":
 		return "body", true
 		// if else
-	case node.Type == "InstrIf":
+	case "InstrIf":
 		return "if", true
-	case node.Type == "ElseInstr":
+	case "ElseInstr":
 		return "else", true
-	case node.Type == "ElseIf":
+	case "ElseIf":
 		return "elif", true
 		// function
-	case node.Type == "DeclFunction":
+	case "DeclFunction":
 		return "function", true
-	case node.Type == "Param":
+	case "Param":
 		return "param", true
-	case node.Type == "ParamPlusSemicolon": // always after Params node easier way to handle
+	case "ParamPlusSemicolon": // always after Params node easier way to handle
 		return "params", true
-	case node.Type == "IdentPlusComma":
+	case "IdentPlusComma":
 		return "sameType", true
 		// variable declaration
-	case node.Type == "DeclVar":
+	case "DeclVar":
 		return "var", true
 		// for loop
-	case node.Type == "InstrFor":
+	case "InstrFor":
 		return "for", true
 	default:
 		return node.Type, false
@@ -186,7 +195,7 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 
 func meaningfulNode(node Node) bool {
 	// check if a node is important on the graph
-	return !(strings.HasSuffix(node.Type, "Tail")) // || node.Type == "Access2")
+	return !(strings.HasSuffix(node.Type, "Tail"))
 }
 
 func addNodes(node *Node, graph *Graph, lexer lexer.Lexer, depth int) {
@@ -298,6 +307,23 @@ func fromChildToFather(g *Graph, node int) {
 	upTheNode(g, node)
 }
 
+func darkMagic(g *Graph, node int) { // manage Instr3Period
+	fmt.Println("darkMagic for " + strconv.FormatInt(int64(node), 10))
+	dadNode := g.fathers[node]
+	smallestChild := -1
+	for child := range g.gmap[dadNode] {
+		if smallestChild == -1 || child < smallestChild {
+			smallestChild = child
+		}
+	}
+	if smallestChild == -1 || smallestChild == node {
+		return
+	}
+	delete(g.gmap[dadNode], smallestChild)
+	g.gmap[node][smallestChild] = struct{}{}
+	g.fathers[smallestChild] = node
+}
+
 func goUpReplaceNode(g *Graph, node int, name string) {
 	// make a node replace his father keeping father childs can also change name
 	//fmt.Println("goUp for " + strconv.FormatInt(int64(node), 10))
@@ -357,7 +383,7 @@ func upTheNode(g *Graph, node int) {
 		if g.types[g.fathers[node]] == "InstrIdent" {
 			goUpReplaceNode(g, node, ":=")
 		}
-		if g.types[g.fathers[node]] == "Instr3Period" {
+		if g.types[g.fathers[node]] == "call" {
 			fromChildToFather(g, node)
 		}
 		if g.types[g.fathers[node]] == "" {
@@ -393,6 +419,8 @@ func upTheNode(g *Graph, node int) {
 	case "call":
 		if g.types[g.fathers[node]] == "InstrPlus2" {
 			goUpReplaceNode(g, node, "call")
+		} else if g.types[g.fathers[node]] == ":=" || g.types[g.fathers[node]] == "call" {
+			darkMagic(g, node)
 		}
 	}
 }
@@ -419,9 +447,9 @@ func toAst(node Node, lexer lexer.Lexer) Graph {
 	// return the ast as a graph structure (similar to a tree but not recursive)
 	graph := createGraph(node, lexer)
 	compactNodes(graph)
-	//clearchains(graph)
-	//removeUselessTerminals(graph)
-	//clearchains(graph)
+	clearchains(graph)
+	removeUselessTerminals(graph)
+	clearchains(graph)
 
 	return *graph
 

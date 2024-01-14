@@ -1,7 +1,8 @@
 with Ada.Text_IO; use Ada.Text_IO;
 
 procedure Record4 is begin
-   x := (a.b + a.b);
+   g.h.j := 0;
+   a.b := 1;
 
 end Record4;
 

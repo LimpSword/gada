@@ -899,7 +899,6 @@ func readPrimary_expr3(parser *Parser) Node {
 
 func readAccess2(parser *Parser) Node {
 	var node Node
-	fmt.Println("access2", parser.peekToken())
 	switch parser.peekToken() {
 	case token.PERIOD:
 		if parser.peekTokenFurther(1) == token.PERIOD {
