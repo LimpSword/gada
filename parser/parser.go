@@ -750,44 +750,50 @@ func readAdditive_expr(parser *Parser) Node {
 	case token.IDENT, token.LPAREN, token.NOT, token.SUB, token.INT, token.CHAR, token.TRUE, token.FALSE, token.NULL, token.NEW, token.CHAR_TOK:
 		node = Node{Type: "AdditiveExpr"}
 		node.addChild(readMultiplicative_expr(parser))
-		node.addChild(readAdditive_expr_tail(parser))
+		node = readAdditive_expr_tail(parser, &node)
 	default:
 		logger.Fatal("Unexpected token", "possible", "ident ( not - int char true false null new char", "got", parser.peekToken())
 	}
 	return node
 }
 
-func readAdditive_expr_tail(parser *Parser) Node {
-	var node Node
-	switch parser.peekToken() {
-	case token.ADD:
-		parser.readToken()
-		node = Node{Type: "AdditiveExprTailAdd"}
-		node.addChild(readMultiplicative_expr(parser))
-		node.addChild(readAdditive_expr_tail(parser))
-	case token.SUB:
-		parser.readToken()
-		node = Node{Type: "AdditiveExprTailSub"}
-		node.addChild(readMultiplicative_expr(parser))
-		node.addChild(readAdditive_expr_tail(parser))
-	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ, token.COMMA, token.LOOP:
-		node = Node{Type: "AdditiveExprTail"}
-	case token.PERIOD:
+func readAdditive_expr_tail(parser *Parser, nd *Node) Node {
+	node := *nd
+	for parser.peekToken() == token.ADD || parser.peekToken() == token.SUB {
+		switch parser.peekToken() {
+		case token.ADD:
+			parser.readToken()
+			prev := node
+			node = Node{Type: "AdditiveExprTailAdd"}
+			node.addChild(prev)
+			node.addChild(readMultiplicative_expr(parser))
+		case token.SUB:
+			parser.readToken()
+			prev := node
+			node = Node{Type: "AdditiveExprTailSub"}
+			node.addChild(prev)
+			node.addChild(readMultiplicative_expr(parser))
+		}
+	}
+	if parser.peekToken() == token.SEMICOLON || parser.peekToken() == token.RPAREN || parser.peekToken() == token.OR || parser.peekToken() == token.AND || parser.peekToken() == token.THEN || parser.peekToken() == token.NOT || parser.peekToken() == token.EQL || parser.peekToken() == token.NEQ || parser.peekToken() == token.LSS || parser.peekToken() == token.LEQ || parser.peekToken() == token.GTR || parser.peekToken() == token.GEQ || parser.peekToken() == token.COMMA || parser.peekToken() == token.LOOP {
+		return node
+	} else if parser.peekToken() == token.PERIOD {
 		if parser.peekTokenFurther(1) == token.PERIOD {
-			node = Node{Type: "OrExprTail"}
+			node.Type = "OrExprTail"
 			return node
 		}
-		node = Node{Type: "AdditiveExprTailPeriod"}
+		node.Type = "AdditiveExprTailPeriod"
 		parser.readToken()
 		expectTokens(parser, []any{token.PERIOD})
 		parser.readToken()
-	default:
+		return node
+	} else {
 		if !parser.exprError {
 			logger.Error("Unexpected token", "possible", "+ - ; ) or and then not = /= < <= > >= , loop .", "got", parser.peekToken())
 			parser.exprError = true
 		}
+		return node
 	}
-	return node
 }
 
 func readMultiplicative_expr(parser *Parser) Node {
