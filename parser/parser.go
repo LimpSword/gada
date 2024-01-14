@@ -12,8 +12,9 @@ import (
 )
 
 type Parser struct {
-	lexer *lexer.Lexer
-	index int
+	lexer     *lexer.Lexer
+	index     int
+	exprError bool
 }
 
 type Node struct {
@@ -77,6 +78,16 @@ func (p *Parser) peekToken() token.Token {
 	return token.Token(p.lexer.Tokens[p.index].Value)
 }
 
+func (p *Parser) peekTokenToString() string {
+	if p.index >= len(p.lexer.Tokens) {
+		return "EOF"
+	}
+	if p.lexer.Tokens[p.index].Value == token.IDENT {
+		return p.lexer.Lexi[p.lexer.Tokens[p.index].Position-1]
+	}
+	return token.Token(p.lexer.Tokens[p.index].Value).String()
+}
+
 func (p *Parser) peekTokenFurther(i int) token.Token {
 	if p.index+i >= len(p.lexer.Tokens) {
 		return token.EOF
@@ -97,7 +108,7 @@ func (p *Parser) printTokensBefore(i int) {
 }
 
 func Parse(lexer *lexer.Lexer, printAst bool) {
-	parser := Parser{lexer: lexer, index: 0}
+	parser := Parser{lexer: lexer, index: 0, exprError: false}
 	node := readFichier(&parser)
 	os.WriteFile("./test/parser/parsetree.json", []byte(node.toJson()), 0644)
 	graph := toAst(node, *lexer)
@@ -114,6 +125,26 @@ func Parse(lexer *lexer.Lexer, printAst bool) {
 		err = cmd.Wait()
 		//logger.Info("Compilation output", "ast", graph.toJson())
 	}
+}
+
+func (parser *Parser) advance(tokens []token.Token) {
+	for parser.peekToken() != token.EOF {
+		for _, tkn := range tokens {
+			if parser.peekToken() == tkn {
+				return
+			}
+		}
+		parser.readToken()
+	}
+}
+
+func unexpectedToken(parser *Parser, possible, got string) {
+	red := "\x1b[0;31m"
+	reset := "\x1b[0m"
+	line := parser.lexer.Tokens[parser.index].Beginning.Line
+	column := parser.lexer.Tokens[parser.index].Beginning.Column
+	file := parser.lexer.FileName + ":" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
+	logger.Error(file+" "+"Unexpected token: "+red+parser.lexer.GetToken(parser.lexer.Tokens[parser.index])+reset, "possible", possible, "got", got)
 }
 
 func expectToken(parser *Parser, tkn token.Token) {
@@ -300,7 +331,11 @@ func readInit(parser *Parser) Node {
 		node = Node{Type: "Init"}
 		node.addChild(readExpr(parser))
 	default:
-		logger.Fatal("Unexpected token", "possible", "; :", "got", parser.peekToken())
+		// Error recovery, if the next token is a valid expression start, assume there is a missing semicolon
+		if parser.peekToken() == token.BEGIN {
+			return node
+		}
+		logger.Error("Unexpected token", "possible", "; :", "got", parser.peekToken())
 	}
 	return node
 }
@@ -369,6 +404,10 @@ func readType_r(parser *Parser) Node {
 		node = Node{Type: "TypeRAccess"}
 		node.addChild(readIdent(parser))
 	default:
+		if parser.peekToken() == token.SEMICOLON {
+			// Error recovery, just continue
+			return node
+		}
 		logger.Fatal("Unexpected token", "possible", "ident access", "got", parser.peekToken())
 	}
 	return node
@@ -515,7 +554,9 @@ func readOr_expr_tail(parser *Parser) Node {
 		expectTokens(parser, []any{token.PERIOD})
 		parser.readToken()
 	default:
-		logger.Fatal("Unexpected token", "possible", "or ; ) then , loop .", "got", parser.peekToken())
+		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END})
+		parser.exprError = false
+		//logger.Fatal("Unexpected token", "possible", "or ; ) then , loop .", "got", parser.peekToken())
 	}
 	return node
 }
@@ -533,7 +574,9 @@ func readOr_expr_tail2(parser *Parser) Node {
 		node.addChild(readAnd_expr(parser))
 		node.addChild(readOr_expr_tail(parser))
 	default:
-		logger.Fatal("Unexpected token", "possible", "else ident ( not - int char true false null new char", "got", parser.peekToken())
+		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END})
+		parser.exprError = false
+		//logger.Fatal("Unexpected token", "possible", "else ident ( not - int char true false null new char", "got", parser.peekToken())
 	}
 	return node
 }
@@ -570,7 +613,10 @@ func readAnd_expr_tail(parser *Parser) Node {
 		expectTokens(parser, []any{token.PERIOD})
 		parser.readToken()
 	default:
-		logger.Fatal("Unexpected token", "possible", "and ; ) or then , loop .", "got", parser.peekToken())
+		if !parser.exprError {
+			logger.Error("Unexpected token", "possible", "and ; ) or then , loop .", "got", parser.peekToken())
+			parser.exprError = true
+		}
 	}
 	return node
 }
@@ -588,7 +634,10 @@ func readAnd_expr_tail2(parser *Parser) Node {
 		node.addChild(readEquality_expr(parser))
 		node.addChild(readAnd_expr_tail(parser))
 	default:
-		logger.Fatal("Unexpected token", "possible", "then ident ( not - int char true false null new char", "got", parser.peekToken())
+		if !parser.exprError {
+			logger.Error("Unexpected token", "possible", "then ident ( not - int char true false null new char", "got", parser.peekToken())
+			parser.exprError = true
+		}
 	}
 	return node
 }
@@ -631,7 +680,10 @@ func readEquality_expr_tail(parser *Parser) Node {
 		expectTokens(parser, []any{token.PERIOD})
 		parser.readToken()
 	default:
-		logger.Fatal("Unexpected token", "possible", "= /= ; ) or and then not , loop .", "got", parser.peekToken())
+		if !parser.exprError {
+			logger.Error("Unexpected token", "possible", "= /= ; ) or and then not , loop .", "got", parser.peekToken())
+			parser.exprError = true
+		}
 	}
 	return node
 }
@@ -684,7 +736,10 @@ func readRelational_expr_tail(parser *Parser) Node {
 		expectTokens(parser, []any{token.PERIOD})
 		parser.readToken()
 	default:
-		logger.Fatal("Unexpected token", "possible", "< <= > >= ; ) or and then not = /= , loop .", "got", parser.peekToken())
+		if !parser.exprError {
+			logger.Error("Unexpected token", "possible", "< <= > >= ; ) or and then not = /= , loop .", "got", parser.peekToken())
+			parser.exprError = true
+		}
 	}
 	return node
 }
@@ -727,7 +782,10 @@ func readAdditive_expr_tail(parser *Parser) Node {
 		expectTokens(parser, []any{token.PERIOD})
 		parser.readToken()
 	default:
-		logger.Fatal("Unexpected token", "possible", "+ - ; ) or and then not = /= < <= > >= , loop .", "got", parser.peekToken())
+		if !parser.exprError {
+			logger.Error("Unexpected token", "possible", "+ - ; ) or and then not = /= < <= > >= , loop .", "got", parser.peekToken())
+			parser.exprError = true
+		}
 	}
 	return node
 }
@@ -775,7 +833,11 @@ func readMultiplicative_expr_tail(parser *Parser) Node {
 		expectTokens(parser, []any{token.PERIOD})
 		parser.readToken()
 	default:
-		logger.Fatal("Unexpected token", "possible", "* / rem ; ) or and then not = /= < <= > >= + - , loop .", "got", parser.peekToken())
+		// Bad expr, go to the end of the expr or to the next instruction
+		if !parser.exprError {
+			logger.Error("Unexpected token", "possible", "* / rem ; ) or and then not = /= < <= > >= + - , loop .", "got", parser.peekToken())
+			parser.exprError = true
+		}
 	}
 	return node
 }
@@ -867,7 +929,10 @@ func readPrimary_expr2(parser *Parser) Node {
 			node.addChild(readAccess2(parser))
 		}
 	default:
-		logger.Fatal("Unexpected token", "possible", "( ; ) or and then not = /= < <= > >= + - * / rem , loop .", "got", parser.peekToken())
+		if !parser.exprError {
+			unexpectedToken(parser, "( ; ) or and then not = /= < <= > >= + - * / rem , loop .", parser.peekTokenToString())
+			parser.exprError = true
+		}
 	}
 	return node
 }
@@ -1230,7 +1295,11 @@ func readIdent_plus_comma2(parser *Parser) Node {
 	case token.COLON:
 		node = Node{Type: "IdentPlusComma2Colon"}
 	default:
-		logger.Fatal("Unexpected token", "possible", "; ,", "got", parser.peekToken())
+		// If there is an ident after, it might just be a missing colon
+		if parser.peekToken() == token.IDENT {
+			return node
+		}
+		logger.Error("Unexpected token", "possible", "; , :", "got", parser.peekToken())
 	}
 	return node
 
