@@ -84,14 +84,21 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 	case "EqualityExprTailEql":
 		return "=", true
 	// and or
-	case "AndExpr":
+	case "OrExpr":
+		for _, child := range node.Children {
+			if child.Type == "OrExprTailOr" {
+				return "or", true
+			}
+		}
+		return node.Type, false
+	case "AndExprTail2Then": // always after the node and
 		for _, child := range node.Children {
 			if child.Type == "AndExprTailAnd" {
 				return "and", true
 			}
 		}
 		return node.Type, false
-	case "AndExprTail2Then": // always after the node and
+	case "AndExpr":
 		for _, child := range node.Children {
 			if child.Type == "AndExprTailAnd" {
 				return "and", true
@@ -108,6 +115,10 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			}
 		}
 		return node.Type, false
+	case "AdditiveExprTailAdd":
+		return "+", true
+	case "AdditiveExprTailSub":
+		return "-", true
 	case "MultiplicativeExpr":
 		for _, child := range node.Children {
 			if child.Type == "MultiplicativeExprTailMul" {
@@ -119,7 +130,10 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			}
 		}
 		return node.Type, false
-
+	case "MultiplicativeExprTailQuo":
+		return "/", true
+	case "MultiplicativeExprTailMul":
+		return "*", true
 		// relational expr
 	case "RelationalExpr":
 		for _, child := range node.Children {
@@ -443,10 +457,10 @@ func compactNodes(g *Graph) {
 func toAst(node Node, lexer lexer.Lexer) Graph {
 	// return the ast as a graph structure (similar to a tree but not recursive)
 	graph := createGraph(node, lexer)
-	compactNodes(graph)
-	clearchains(graph)
-	removeUselessTerminals(graph)
-	clearchains(graph)
+	//compactNodes(graph)
+	//clearchains(graph)
+	//removeUselessTerminals(graph)
+	//clearchains(graph)
 
 	return *graph
 

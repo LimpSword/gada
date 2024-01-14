@@ -9,6 +9,7 @@ procedure Test is
       y := 3 + x;
       return y;
    end;
+   X : Integer;
 begin
    New_Line;
 end;
