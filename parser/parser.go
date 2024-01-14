@@ -796,47 +796,54 @@ func readMultiplicative_expr(parser *Parser) Node {
 	case token.IDENT, token.LPAREN, token.NOT, token.SUB, token.INT, token.CHAR, token.TRUE, token.FALSE, token.NULL, token.NEW, token.CHAR_TOK:
 		node = Node{Type: "MultiplicativeExpr"}
 		node.addChild(readUnary_expr(parser))
-		node.addChild(readMultiplicative_expr_tail(parser))
+		node = readMultiplicative_expr_tail(parser, &node)
 	default:
 		logger.Fatal("Unexpected token", "possible", "ident ( not - int char true false null new char", "got", parser.peekToken())
 	}
 	return node
 }
 
-func readMultiplicative_expr_tail(parser *Parser) Node {
-	var node Node
-	switch parser.peekToken() {
-	case token.MUL:
-		parser.readToken()
-		node = Node{Type: "MultiplicativeExprTailMul"}
-		node.addChild(readUnary_expr(parser))
-		node.addChild(readMultiplicative_expr_tail(parser))
-	case token.QUO:
-		parser.readToken()
-		node = Node{Type: "MultiplicativeExprTailQuo"}
-		node.addChild(readUnary_expr(parser))
-		node.addChild(readMultiplicative_expr_tail(parser))
-	case token.REM:
-		parser.readToken()
-		node = Node{Type: "MultiplicativeExprTailRem"}
-		node.addChild(readUnary_expr(parser))
-		node.addChild(readMultiplicative_expr_tail(parser))
-	case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ, token.ADD, token.SUB, token.COMMA, token.LOOP:
-		node = Node{Type: "MultiplicativeExprTail"}
-	case token.PERIOD:
-		if parser.peekTokenFurther(1) == token.PERIOD {
-			node = Node{Type: "OrExprTail"}
+func readMultiplicative_expr_tail(parser *Parser, nd *Node) Node {
+	node := *nd
+	for parser.peekToken() == token.MUL || parser.peekToken() == token.QUO || parser.peekToken() == token.REM {
+		switch parser.peekToken() {
+		case token.MUL:
+			parser.readToken()
+			prev := node
+			node = Node{Type: "MultiplicativeExprTailMul"}
+			node.addChild(prev)
+			node.addChild(readUnary_expr(parser))
+		case token.QUO:
+			parser.readToken()
+			prev := node
+			node = Node{Type: "MultiplicativeExprTailQuo"}
+			node.addChild(prev)
+			node.addChild(readUnary_expr(parser))
+		case token.REM:
+			parser.readToken()
+			prev := node
+			node = Node{Type: "MultiplicativeExprTailRem"}
+			node.addChild(prev)
+			node.addChild(readUnary_expr(parser))
+		case token.SEMICOLON, token.RPAREN, token.OR, token.AND, token.THEN, token.NOT, token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ, token.ADD, token.SUB, token.COMMA, token.LOOP:
+			node = Node{Type: "MultiplicativeExprTail"}
 			return node
-		}
-		node = Node{Type: "MultiplicativeExprTailPeriod"}
-		parser.readToken()
-		expectTokens(parser, []any{token.PERIOD})
-		parser.readToken()
-	default:
-		// Bad expr, go to the end of the expr or to the next instruction
-		if !parser.exprError {
-			logger.Error("Unexpected token", "possible", "* / rem ; ) or and then not = /= < <= > >= + - , loop .", "got", parser.peekToken())
-			parser.exprError = true
+		case token.PERIOD:
+			if parser.peekTokenFurther(1) == token.PERIOD {
+				node = Node{Type: "OrExprTail"}
+				return node
+			}
+			node = Node{Type: "MultiplicativeExprTailPeriod"}
+			parser.readToken()
+			expectTokens(parser, []any{token.PERIOD})
+			parser.readToken()
+			return node
+		default:
+			if !parser.exprError {
+				logger.Error("Unexpected token", "possible", "* / rem ; ) or and then not = /= < <= > >= + - , loop .", "got", parser.peekToken())
+				parser.exprError = true
+			}
+			return node
 		}
 	}
 	return node
