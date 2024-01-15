@@ -587,22 +587,34 @@ func readAnd_expr(parser *Parser) Node {
 	case token.IDENT, token.LPAREN, token.NOT, token.SUB, token.INT, token.CHAR, token.TRUE, token.FALSE, token.NULL, token.NEW, token.CHAR_TOK:
 		node = Node{Type: "AndExpr"}
 		node.addChild(readEquality_expr(parser))
-		node.addChild(readAnd_expr_tail(parser))
+		node = readAnd_expr_tail(parser, &node)
 	default:
 		logger.Fatal("Unexpected token", "possible", "ident ( not - int char true false null new char", "got", parser.peekToken())
 	}
 	return node
 }
 
-func readAnd_expr_tail(parser *Parser) Node {
+func readAnd_expr_tail(parser *Parser, nd *Node) Node {
 	var node Node
-	switch parser.peekToken() {
-	case token.AND:
+	if nd == nil {
+		fmt.Println("aaa")
+		node = Node{}
+	} else {
+		node = *nd
+	}
+	for parser.peekToken() == token.AND {
 		parser.readToken()
+		prev := node
 		node = Node{Type: "AndExprTailAnd"}
-		node.addChild(readAnd_expr_tail2(parser))
+		if nd != nil {
+			node.addChild(prev)
+		}
+		node = readAnd_expr_tail2(parser, &node)
+	}
+	switch parser.peekToken() {
 	case token.SEMICOLON, token.RPAREN, token.OR, token.THEN, token.COMMA, token.LOOP:
-		node = Node{Type: "AndExprTail"}
+		node.Type = "AndExprTail"
+		return node
 	case token.PERIOD:
 		if parser.peekTokenFurther(1) == token.PERIOD {
 			node = Node{Type: "OrExprTail"}
@@ -621,18 +633,20 @@ func readAnd_expr_tail(parser *Parser) Node {
 	return node
 }
 
-func readAnd_expr_tail2(parser *Parser) Node {
+func readAnd_expr_tail2(parser *Parser, nd *Node) Node {
 	var node Node
 	switch parser.peekToken() {
 	case token.THEN:
 		parser.readToken()
+		prev := *nd
 		node = Node{Type: "AndExprTail2Then"}
+		node.addChild(prev)
 		node.addChild(readEquality_expr(parser))
-		node.addChild(readAnd_expr_tail(parser))
 	case token.IDENT, token.LPAREN, token.NOT, token.SUB, token.INT, token.CHAR, token.TRUE, token.FALSE, token.NULL, token.NEW, token.CHAR_TOK:
 		node = Node{Type: "AndExprTail2"}
+		prev := *nd
+		node.addChild(prev)
 		node.addChild(readEquality_expr(parser))
-		node.addChild(readAnd_expr_tail(parser))
 	default:
 		if !parser.exprError {
 			logger.Error("Unexpected token", "possible", "then ident ( not - int char true false null new char", "got", parser.peekToken())
