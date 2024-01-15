@@ -378,7 +378,7 @@ func readChampsPlus(parser *Parser) Node {
 
 func readChampsPlus2(parser *Parser) Node {
 	var node Node
-	var tkn = parser.readToken()
+	var tkn = parser.peekToken()
 	switch tkn {
 	case token.IDENT:
 		node = Node{Type: "ChampsPlus2"}
