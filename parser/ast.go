@@ -107,6 +107,11 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			}
 		}
 		return node.Type, false
+	case "OrExprTail":
+		if (len(node.Children)) > 1 {
+			return "or", true
+		}
+		return node.Type, false
 	case "AndExprTail2Then":
 		for _, child := range node.Children {
 			if child.Type == "AndExprTailAnd" {
@@ -119,6 +124,11 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			if child.Type == "AndExprTailAnd" {
 				return "and", true
 			}
+		}
+		return node.Type, false
+	case "AndExprTail":
+		if (len(node.Children)) > 1 {
+			return "and", true
 		}
 		return node.Type, false
 	case "AndExprTail2":
@@ -265,12 +275,12 @@ func addNodes(node *Node, graph *Graph, lexer lexer.Lexer, depth int) {
 	}
 
 	for _, child := range node.Children {
-		if meaningfulNode(*child) {
-			graph.nbNode++
-			graph.fathers[graph.nbNode] = fatherId
-			graph.gmap[fatherId][graph.nbNode] = struct{}{}
-			addNodes(child, graph, lexer, depth+1)
-		}
+		//if meaningfulNode(*child) {
+		graph.nbNode++
+		graph.fathers[graph.nbNode] = fatherId
+		graph.gmap[fatherId][graph.nbNode] = struct{}{}
+		addNodes(child, graph, lexer, depth+1)
+		//}
 	}
 }
 
@@ -424,7 +434,8 @@ func Contains(slice []string, term string) bool {
 func removeUselessTerminals(g *Graph) {
 	uselessKeywords := []string{"Access2", "InstrPlus2", "DeclStarBegin", "Instr2Semicolon", "ExprPlusComma2Rparen", "",
 		"ElseIfStar", "IdentPlusComma2Colon", "ParamPlusSemicolon2RParen", "PrimaryExpr3", "InitSemicolon", "ParamsOpt",
-		"ModeOpt", "ReverseInstr"}
+		"ModeOpt", "ReverseInstr",
+		"OrExprTail", "AndExprTail", "EqualityExprTail", "RelationalExprTail"}
 
 	for term := range g.terminals {
 		if Contains(uselessKeywords, g.types[term]) {
@@ -506,10 +517,10 @@ func compactNodes(g *Graph) {
 func toAst(node Node, lexer lexer.Lexer) Graph {
 	// return the ast as a graph structure (similar to a tree but not recursive)
 	graph := createGraph(node, lexer)
-	compactNodes(graph)
-	clearchains(graph)
-	removeUselessTerminals(graph)
-	clearchains(graph)
+	//compactNodes(graph)
+	//clearchains(graph)
+	//removeUselessTerminals(graph)
+	//clearchains(graph)
 
 	return *graph
 
