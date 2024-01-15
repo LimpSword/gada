@@ -9,15 +9,6 @@ from networkx.readwrite import json_graph
 import warnings
 warnings.filterwarnings("ignore")
 
-import tempfile
-
-# Create a temporary file
-with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
-    tmp_filepath = tmpfile.name
-    print(f"Temporary file path: {tmp_filepath}")
-
-# Now you can use tmp_filepath to save your DOT file
-
 def get_Types(types,key):
     r = types.get(key, "")
     if ":" in r:

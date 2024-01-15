@@ -245,6 +245,8 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		// for loop
 	case "InstrFor":
 		return "for", true
+	case "ReverseInstrReverse":
+		return "reverse", true
 		// while loop
 	case "InstrWhile":
 		return "while", true
