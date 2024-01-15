@@ -1187,6 +1187,10 @@ func readInstr3(parser *Parser) Node {
 		node.addChild(readIdent(parser))
 		node.addChild(readInstr3(parser))
 	default:
+		// error recovery
+		if parser.peekTokenFurther(1) == token.END {
+			return node
+		}
 		logger.Fatal("Unexpected token", "possible", ": .", "got", parser.peekToken())
 	}
 	return node
@@ -1201,6 +1205,10 @@ func readInstr4(parser *Parser) Node {
 		node = Node{Type: "Instr4Colon"}
 		node.addChild(readExpr(parser))
 	default:
+		// error recovery
+		if parser.peekToken() == token.END {
+			return node
+		}
 		logger.Fatal("Unexpected token", "possible", "; :", "got", parser.peekToken())
 	}
 	return node
