@@ -561,10 +561,10 @@ func readOr_expr_tail(parser *Parser, nd *Node) Node {
 		return node
 	case token.PERIOD:
 		if parser.peekTokenFurther(1) == token.PERIOD {
-			node = Node{Type: "OrExprTail"}
+			node.Type = "OrExprTail"
 			return node
 		}
-		node = Node{Type: "OrExprTailPeriod"}
+		node.Type = "OrExprTailPeriod"
 		parser.readToken()
 		expectTokens(parser, []any{token.PERIOD})
 		parser.readToken()
@@ -635,10 +635,10 @@ func readAnd_expr_tail(parser *Parser, nd *Node) Node {
 		return node
 	case token.PERIOD:
 		if parser.peekTokenFurther(1) == token.PERIOD {
-			node = Node{Type: "OrExprTail"}
+			node.Type = "OrExprTail"
 			return node
 		}
-		node = Node{Type: "AndExprTailPeriod"}
+		node.Type = "AndExprTailPeriod"
 		parser.readToken()
 		expectTokens(parser, []any{token.PERIOD})
 		parser.readToken()
