@@ -166,7 +166,12 @@ func (l *Lexer) Read() ([]Token, []string) {
 			case '\'':
 				// Check if the keyword 'character' is present before.
 				if len(tokens) > 0 {
-					if tokens[len(tokens)-1].Value == token.CHAR_TOK {
+					if tokens[len(tokens)-1].Value == token.IDENT && strings.ToLower(lexi[len(lexi)-1]) == "character" {
+						// change previous token to char
+						tokens[len(tokens)-1].Value = token.CHAR_TOK
+						// remove from lexicon
+						lexi = lexi[:len(lexi)-1]
+						position--
 						tokens = append(tokens, Token{Type: "Operator", Value: token.CAST, Beginning: beginPos, End: Position{l.line, l.column}})
 						break
 					}
