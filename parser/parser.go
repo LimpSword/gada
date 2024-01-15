@@ -530,7 +530,7 @@ func readOr_expr(parser *Parser) Node {
 	case token.IDENT, token.LPAREN, token.NOT, token.SUB, token.INT, token.CHAR, token.TRUE, token.FALSE, token.NULL, token.NEW, token.CHAR_TOK:
 		node = Node{Type: "OrExpr"}
 		node.addChild(readAnd_expr(parser))
-		node.addChild(readOr_expr_tail(parser))
+		node = readOr_expr_tail(parser, &node)
 	default:
 		unexpectedToken(parser, "ident ( not - int char true false null new char", parser.peekTokenToString())
 		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END})
@@ -539,15 +539,26 @@ func readOr_expr(parser *Parser) Node {
 	return node
 }
 
-func readOr_expr_tail(parser *Parser) Node {
+func readOr_expr_tail(parser *Parser, nd *Node) Node {
 	var node Node
-	switch parser.peekToken() {
-	case token.OR:
+	if nd == nil {
+		node = Node{}
+	} else {
+		node = *nd
+	}
+	for parser.peekToken() == token.OR {
 		parser.readToken()
+		prev := node
 		node = Node{Type: "OrExprTailOr"}
-		node.addChild(readOr_expr_tail2(parser))
+		if nd != nil {
+			node.addChild(prev)
+		}
+		node = readOr_expr_tail2(parser, &node)
+	}
+	switch parser.peekToken() {
 	case token.SEMICOLON, token.RPAREN, token.THEN, token.COMMA, token.LOOP:
-		node = Node{Type: "OrExprTail"}
+		node.Type = "OrExprTail"
+		return node
 	case token.PERIOD:
 		if parser.peekTokenFurther(1) == token.PERIOD {
 			node = Node{Type: "OrExprTail"}
@@ -565,18 +576,20 @@ func readOr_expr_tail(parser *Parser) Node {
 	return node
 }
 
-func readOr_expr_tail2(parser *Parser) Node {
+func readOr_expr_tail2(parser *Parser, nd *Node) Node {
 	var node Node
 	switch parser.peekToken() {
 	case token.ELSE:
 		parser.readToken()
+		prev := *nd
 		node = Node{Type: "OrExprTail2Else"}
+		node.addChild(prev)
 		node.addChild(readAnd_expr(parser))
-		node.addChild(readOr_expr_tail(parser))
 	case token.IDENT, token.LPAREN, token.NOT, token.SUB, token.INT, token.CHAR, token.TRUE, token.FALSE, token.NULL, token.NEW, token.CHAR_TOK:
+		prev := *nd
 		node = Node{Type: "OrExprTail2"}
+		node.addChild(prev)
 		node.addChild(readAnd_expr(parser))
-		node.addChild(readOr_expr_tail(parser))
 	default:
 		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END})
 		parser.exprError = false
@@ -603,7 +616,6 @@ func readAnd_expr(parser *Parser) Node {
 func readAnd_expr_tail(parser *Parser, nd *Node) Node {
 	var node Node
 	if nd == nil {
-		fmt.Println("aaa")
 		node = Node{}
 	} else {
 		node = *nd
