@@ -1,2 +1,2 @@
-go run main.go examples/expressions/andasso.ada
+go run main.go examples/expressions/pascal.ada
 python3 ./test/parser/json_to_image.py

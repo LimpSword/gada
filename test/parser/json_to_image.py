@@ -9,6 +9,15 @@ from networkx.readwrite import json_graph
 import warnings
 warnings.filterwarnings("ignore")
 
+import tempfile
+
+# Create a temporary file
+with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+    tmp_filepath = tmpfile.name
+    print(f"Temporary file path: {tmp_filepath}")
+
+# Now you can use tmp_filepath to save your DOT file
+
 def get_Types(types,key):
     r = types.get(key, "")
     if ":" in r:
@@ -33,7 +42,7 @@ def gen_graph_jsongraph(graphStruct):
             node_ids = {node: G.nodes[node]['type'] for node in G.nodes}
 
         # Use a circular layout for better organization
-        pos = graphviz_layout(G, prog="dot")
+        pos = nx.nx_agraph.pygraphviz_layout(G, prog="dot")
         colors = [G.nodes[node]['color'] for node in G.nodes]
 
         offset = 3  # Increase the offset for better label positioning
@@ -65,7 +74,7 @@ def gen_graph_jsongraph(graphStruct):
         for child in graph[ind]:
             G.add_edge(ind,child)
             stack.append((child,depth+1))
-    drawGraph(G,"","./test/parser/ast.png",True)
+    drawGraph(G,"","./test/parser/ast.png",False)
 
 def parse_int_keys(pairs):
     result = OrderedDict()

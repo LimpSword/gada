@@ -53,13 +53,16 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return "file", true
 		// ident
 	case "Ident":
-		return "Ident : " + lexer.Lexi[node.Index-1], true
+		//return "Ident : " + lexer.Lexi[node.Index-1], true
+		return lexer.Lexi[node.Index-1], true
 		// Int
 	case "PrimaryExprInt":
-		return "Int : " + lexer.Lexi[node.Index-1], true
+		//return "Int : " + lexer.Lexi[node.Index-1], true
+		return lexer.Lexi[node.Index-1], true
 		// Char
 	case "PrimaryExprChar":
-		return "Char : " + lexer.Lexi[node.Index-1], true
+		//return "Char : " + lexer.Lexi[node.Index-1], true
+		return lexer.Lexi[node.Index-1], true
 		// True
 	case "PrimaryExprTrue":
 		return "True", true
@@ -218,6 +221,8 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return "procedure", true
 	case "InstrPlus":
 		return "body", true
+	case "IdentOpt":
+		return "end", true
 		// if else
 	case "InstrIf":
 		return "if", true
@@ -243,6 +248,15 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		// while loop
 	case "InstrWhile":
 		return "while", true
+		// type
+	case "DeclType":
+		return "type", true
+	case "DeclTypeSemicolon":
+		return "endType", true
+	case "ChampsPlus":
+		return "attribs", true
+	case "Champs":
+		return "attrib", true
 
 	default:
 		return node.Type, false
@@ -434,7 +448,7 @@ func Contains(slice []string, term string) bool {
 func removeUselessTerminals(g *Graph) {
 	uselessKeywords := []string{"Access2", "InstrPlus2", "DeclStarBegin", "Instr2Semicolon", "ExprPlusComma2Rparen", "",
 		"ElseIfStar", "IdentPlusComma2Colon", "ParamPlusSemicolon2RParen", "PrimaryExpr3", "InitSemicolon", "ParamsOpt",
-		"ModeOpt", "ReverseInstr",
+		"ModeOpt", "ReverseInstr", "decl", "ChampsPlus2End",
 		"OrExprTail", "AndExprTail", "EqualityExprTail", "RelationalExprTail"}
 
 	for term := range g.terminals {
@@ -493,6 +507,10 @@ func upTheNode(g *Graph, node int) {
 		handleUnary(g, node, "call", "not")
 	case "callSub":
 		handleUnary(g, node, "call", "-")
+	case "attrib":
+		if g.types[g.fathers[node]] == "ChampsPlus2" {
+			goUpChilds(g, g.fathers[node])
+		}
 	}
 }
 
@@ -517,10 +535,10 @@ func compactNodes(g *Graph) {
 func toAst(node Node, lexer lexer.Lexer) Graph {
 	// return the ast as a graph structure (similar to a tree but not recursive)
 	graph := createGraph(node, lexer)
-	//compactNodes(graph)
-	//clearchains(graph)
-	//removeUselessTerminals(graph)
-	//clearchains(graph)
+	compactNodes(graph)
+	clearchains(graph)
+	removeUselessTerminals(graph)
+	clearchains(graph)
 
 	return *graph
 
