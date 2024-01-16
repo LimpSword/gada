@@ -485,10 +485,12 @@ func readMode(parser *Parser) Node {
 
 func readMode2(parser *Parser) Node {
 	var node Node
-	switch parser.readToken() {
+	switch parser.peekToken() {
 	case token.IDENT, token.ACCESS:
 		node = Node{Type: "Mode2Ident"}
 	case token.OUT:
+
+		parser.readToken()
 		node = Node{Type: "Mode2Out"}
 	default:
 		logger.Fatal("Unexpected token", "possible", "ident access out", "got", parser.peekToken())

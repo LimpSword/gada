@@ -43,6 +43,40 @@ func ReadFile(path string) (string, error) {
 	return string(fileContent), nil
 }
 
+func ListFiles(folder string) []string {
+	files := []string{}
+	file, err := os.Open(folder)
+	if err != nil {
+		fmt.Println(fmt.Errorf("error while opening folder %s: %s", folder, err))
+		return files
+	}
+	defer file.Close()
+
+	// Check if it is a folder
+	stat, err := file.Stat()
+	if err != nil {
+		fmt.Println(fmt.Errorf("error while getting folder stats %s: %s", folder, err))
+		return files
+	}
+	if !stat.IsDir() {
+		fmt.Println(fmt.Errorf("error: %s is not a directory", folder))
+		return files
+	}
+
+	// Read folder content
+	fileInfos, err := file.Readdir(-1)
+	if err != nil {
+		fmt.Println(fmt.Errorf("error while reading folder %s: %s", folder, err))
+		return files
+	}
+	for _, fileInfo := range fileInfos {
+		if !fileInfo.IsDir() {
+			files = append(files, folder+"/"+fileInfo.Name())
+		}
+	}
+	return files
+}
+
 func FileLexer(path string) *lexer.Lexer {
 	content, err := ReadFile(path)
 	if err != nil {
@@ -66,9 +100,5 @@ func CompileFile(config CompileConfig) {
 			i--
 		}
 	}
-	funcName(config, l)
-}
-
-func funcName(config CompileConfig, l *lexer.Lexer) {
 	parser.Parse(l, config.PrintAst, config.PythonExecutable)
 }
