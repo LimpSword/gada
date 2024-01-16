@@ -107,7 +107,7 @@ func (p *Parser) printTokensBefore(i int) {
 	fmt.Println()
 }
 
-func Parse(lexer *lexer.Lexer, printAst bool) {
+func Parse(lexer *lexer.Lexer, printAst bool, pythonExecutable string) {
 	parser := Parser{lexer: lexer, index: 0, exprError: false}
 	node := readFichier(&parser)
 	os.WriteFile("./test/parser/parsetree.json", []byte(node.toJson()), 0644)
@@ -115,7 +115,7 @@ func Parse(lexer *lexer.Lexer, printAst bool) {
 	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
 	logger.Info("Compilation successful")
 	if printAst {
-		cmd := exec.Command("python", "./test/parser/json_to_image.py")
+		cmd := exec.Command(pythonExecutable, "./test/parser/json_to_image.py")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		err := cmd.Start()

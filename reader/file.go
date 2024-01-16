@@ -9,8 +9,9 @@ import (
 )
 
 type CompileConfig struct {
-	Path     string
-	PrintAst bool
+	Path             string
+	PrintAst         bool
+	PythonExecutable string
 }
 
 func ReadFile(path string) (string, error) {
@@ -65,5 +66,9 @@ func CompileFile(config CompileConfig) {
 			i--
 		}
 	}
-	parser.Parse(l, config.PrintAst)
+	funcName(config, l)
+}
+
+func funcName(config CompileConfig, l *lexer.Lexer) {
+	parser.Parse(l, config.PrintAst, config.PythonExecutable)
 }
