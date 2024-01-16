@@ -457,7 +457,7 @@ func Contains(slice []string, term string) bool {
 func removeUselessTerminals(g *Graph) {
 	uselessKeywords := []string{"Access2", "InstrPlus2", "DeclStarBegin", "Instr2Semicolon", "ExprPlusComma2Rparen", "",
 		"ElseIfStar", "IdentPlusComma2Colon", "ParamPlusSemicolon2RParen", "PrimaryExpr3", "InitSemicolon", "ParamsOpt",
-		"ModeOpt", "ReverseInstr", "decl", "ChampsPlus2End", "ElseInstrOptEnd",
+		"ModeOpt", "ReverseInstr", "decl", "ChampsPlus2End", "ElseInstrOptEnd", "ExprOptSemicolon",
 		"OrExprTail", "AndExprTail", "EqualityExprTail", "RelationalExprTail"}
 
 	for term := range g.terminals {
@@ -526,6 +526,10 @@ func upTheNode(g *Graph, node int) {
 		if g.types[g.fathers[node]] == "ElseInstr" {
 			goUpReplaceNode(g, node, "else")
 		}
+	case "ExprOptSemicolon":
+		if g.types[g.fathers[node]] == "InstrReturn" {
+			goUpReplaceNode(g, node, "return")
+		}
 	}
 }
 
@@ -550,10 +554,10 @@ func compactNodes(g *Graph) {
 func toAst(node Node, lexer lexer.Lexer) Graph {
 	// return the ast as a graph structure (similar to a tree but not recursive)
 	graph := createGraph(node, lexer)
-	compactNodes(graph)
-	clearchains(graph)
-	removeUselessTerminals(graph)
-	clearchains(graph)
+	//compactNodes(graph)
+	//clearchains(graph)
+	//removeUselessTerminals(graph)
+	//clearchains(graph)
 
 	return *graph
 
