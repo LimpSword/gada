@@ -261,6 +261,9 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return "attrib", true
 	case "PrimaryExprNew":
 		return "new", true
+		// Char cast
+	case "PrimaryExprCharTok":
+		return "CharTok", true
 	default:
 		return node.Type, false
 	}
@@ -530,6 +533,8 @@ func upTheNode(g *Graph, node int) {
 		if g.types[g.fathers[node]] == "InstrReturn" {
 			goUpReplaceNode(g, node, "return")
 		}
+	case "CharTok":
+		makeChild(g, node, "cast", "char")
 	}
 }
 
@@ -554,10 +559,10 @@ func compactNodes(g *Graph) {
 func toAst(node Node, lexer lexer.Lexer) Graph {
 	// return the ast as a graph structure (similar to a tree but not recursive)
 	graph := createGraph(node, lexer)
-	//compactNodes(graph)
-	//clearchains(graph)
-	//removeUselessTerminals(graph)
-	//clearchains(graph)
+	compactNodes(graph)
+	clearchains(graph)
+	removeUselessTerminals(graph)
+	clearchains(graph)
 
 	return *graph
 
