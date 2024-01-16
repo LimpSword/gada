@@ -5,6 +5,7 @@ import (
 	"gada/lexer"
 	"gada/parser"
 	"gada/token"
+	"github.com/charmbracelet/log"
 	"os"
 )
 
@@ -93,6 +94,11 @@ func CompileFile(config CompileConfig) {
 	}
 	l.Read()
 
+	if len(l.Tokens) == 0 {
+		log.Error("The provided file is empty")
+		return
+	}
+
 	// remove illegal tokens
 	for i := 0; i < len(l.Tokens); i++ {
 		if l.Tokens[i].Value == token.ILLEGAL {
@@ -100,5 +106,11 @@ func CompileFile(config CompileConfig) {
 			i--
 		}
 	}
+
+	if len(l.Tokens) == 0 {
+		log.Error("The provided file has no valid tokens")
+		return
+	}
+
 	parser.Parse(l, config.PrintAst, config.PythonExecutable)
 }
