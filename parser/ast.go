@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"gada/lexer"
 	"sort"
-	"strings"
 )
 
 type Graph struct {
@@ -47,21 +46,17 @@ func fromJSON(jsonStr string) (*Node, error) {
 func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 	// this change node Types depending on his current type and childs
 	// this is the function choosing if a node has some interest and change their name
-	//return node.Type, false
 	switch node.Type {
 	case "Fichier":
 		return "file", true
 		// ident
 	case "Ident":
-		//return "Ident : " + lexer.Lexi[node.Index-1], true
 		return lexer.Lexi[node.Index-1], true
 		// Int
 	case "PrimaryExprInt":
-		//return "Int : " + lexer.Lexi[node.Index-1], true
 		return lexer.Lexi[node.Index-1], true
 		// Char
 	case "PrimaryExprChar":
-		//return "Char : " + lexer.Lexi[node.Index-1], true
 		return lexer.Lexi[node.Index-1], true
 		// True
 	case "PrimaryExprTrue":
@@ -198,14 +193,14 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 			if child.Type == "PrimaryExpr2Lparen" {
 				return "call", true
 			} else if child.Type == "PrimaryExpr2Period" { // call ident.ident
-				return "call", true
+				return "access", true
 			}
 		}
 		return node.Type, false
 	case "Access2Period":
-		return "call", true
+		return "access", true
 	case "Instr3Period":
-		return "call", true
+		return "access", true
 		// unaryExpr
 	case "UnaryExprNot":
 		return "callNot", true
@@ -221,6 +216,8 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return "procedure", true
 	case "InstrPlus":
 		return "body", true
+	case "InstrPlus2":
+		return node.Type, true
 	case "IdentOpt":
 		return "end", true
 		// if else
@@ -270,11 +267,6 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 	return "", false
 }
 
-func meaningfulNode(node Node) bool {
-	// check if a node is important on the graph
-	return !(strings.HasSuffix(node.Type, "Tail"))
-}
-
 func addNodes(node *Node, graph *Graph, lexer lexer.Lexer, depth int, newName bool) {
 	// add a tree recursively
 	fatherId := graph.nbNode
@@ -299,12 +291,10 @@ func addNodes(node *Node, graph *Graph, lexer lexer.Lexer, depth int, newName bo
 	}
 
 	for _, child := range node.Children {
-		//if meaningfulNode(*child) {
 		graph.nbNode++
 		graph.fathers[graph.nbNode] = fatherId
 		graph.gmap[fatherId][graph.nbNode] = struct{}{}
 		addNodes(child, graph, lexer, depth+1, true)
-		//}
 	}
 }
 
@@ -346,7 +336,6 @@ func clearchains(g *Graph) {
 }
 
 func cleanNode(g *Graph, node int) {
-	//fmt.Println(strconv.FormatInt(int64(node), 10) + " was cleaned")
 	// remove a node from the graph
 	delete(g.gmap[g.fathers[node]], node)
 	delete(g.fathers, node)
@@ -354,20 +343,22 @@ func cleanNode(g *Graph, node int) {
 	delete(g.meaningful, node)
 	delete(g.types, node)
 	delete(g.gmap, node)
+	delete(g.depth, node)
 }
 
 func goUpChilds(g *Graph, node int) {
-	//fmt.Println("upChilds"+strconv.FormatInt(int64(node), 10), g.fathers[node], len(g.gmap[g.fathers[node]]))
+	// make a all child of a node replace their father
 	dadNode := g.fathers[node]
 	for child, _ := range g.gmap[node] {
 		g.gmap[dadNode][child] = struct{}{}
 		g.fathers[child] = dadNode
+		g.depth[child] = g.depth[node]
 	}
 	cleanNode(g, node)
 }
 
 func fromChildToFather(g *Graph, node int) {
-	//fmt.Println("upChilds"+strconv.FormatInt(int64(node), 10), g.fathers[node], len(g.gmap[g.fathers[node]]))
+	// not handling terminal meaningful and depth
 	dadNode := g.fathers[node]
 	daddaddyNode := g.fathers[dadNode]
 	// removing previous link
@@ -385,10 +376,14 @@ func fromChildToFather(g *Graph, node int) {
 	// link to previous father
 	g.gmap[node][dadNode] = struct{}{}
 	g.fathers[dadNode] = node
+
+	for child, _ := range g.gmap[node] {
+		upTheNode(g, child)
+	}
 	upTheNode(g, node)
 }
 
-func moveDown(g *Graph, node int) { // manage Instr3Period
+func moveDown(g *Graph, node int) { // manage access
 	dadNode := g.fathers[node]
 	smallestChild := -1
 	for child := range g.gmap[dadNode] {
@@ -402,9 +397,11 @@ func moveDown(g *Graph, node int) { // manage Instr3Period
 	delete(g.gmap[dadNode], smallestChild)
 	g.gmap[node][smallestChild] = struct{}{}
 	g.fathers[smallestChild] = node
+	g.depth[smallestChild] = g.depth[node] + 1
 }
 
 func makeChild(g *Graph, node int, exp string, newExpr string) {
+	// create node a child with type newExpr
 	g.nbNode++
 	newNode := g.nbNode
 	g.gmap[newNode] = make(map[int]struct{})
@@ -415,15 +412,75 @@ func makeChild(g *Graph, node int, exp string, newExpr string) {
 	g.types[node] = exp
 	g.terminals[newNode] = struct{}{}
 	g.meaningful[newNode] = struct{}{}
+	switchNodes(g, node, newNode)
+}
+
+func switchNodes(g *Graph, node1 int, node2 int) {
+	// switch two nodes
+	// handle fathers
+	dadNode1 := g.fathers[node1]
+	dadNode2 := g.fathers[node2]
+
+	delete(g.gmap[dadNode1], node1)
+	delete(g.gmap[dadNode2], node2)
+
+	g.gmap[dadNode1][node2] = struct{}{}
+	g.gmap[dadNode2][node1] = struct{}{}
+
+	// handle childs
+	stock := []int{}
+	for child, _ := range g.gmap[node1] {
+		stock = append(stock, child)
+		delete(g.gmap[node1], child)
+	}
+	for child, _ := range g.gmap[node2] {
+		g.gmap[node1][child] = struct{}{}
+		g.fathers[child] = node1
+		delete(g.gmap[node2], child)
+	}
+	for _, child := range stock {
+		g.gmap[node2][child] = struct{}{}
+		g.fathers[child] = node2
+	}
+
+	// handle types
+	g.types[node1], g.types[node2] = g.types[node2], g.types[node1]
+	// handle terminals
+	_, okn1 := g.terminals[node1]
+	_, okn2 := g.terminals[node2]
+	delete(g.terminals, node1)
+	delete(g.terminals, node2)
+	if okn1 {
+		g.terminals[node2] = struct{}{}
+	}
+	if okn2 {
+		g.terminals[node1] = struct{}{}
+	}
+	// handle meaningful
+	_, okm1 := g.meaningful[node1]
+	_, okm2 := g.meaningful[node2]
+	delete(g.meaningful, node1)
+	delete(g.meaningful, node2)
+	if okm1 {
+		g.meaningful[node2] = struct{}{}
+	}
+	if okm2 {
+		g.meaningful[node1] = struct{}{}
+	}
+	// handle depth
+	g.depth[node1], g.depth[node2] = g.depth[node2], g.depth[node1]
+
+	g.fathers[node1] = dadNode2
+	g.fathers[node2] = dadNode1
 }
 
 func goUpReplaceNode(g *Graph, node int, name string) {
 	// make a node replace his father keeping father childs can also change name
-	//fmt.Println("goUp for " + strconv.FormatInt(int64(node), 10))
+
 	dadNode := g.fathers[node]
 	delete(g.gmap[g.fathers[dadNode]], dadNode)
 	delete(g.gmap[dadNode], node)
-	//fmt.Println(dadNode, node, g.gmap[dadNode])
+
 	g.gmap[g.fathers[dadNode]][node] = struct{}{}
 	for child, _ := range g.gmap[dadNode] {
 		if child != node {
@@ -437,9 +494,12 @@ func goUpReplaceNode(g *Graph, node int, name string) {
 	g.depth[node] = g.depth[dadNode]
 	g.types[node] = name
 	cleanNode(g, dadNode)
-	//fmt.Println(g.fathers[node], node, g.gmap[dadNode])
+
 	if !checkTerminal(g, node) {
 		delete(g.terminals, node)
+	}
+	for child, _ := range g.gmap[node] {
+		upTheNode(g, child)
 	}
 	upTheNode(g, node)
 }
@@ -479,11 +539,8 @@ func upTheNode(g *Graph, node int) {
 		if g.types[g.fathers[node]] == "InstrIdent" {
 			goUpReplaceNode(g, node, ":=")
 		}
-		if g.types[g.fathers[node]] == "call" {
+		if g.types[g.fathers[node]] == "access" {
 			fromChildToFather(g, node)
-		}
-		if g.types[g.fathers[node]] == "InstrPlus2" {
-			goUpChilds(g, g.fathers[node])
 		}
 	case "elif":
 		if g.types[g.fathers[node]] == "ElseIfStarElsif" {
@@ -505,14 +562,12 @@ func upTheNode(g *Graph, node int) {
 				goUpChilds(g, child)
 			}
 		}
-	case "for":
-		if g.types[g.fathers[node]] == "InstrPlus2" {
-			goUpReplaceNode(g, node, "for")
+	case "InstrPlus2":
+		if g.types[g.fathers[node]] == "body" {
+			goUpChilds(g, node)
 		}
-	case "call":
-		if g.types[g.fathers[node]] == "InstrPlus2" {
-			goUpReplaceNode(g, node, "call")
-		} else if g.types[g.fathers[node]] == ":=" || g.types[g.fathers[node]] == "call" {
+	case "access":
+		if g.types[g.fathers[node]] == ":=" || g.types[g.fathers[node]] == "access" {
 			moveDown(g, node)
 		}
 	case "callNot":
@@ -547,7 +602,7 @@ func compactNodes(g *Graph) {
 
 	// Define a custom sorting function based on g.depth
 	sort.Slice(keys, func(i, j int) bool {
-		return g.depth[keys[i]] > g.depth[keys[j]]
+		return g.depth[keys[i]] < g.depth[keys[j]]
 	})
 
 	// Iterate through sorted keys

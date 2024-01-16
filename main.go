@@ -19,7 +19,7 @@ func main() {
 		if pythonExecutable {
 			compileConfig.PythonExecutable = pythonExecutableValue
 		} else {
-			compileConfig.PythonExecutable = "python"
+			compileConfig.PythonExecutable = "python3"
 		}
 
 		reader.CompileFile(compileConfig)
