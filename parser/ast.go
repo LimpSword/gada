@@ -226,8 +226,6 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		// if else
 	case "InstrIf":
 		return "if", true
-	case "ElseInstr":
-		return "else", true
 	case "ElseIf":
 		return "elif", true
 		// function
@@ -245,6 +243,8 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		// for loop
 	case "InstrFor":
 		return "for", true
+	case "ReverseInstr":
+		return "not reverse", true
 	case "ReverseInstrReverse":
 		return "reverse", true
 		// while loop
@@ -259,7 +259,8 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return "attribs", true
 	case "Champs":
 		return "attrib", true
-
+	case "PrimaryExprNew":
+		return "new", true
 	default:
 		return node.Type, false
 	}
@@ -271,11 +272,15 @@ func meaningfulNode(node Node) bool {
 	return !(strings.HasSuffix(node.Type, "Tail"))
 }
 
-func addNodes(node *Node, graph *Graph, lexer lexer.Lexer, depth int) {
+func addNodes(node *Node, graph *Graph, lexer lexer.Lexer, depth int, newName bool) {
 	// add a tree recursively
 	fatherId := graph.nbNode
 
-	newType, meaningfull := nodeManagement(*node, lexer)
+	newType, meaningfull := node.Type, false
+
+	if newName {
+		newType, meaningfull = nodeManagement(*node, lexer)
+	}
 
 	graph.gmap[graph.nbNode] = make(map[int]struct{})
 	graph.types[graph.nbNode] = newType
@@ -295,7 +300,7 @@ func addNodes(node *Node, graph *Graph, lexer lexer.Lexer, depth int) {
 		graph.nbNode++
 		graph.fathers[graph.nbNode] = fatherId
 		graph.gmap[fatherId][graph.nbNode] = struct{}{}
-		addNodes(child, graph, lexer, depth+1)
+		addNodes(child, graph, lexer, depth+1, true)
 		//}
 	}
 }
@@ -310,7 +315,7 @@ func createGraph(node Node, lexer lexer.Lexer) *Graph {
 	graph.fathers = make(map[int]int)
 	graph.depth = make(map[int]int)
 	graph.nbNode = 0
-	addNodes(&node, &graph, lexer, 1)
+	addNodes(&node, &graph, lexer, 1, true)
 
 	return &graph
 }
@@ -396,7 +401,7 @@ func moveDown(g *Graph, node int) { // manage Instr3Period
 	g.fathers[smallestChild] = node
 }
 
-func handleUnary(g *Graph, node int, exp string, newExpr string) {
+func makeChild(g *Graph, node int, exp string, newExpr string) {
 	g.nbNode++
 	newNode := g.nbNode
 	g.gmap[newNode] = make(map[int]struct{})
@@ -426,6 +431,8 @@ func goUpReplaceNode(g *Graph, node int, name string) {
 	}
 	g.meaningful[dadNode] = struct{}{}
 	g.fathers[node] = g.fathers[dadNode]
+	g.depth[node] = g.depth[dadNode]
+	g.types[node] = name
 	cleanNode(g, dadNode)
 	//fmt.Println(g.fathers[node], node, g.gmap[dadNode])
 	if !checkTerminal(g, node) {
@@ -450,7 +457,7 @@ func Contains(slice []string, term string) bool {
 func removeUselessTerminals(g *Graph) {
 	uselessKeywords := []string{"Access2", "InstrPlus2", "DeclStarBegin", "Instr2Semicolon", "ExprPlusComma2Rparen", "",
 		"ElseIfStar", "IdentPlusComma2Colon", "ParamPlusSemicolon2RParen", "PrimaryExpr3", "InitSemicolon", "ParamsOpt",
-		"ModeOpt", "ReverseInstr", "decl", "ChampsPlus2End",
+		"ModeOpt", "ReverseInstr", "decl", "ChampsPlus2End", "ElseInstrOptEnd",
 		"OrExprTail", "AndExprTail", "EqualityExprTail", "RelationalExprTail"}
 
 	for term := range g.terminals {
@@ -506,12 +513,18 @@ func upTheNode(g *Graph, node int) {
 			moveDown(g, node)
 		}
 	case "callNot":
-		handleUnary(g, node, "call", "not")
+		makeChild(g, node, "call", "not")
 	case "callSub":
-		handleUnary(g, node, "call", "-")
+		makeChild(g, node, "call", "-")
+	case "new":
+		makeChild(g, node, "memory", "new")
 	case "attrib":
 		if g.types[g.fathers[node]] == "ChampsPlus2" {
 			goUpChilds(g, g.fathers[node])
+		}
+	case "body":
+		if g.types[g.fathers[node]] == "ElseInstr" {
+			goUpReplaceNode(g, node, "else")
 		}
 	}
 }
