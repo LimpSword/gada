@@ -114,28 +114,36 @@ func (p *Parser) printTokensBefore(i int) {
 	fmt.Println()
 }
 
-func Parse(lexer *lexer.Lexer, printAst bool, pythonExecutable string) {
-	parser := Parser{lexer: lexer, index: 0, exprError: false, hadError: false}
+func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
+	parser := Parser{lexer: lex, index: 0, exprError: false, hadError: false}
+	lex.Tokens = append(lex.Tokens, lexer.Token{Value: token.EOF, Beginning: lexer.Position{Line: lex.Tokens[len(lex.Tokens)-1].End.Line, Column: lex.Tokens[len(lex.Tokens)-1].End.Column}, End: lexer.Position{Line: lex.Tokens[len(lex.Tokens)-1].End.Line, Column: lex.Tokens[len(lex.Tokens)-1].End.Column}})
 	node := readFichier(&parser)
 	os.WriteFile("./test/parser/parsetree.json", []byte(node.toJson()), 0644)
-	graph := toAst(node, *lexer)
+	graph := toAst(node, *lex)
 	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
 	if parser.hadError {
-		logger.Fatal("Compilation failed")
+		// no crash for now
+		logger.Error("Compilation failed")
 		return
 	} else {
 		logger.Info("Compilation successful")
 	}
 	if printAst {
+		logger.Info("Rendering AST...")
 		cmd := exec.Command(pythonExecutable, "./test/parser/json_to_image.py")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		err := cmd.Start()
 		if err != nil {
 			logger.Error("Error while running python script", "error", err)
+			return
 		}
 		err = cmd.Wait()
-		//logger.Info("Compilation output", "ast", graph.toJson())
+		if err != nil {
+			logger.Error("Error while running python script", "error", err)
+			return
+		}
+		logger.Info("AST rendered")
 	}
 }
 
@@ -159,6 +167,15 @@ func (parser *Parser) advance2(tokens ...token.Token) {
 		}
 		parser.readToken()
 	}
+}
+
+func customError(parser *Parser, error string) {
+	line := parser.lexer.Tokens[parser.index].Beginning.Line
+	column := parser.lexer.Tokens[parser.index].Beginning.Column
+	file := parser.lexer.FileName + ":" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
+	logger.Error(file + " " + error)
+
+	parser.hadError = true
 }
 
 func unexpectedToken(parser *Parser, possible, got string) {
@@ -371,6 +388,15 @@ func readInit(parser *Parser) Node {
 		if parser.peekToken() == token.BEGIN {
 			return node
 		}
+		if parser.peekToken() == token.EQL {
+			// assume that this is a mistake and that the user meant to write := instead of =
+			customError(parser, "Malformed assignment statement. Did you mean to use := instead of =?")
+
+			parser.readToken()
+			node = Node{Type: "Init"}
+			node.addChild(readExpr(parser))
+			return node
+		}
 		unexpectedToken(parser, "; :", parser.peekTokenToString())
 	}
 	return node
@@ -389,6 +415,9 @@ fix:
 	default:
 		unexpectedToken(parser, "procedure ident type function begin", parser.peekTokenToString())
 		parser.advance([]token.Token{token.PROCEDURE, token.IDENT, token.TYPE, token.FUNCTION, token.BEGIN})
+		if parser.peekToken() == token.EOF {
+			return node
+		}
 		goto fix
 	}
 	return node
@@ -1220,6 +1249,16 @@ func readInstr2(parser *Parser) Node {
 		expectTokens(parser, []any{token.SEMICOLON})
 	default:
 		// TODO: look at this
+		if parser.peekToken() == token.EQL {
+			// assume that this is a mistake and that the user meant to write := instead of =
+			customError(parser, "Malformed assignment statement. Did you mean to use := instead of =?")
+
+			parser.readToken()
+			node = Node{Type: "Instr2Ident"}
+			node.addChild(readExpr(parser))
+			expectTokens(parser, []any{token.SEMICOLON})
+			return node
+		}
 		unexpectedToken(parser, "ident begin end return access : else . if for while elsif ; (", parser.peekTokenToString())
 	}
 	return node
