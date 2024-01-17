@@ -121,21 +121,28 @@ func Parse(lexer *lexer.Lexer, printAst bool, pythonExecutable string) {
 	graph := toAst(node, *lexer)
 	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
 	if parser.hadError {
-		logger.Fatal("Compilation failed")
+		// no crash for now
+		logger.Error("Compilation failed")
 		return
 	} else {
 		logger.Info("Compilation successful")
 	}
 	if printAst {
+		logger.Info("Rendering AST...")
 		cmd := exec.Command(pythonExecutable, "./test/parser/json_to_image.py")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		err := cmd.Start()
 		if err != nil {
 			logger.Error("Error while running python script", "error", err)
+			return
 		}
 		err = cmd.Wait()
-		//logger.Info("Compilation output", "ast", graph.toJson())
+		if err != nil {
+			logger.Error("Error while running python script", "error", err)
+			return
+		}
+		logger.Info("AST rendered")
 	}
 }
 
