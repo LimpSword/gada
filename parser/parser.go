@@ -415,6 +415,9 @@ fix:
 	default:
 		unexpectedToken(parser, "procedure ident type function begin", parser.peekTokenToString())
 		parser.advance([]token.Token{token.PROCEDURE, token.IDENT, token.TYPE, token.FUNCTION, token.BEGIN})
+		if parser.peekToken() == token.EOF {
+			return node
+		}
 		goto fix
 	}
 	return node
