@@ -582,6 +582,11 @@ func readModeOpt(parser *Parser) Node {
 		node = Node{Type: "ModeOptMode"}
 		node.addChild(readMode(parser))
 	default:
+		if parser.peekToken() == token.OUT {
+			customError(parser, "Malformed parameter. Did you mean to use in out instead?")
+			parser.readToken()
+			return node
+		}
 		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN})
 		unexpectedToken(parser, "ident access in", parser.peekTokenToString())
 	}
