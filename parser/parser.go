@@ -114,11 +114,12 @@ func (p *Parser) printTokensBefore(i int) {
 	fmt.Println()
 }
 
-func Parse(lexer *lexer.Lexer, printAst bool, pythonExecutable string) {
-	parser := Parser{lexer: lexer, index: 0, exprError: false, hadError: false}
+func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
+	parser := Parser{lexer: lex, index: 0, exprError: false, hadError: false}
+	lex.Tokens = append(lex.Tokens, lexer.Token{Value: token.EOF, Beginning: lexer.Position{Line: lex.Tokens[len(lex.Tokens)-1].End.Line, Column: lex.Tokens[len(lex.Tokens)-1].End.Column}, End: lexer.Position{Line: lex.Tokens[len(lex.Tokens)-1].End.Line, Column: lex.Tokens[len(lex.Tokens)-1].End.Column}})
 	node := readFichier(&parser)
 	os.WriteFile("./test/parser/parsetree.json", []byte(node.toJson()), 0644)
-	graph := toAst(node, *lexer)
+	graph := toAst(node, *lex)
 	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
 	if parser.hadError {
 		// no crash for now
