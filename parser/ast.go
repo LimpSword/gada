@@ -409,6 +409,13 @@ func makeChild(g *Graph, node int, exp string, newExpr string) {
 	// create node a child with type newExpr
 	g.nbNode++
 	newNode := g.nbNode
+	smallestChild := -1
+	for child := range g.gmap[node] {
+		if smallestChild == -1 || child < smallestChild {
+			smallestChild = child
+		}
+	}
+	upTheNode(g, smallestChild)
 	g.gmap[newNode] = make(map[int]struct{})
 	g.types[newNode] = newExpr
 	g.fathers[newNode] = node
@@ -417,10 +424,71 @@ func makeChild(g *Graph, node int, exp string, newExpr string) {
 	g.types[node] = exp
 	g.terminals[newNode] = struct{}{}
 	g.meaningful[newNode] = struct{}{}
-	switchNodes(g, node, newNode)
+
+	switchNodes(g, smallestChild, newNode)
+
 }
 
 func switchNodes(g *Graph, node1 int, node2 int) {
+	// switch two nodes
+	// handle fathers
+	dadNode1 := g.fathers[node1]
+	dadNode2 := g.fathers[node2]
+
+	delete(g.gmap[dadNode1], node1)
+	delete(g.gmap[dadNode2], node2)
+
+	g.gmap[dadNode1][node2] = struct{}{}
+	g.gmap[dadNode2][node1] = struct{}{}
+
+	// handle childs
+	stock := []int{}
+	for child, _ := range g.gmap[node1] {
+		stock = append(stock, child)
+		delete(g.gmap[node1], child)
+	}
+	for child, _ := range g.gmap[node2] {
+		g.gmap[node1][child] = struct{}{}
+		g.fathers[child] = node1
+		delete(g.gmap[node2], child)
+	}
+	for _, child := range stock {
+		g.gmap[node2][child] = struct{}{}
+		g.fathers[child] = node2
+	}
+
+	// handle types
+	g.types[node1], g.types[node2] = g.types[node2], g.types[node1]
+	// handle terminals
+	_, okn1 := g.terminals[node1]
+	_, okn2 := g.terminals[node2]
+	delete(g.terminals, node1)
+	delete(g.terminals, node2)
+	if okn1 {
+		g.terminals[node2] = struct{}{}
+	}
+	if okn2 {
+		g.terminals[node1] = struct{}{}
+	}
+	// handle meaningful
+	_, okm1 := g.meaningful[node1]
+	_, okm2 := g.meaningful[node2]
+	delete(g.meaningful, node1)
+	delete(g.meaningful, node2)
+	if okm1 {
+		g.meaningful[node2] = struct{}{}
+	}
+	if okm2 {
+		g.meaningful[node1] = struct{}{}
+	}
+	// handle depth
+	g.depth[node1], g.depth[node2] = g.depth[node2], g.depth[node1]
+
+	g.fathers[node1] = dadNode2
+	g.fathers[node2] = dadNode1
+}
+
+func invertId(g *Graph, node1 int, node2 int) {
 	// switch two nodes
 	// handle fathers
 	dadNode1 := g.fathers[node1]
