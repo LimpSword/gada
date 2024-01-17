@@ -633,7 +633,7 @@ func readOr_expr_tail(parser *Parser, nd *Node) Node {
 	}
 	switch parser.peekToken() {
 	case token.SEMICOLON, token.RPAREN, token.THEN, token.COMMA, token.LOOP:
-		node.Type = "OrExprTail"
+		//node.Type = "OrExprTail"
 		return node
 	case token.PERIOD:
 		if parser.peekTokenFurther(1) == token.PERIOD {
@@ -707,7 +707,7 @@ func readAnd_expr_tail(parser *Parser, nd *Node) Node {
 	}
 	switch parser.peekToken() {
 	case token.SEMICOLON, token.RPAREN, token.OR, token.THEN, token.COMMA, token.LOOP:
-		node.Type = "AndExprTail"
+		//node.Type = "AndExprTail"
 		return node
 	case token.PERIOD:
 		if parser.peekTokenFurther(1) == token.PERIOD {

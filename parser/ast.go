@@ -101,7 +101,7 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 	case "OrExprTail2Else":
 		for _, child := range node.Children {
 			if child.Type == "OrExprTailOr" {
-				return "or", true
+				return "or else", true
 			}
 		}
 		return node.Type, false
@@ -113,7 +113,7 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 	case "AndExprTail2Then":
 		for _, child := range node.Children {
 			if child.Type == "AndExprTailAnd" {
-				return "and", true
+				return "and then", true
 			}
 		}
 		return node.Type, false
