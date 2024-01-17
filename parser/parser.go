@@ -169,6 +169,15 @@ func (parser *Parser) advance2(tokens ...token.Token) {
 	}
 }
 
+func customError(parser *Parser, error string) {
+	line := parser.lexer.Tokens[parser.index].Beginning.Line
+	column := parser.lexer.Tokens[parser.index].Beginning.Column
+	file := parser.lexer.FileName + ":" + strconv.Itoa(line) + ":" + strconv.Itoa(column)
+	logger.Error(file + " " + error)
+
+	parser.hadError = true
+}
+
 func unexpectedToken(parser *Parser, possible, got string) {
 	red := "\x1b[0;31m"
 	reset := "\x1b[0m"
@@ -377,6 +386,15 @@ func readInit(parser *Parser) Node {
 	default:
 		// Error recovery, if the next token is a valid expression start, assume there is a missing semicolon
 		if parser.peekToken() == token.BEGIN {
+			return node
+		}
+		if parser.peekToken() == token.EQL {
+			// assume that this is a mistake and that the user meant to write := instead of =
+			customError(parser, "Malformed assignment statement. Did you mean to use := instead of =?")
+
+			parser.readToken()
+			node = Node{Type: "Init"}
+			node.addChild(readExpr(parser))
 			return node
 		}
 		unexpectedToken(parser, "; :", parser.peekTokenToString())
@@ -1228,6 +1246,16 @@ func readInstr2(parser *Parser) Node {
 		expectTokens(parser, []any{token.SEMICOLON})
 	default:
 		// TODO: look at this
+		if parser.peekToken() == token.EQL {
+			// assume that this is a mistake and that the user meant to write := instead of =
+			customError(parser, "Malformed assignment statement. Did you mean to use := instead of =?")
+
+			parser.readToken()
+			node = Node{Type: "Instr2Ident"}
+			node.addChild(readExpr(parser))
+			expectTokens(parser, []any{token.SEMICOLON})
+			return node
+		}
 		unexpectedToken(parser, "ident begin end return access : else . if for while elsif ; (", parser.peekTokenToString())
 	}
 	return node
