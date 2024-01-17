@@ -234,7 +234,12 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return "params", true
 	case "IdentPlusComma":
 		return "sameType", true
-		// variable declaration
+	case "Mode2Ident":
+		return "in", true
+	case "Mode2Out":
+		return "in out", true
+	//case
+	// variable declaration
 	case "DeclVar":
 		return "var", true
 		// for loop
