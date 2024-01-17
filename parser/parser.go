@@ -456,7 +456,9 @@ func readChampsPlus2(parser *Parser) Node {
 		node = Node{Type: "ChampsPlus2End"}
 	default:
 		// TODO
-		logger.Fatal("Unexpected token", "possible", "ident end", "got", tkn)
+		node = Node{Type: "ChampsPlus2End"}
+		parser.advance([]token.Token{token.END})
+		logger.Error("Unexpected token", "possible", "ident end", "got", tkn)
 	}
 	return node
 }
