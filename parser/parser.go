@@ -1234,7 +1234,17 @@ func readInstr2(parser *Parser) Node {
 		}
 		node = Node{Type: "Instr2Ident"}
 		node.addChild(readInstr3(parser))
-		expectTokens(parser, []any{token.COLON, token.EQL})
+		if parser.peekToken() == token.EQL {
+			parser.readToken()
+			customError(parser, "Malformed assignment statement. Did you mean to use := instead of =?")
+		} else {
+			if parser.peekToken() == token.COLON && parser.peekTokenFurther(1) != token.EQL {
+				parser.readToken()
+				customError(parser, "Malformed assignment statement. Did you mean to use := instead of :?")
+			} else {
+				expectTokens(parser, []any{token.COLON, token.EQL})
+			}
+		}
 		node.addChild(readExpr(parser))
 		expectTokens(parser, []any{token.SEMICOLON})
 	case token.SEMICOLON:
@@ -1268,9 +1278,10 @@ func readInstr3(parser *Parser) Node {
 	var node Node
 	switch parser.peekToken() {
 	case token.COLON:
-		expectTokens(parser, []any{token.COLON, token.EQL})
+		//
+		//expectTokens(parser, []any{token.COLON, token.EQL})
 		node = Node{Type: ":="}
-		parser.unreadTokens(2)
+		//parser.unreadTokens(2)
 	case token.PERIOD:
 		if parser.peekTokenFurther(1) == token.PERIOD {
 			node = Node{Type: "OrExprTail"}
@@ -1283,6 +1294,10 @@ func readInstr3(parser *Parser) Node {
 	default:
 		// error recovery
 		if parser.peekTokenFurther(1) == token.END {
+			return node
+		}
+		if parser.peekToken() == token.EQL {
+			// Deal with error later
 			return node
 		}
 		parser.advance2(token.COLON, token.PERIOD)
