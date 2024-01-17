@@ -147,6 +147,21 @@ func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
 	}
 }
 
+func (parser *Parser) advanceExpr(tokens []token.Token) {
+	for parser.peekToken() != token.EOF {
+		for _, tkn := range tokens {
+			if parser.peekToken() == tkn {
+				return
+			} else if parser.peekToken() == token.IDENT {
+				if parser.peekTokenFurther(1) == token.COLON || parser.peekTokenFurther(1) == token.EQL {
+					return
+				}
+			}
+		}
+		parser.readToken()
+	}
+}
+
 func (parser *Parser) advance(tokens []token.Token) {
 	for parser.peekToken() != token.EOF {
 		for _, tkn := range tokens {
@@ -601,7 +616,7 @@ func readExpr(parser *Parser) Node {
 		node.addChild(readOr_expr(parser))
 	default:
 		unexpectedToken(parser, "ident ( not - int char true false null new char", parser.peekTokenToString())
-		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END})
+		parser.advanceExpr([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END})
 		parser.exprError = false
 	}
 	return node
@@ -616,7 +631,7 @@ func readOr_expr(parser *Parser) Node {
 		node = readOr_expr_tail(parser, &node)
 	default:
 		unexpectedToken(parser, "ident ( not - int char true false null new char", parser.peekTokenToString())
-		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
+		parser.advanceExpr([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
 		parser.exprError = false
 	}
 	return node
@@ -652,7 +667,7 @@ func readOr_expr_tail(parser *Parser, nd *Node) Node {
 		expectTokens(parser, []any{token.PERIOD})
 		parser.readToken()
 	default:
-		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
+		parser.advanceExpr([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
 		parser.exprError = false
 		//logger.Fatal("Unexpected token", "possible", "or ; ) then , loop .", "got", parser.peekToken())
 	}
@@ -674,7 +689,7 @@ func readOr_expr_tail2(parser *Parser, nd *Node) Node {
 		node.addChild(prev)
 		node.addChild(readAnd_expr(parser))
 	default:
-		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
+		parser.advanceExpr([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
 		parser.exprError = false
 		//logger.Fatal("Unexpected token", "possible", "else ident ( not - int char true false null new char", "got", parser.peekToken())
 	}
@@ -690,7 +705,7 @@ func readAnd_expr(parser *Parser) Node {
 		node = readAnd_expr_tail(parser, &node)
 	default:
 		unexpectedToken(parser, "ident ( not - int char true false null new char", parser.peekTokenToString())
-		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
+		parser.advanceExpr([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
 		parser.exprError = false
 	}
 	return node
@@ -766,7 +781,7 @@ func readEquality_expr(parser *Parser) Node {
 		node.addChild(readEquality_expr_tail(parser))
 	default:
 		unexpectedToken(parser, "ident ( not - int char true false null new char", parser.peekTokenToString())
-		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
+		parser.advanceExpr([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
 		parser.exprError = false
 	}
 	return node
@@ -814,7 +829,7 @@ func readRelational_expr(parser *Parser) Node {
 		node.addChild(readRelational_expr_tail(parser))
 	default:
 		unexpectedToken(parser, "ident ( not - int char true false null new char", parser.peekTokenToString())
-		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
+		parser.advanceExpr([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
 		parser.exprError = false
 	}
 	return node
@@ -872,7 +887,7 @@ func readAdditive_expr(parser *Parser) Node {
 		node = readAdditive_expr_tail(parser, &node)
 	default:
 		unexpectedToken(parser, "ident ( not - int char true false null new char", parser.peekTokenToString())
-		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
+		parser.advanceExpr([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
 		parser.exprError = false
 	}
 	return node
@@ -926,7 +941,7 @@ func readMultiplicative_expr(parser *Parser) Node {
 		node = readMultiplicative_expr_tail(parser, &node)
 	default:
 		unexpectedToken(parser, "ident ( not - int char true false null new char", parser.peekTokenToString())
-		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
+		parser.advanceExpr([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
 		parser.exprError = false
 	}
 	return node
@@ -993,7 +1008,7 @@ func readUnary_expr(parser *Parser) Node {
 		node.addChild(readPrimary_expr(parser))
 	default:
 		unexpectedToken(parser, "- not ident ( int char true false null new char", parser.peekTokenToString())
-		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
+		parser.advanceExpr([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
 		parser.exprError = false
 	}
 	return node
@@ -1041,7 +1056,7 @@ func readPrimary_expr(parser *Parser) Node {
 		expectTokens(parser, []any{token.RPAREN})
 	default:
 		unexpectedToken(parser, "int char true false null ( not new ident char", parser.peekTokenToString())
-		parser.advance([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
+		parser.advanceExpr([]token.Token{token.SEMICOLON, token.RPAREN, token.COLON, token.COMMA, token.RETURN, token.END, token.BEGIN})
 		parser.exprError = false
 	}
 	return node
