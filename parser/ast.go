@@ -262,7 +262,7 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 	case "Champs":
 		return "attrib", true
 	case "PrimaryExprNew":
-		return "new", true
+		return "ExprNew", true
 		// Char cast
 	case "PrimaryExprCharTok":
 		return "CharTok", true
@@ -647,7 +647,7 @@ func upTheNode(g *Graph, node int) {
 		makeChild(g, node, "call", "not")
 	case "callSub":
 		makeChild(g, node, "call", "-")
-	case "new":
+	case "ExprNew":
 		makeChild(g, node, "memory", "new")
 	case "attrib":
 		if g.types[g.fathers[node]] == "ChampsPlus2" {
