@@ -624,16 +624,26 @@ func upTheNode(g *Graph, node int) {
 			goUpReplaceNode(g, node, "decl")
 		}
 	case "sameType":
+		changed := false
 		for child, _ := range g.gmap[node] {
 			if g.types[child] == "IdentPlusComma2Comma" {
+				changed = true
 				goUpChilds(g, child)
 			}
 		}
+		if changed {
+			upTheNode(g, node)
+		}
 	case "args":
+		changed := false
 		for child, _ := range g.gmap[node] {
 			if g.types[child] == "ExprPlusComma2Comma" {
+				changed = true
 				goUpChilds(g, child)
 			}
+		}
+		if changed {
+			upTheNode(g, node)
 		}
 	case "InstrPlus2":
 		if g.types[g.fathers[node]] == "body" {
