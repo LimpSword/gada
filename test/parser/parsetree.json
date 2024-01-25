@@ -1,0 +1,123 @@
+{
+  "Type": "Fichier",
+  "Index": 0,
+  "Children": [
+    {
+      "Type": "Ident",
+      "Index": 5,
+      "Children": null
+    },
+    {
+      "Type": "DeclStarBegin",
+      "Index": 0,
+      "Children": null
+    },
+    {
+      "Type": "InstrPlus",
+      "Index": 0,
+      "Children": [
+        {
+          "Type": "InstrIdent",
+          "Index": 0,
+          "Children": [
+            {
+              "Type": "Ident",
+              "Index": 6,
+              "Children": null
+            },
+            {
+              "Type": "Instr2Ident",
+              "Index": 0,
+              "Children": [
+                {
+                  "Type": ":=",
+                  "Index": 0,
+                  "Children": null
+                },
+                {
+                  "Type": "ExprIdent",
+                  "Index": 0,
+                  "Children": [
+                    {
+                      "Type": "OrExprTail",
+                      "Index": 0,
+                      "Children": [
+                        {
+                          "Type": "AndExprTail",
+                          "Index": 0,
+                          "Children": [
+                            {
+                              "Type": "EqualityExpr",
+                              "Index": 0,
+                              "Children": [
+                                {
+                                  "Type": "RelationalExpr",
+                                  "Index": 0,
+                                  "Children": [
+                                    {
+                                      "Type": "AdditiveExpr",
+                                      "Index": 0,
+                                      "Children": [
+                                        {
+                                          "Type": "MultiplicativeExpr",
+                                          "Index": 0,
+                                          "Children": [
+                                            {
+                                              "Type": "UnaryExpr",
+                                              "Index": 0,
+                                              "Children": [
+                                                {
+                                                  "Type": "PrimaryExprNew",
+                                                  "Index": 0,
+                                                  "Children": [
+                                                    {
+                                                      "Type": "Ident",
+                                                      "Index": 7,
+                                                      "Children": null
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "Type": "RelationalExprTail",
+                                      "Index": 0,
+                                      "Children": null
+                                    }
+                                  ]
+                                },
+                                {
+                                  "Type": "EqualityExprTail",
+                                  "Index": 0,
+                                  "Children": null
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "InstrPlus2",
+          "Index": 0,
+          "Children": null
+        }
+      ]
+    },
+    {
+      "Type": "IdentOpt",
+      "Index": 0,
+      "Children": null
+    }
+  ]
+}
