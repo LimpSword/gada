@@ -121,6 +121,7 @@ func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
 	os.WriteFile("./test/parser/parsetree.json", []byte(node.toJson()), 0644)
 	graph := toAst(node, *lex)
 	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
+	ReadAST(graph)
 	if parser.hadError {
 		// no crash for now
 		logger.Error("Compilation failed")
