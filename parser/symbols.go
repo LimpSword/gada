@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"encoding/json"
 	"fmt"
 	"golang.org/x/exp/maps"
 	"slices"
@@ -10,8 +11,10 @@ type Scope struct {
 	Region int
 	Nested int
 
-	Parent *Scope
-	Table  map[string]Symbol
+	parent        *Scope
+	Children      *[]*Scope
+	Table         map[string]Symbol
+	RegionCounter *int
 }
 
 type Type int
@@ -36,17 +39,17 @@ type Symbol interface {
 }
 
 type Variable struct {
-	name    string
-	sType   Type
+	VName   string
+	SType   Type
 	IsParam bool
 }
 
 type Function struct {
-	name       string
-	sType      Type
-	paramCount int
-	params     []Variable
-	returnType Type
+	FName      string
+	SType      Type
+	ParamCount int
+	Params     []Variable
+	ReturnType Type
 }
 
 type Procedure struct {
@@ -63,11 +66,11 @@ type Record struct {
 }
 
 func (v Variable) Name() string {
-	return v.name
+	return v.VName
 }
 
 func (v Variable) Type() Type {
-	return v.sType
+	return v.SType
 }
 
 func (v Variable) Offset() int {
@@ -75,11 +78,11 @@ func (v Variable) Offset() int {
 }
 
 func (f Function) Name() string {
-	return f.name
+	return f.FName
 }
 
 func (f Function) Type() Type {
-	return f.sType
+	return f.SType
 }
 
 func (f Function) Offset() int {
@@ -91,12 +94,19 @@ func getSymbolType(symbol string) Type {
 }
 
 func newScope(parent *Scope) *Scope {
-	return &Scope{Parent: parent, Table: make(map[string]Symbol)}
+	var regionCounter *int
+	if parent == nil {
+		regionCounter = new(int)
+		*regionCounter = 0
+	} else {
+		regionCounter = parent.RegionCounter
+	}
+	return &Scope{parent: parent, Table: make(map[string]Symbol), Children: &[]*Scope{}, RegionCounter: regionCounter}
 }
 
 func isNodeNewScope(node string) bool {
 	switch node {
-	case "function", "procedure", "record", "for", "while", "if", "else", "elif":
+	case "function", "procedure", "record", "for", "while", "if", "else", "elif", "decl":
 		return true
 	}
 	return false
@@ -113,7 +123,13 @@ func ReadAST(graph Graph) {
 
 	dfs(graph, fileNodeIndex, &currentScope)
 
-	fmt.Println(fileScope)
+	// fileScope to json
+	b, err := json.MarshalIndent(fileScope, "", "  ")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(b))
 }
 
 func dfs(graph Graph, node int, currentScope *Scope) {
@@ -121,31 +137,38 @@ func dfs(graph Graph, node int, currentScope *Scope) {
 	slices.Sort(children)
 	for _, child := range children {
 		scope := *currentScope
+
+		switch graph.types[child] {
+		case ":=":
+			sorted := maps.Keys(graph.gmap[child])
+			slices.Sort(sorted)
+			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: Int})
+		case "var":
+			sorted := maps.Keys(graph.gmap[child])
+			slices.Sort(sorted)
+			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: Int})
+		case "param":
+			sorted := maps.Keys(graph.gmap[child])
+			slices.Sort(sorted)
+			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: Int, IsParam: true})
+
+			// TODO: add param to parent function or procedure
+		case "function":
+			sorted := maps.Keys(graph.gmap[child])
+			slices.Sort(sorted)
+			scope.addSymbol(Function{FName: graph.types[sorted[0]], SType: Func})
+		}
+
 		if isNodeNewScope(graph.types[child]) {
 			scope = *newScope(currentScope)
-			scope.Nested++
-			scope.Region++
-			fmt.Println("new scope")
-		} else {
-			switch graph.types[child] {
-			case ":=":
-				sorted := maps.Keys(graph.gmap[child])
-				slices.Sort(sorted)
-				scope.addSymbol(Variable{name: graph.types[sorted[0]], sType: Int})
-			case "var":
-				sorted := maps.Keys(graph.gmap[child])
-				slices.Sort(sorted)
-				scope.addSymbol(Variable{name: graph.types[sorted[0]], sType: Int})
-			case "param":
-				sorted := maps.Keys(graph.gmap[child])
-				slices.Sort(sorted)
-				scope.addSymbol(Variable{name: graph.types[sorted[0]], sType: Int, IsParam: true})
-			case "function":
-				sorted := maps.Keys(graph.gmap[child])
-				slices.Sort(sorted)
-				scope.addSymbol(Function{name: graph.types[sorted[0]], sType: Func})
-			}
+			scope.Nested = currentScope.Nested + 1
+			*scope.RegionCounter = *currentScope.RegionCounter + 1
+			scope.Region = *currentScope.RegionCounter
+			fmt.Println("new scope", currentScope.Region, len(*currentScope.Children))
 
+			*currentScope.Children = append(*currentScope.Children, &scope)
+
+			fmt.Println("new scope", currentScope.Region, len(*currentScope.Children))
 		}
 
 		dfs(graph, child, &scope)
