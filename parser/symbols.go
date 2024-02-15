@@ -14,7 +14,7 @@ type Scope struct {
 	parent        *Scope
 	Children      *[]*Scope
 	Table         map[string]Symbol
-	RegionCounter *int
+	regionCounter *int
 }
 
 type Type int
@@ -48,15 +48,17 @@ type Function struct {
 	FName      string
 	SType      Type
 	ParamCount int
-	Params     []Variable
+	Params     *[]*Variable
 	ReturnType Type
+	children   []int
 }
 
 type Procedure struct {
-	Name       string
-	Type       Type
+	PName      string
+	PType      Type
 	ParamCount int
-	Params     []Variable
+	Params     *[]*Variable
+	children   []int
 }
 
 type Record struct {
@@ -89,6 +91,18 @@ func (f Function) Offset() int {
 	return 0
 }
 
+func (p Procedure) Name() string {
+	return p.PName
+}
+
+func (p Procedure) Type() Type {
+	return p.PType
+}
+
+func (p Procedure) Offset() int {
+	return 0
+}
+
 func getSymbolType(symbol string) Type {
 	return Int
 }
@@ -99,9 +113,9 @@ func newScope(parent *Scope) *Scope {
 		regionCounter = new(int)
 		*regionCounter = 0
 	} else {
-		regionCounter = parent.RegionCounter
+		regionCounter = parent.regionCounter
 	}
-	return &Scope{parent: parent, Table: make(map[string]Symbol), Children: &[]*Scope{}, RegionCounter: regionCounter}
+	return &Scope{parent: parent, Table: make(map[string]Symbol), Children: &[]*Scope{}, regionCounter: regionCounter}
 }
 
 func isNodeNewScope(node string) bool {
@@ -152,18 +166,29 @@ func dfs(graph Graph, node int, currentScope *Scope) {
 			slices.Sort(sorted)
 			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: Int, IsParam: true})
 
-			// TODO: add param to parent function or procedure
+			// Add param to parent function or procedure
+			for _, symbol := range scope.parent.Table {
+				if symbol.Type() == Func && slices.Contains(symbol.(Function).children, child) {
+					function := symbol.(Function)
+					*function.Params = append(*function.Params, &Variable{VName: graph.types[sorted[0]], SType: Int, IsParam: true})
+					function.ParamCount++
+				} else if symbol.Type() == Proc && slices.Contains(symbol.(Procedure).children, child) {
+					procedure := symbol.(Procedure)
+					*procedure.Params = append(*procedure.Params, &Variable{VName: graph.types[sorted[0]], SType: Int, IsParam: true})
+					procedure.ParamCount++
+				}
+			}
 		case "function":
 			sorted := maps.Keys(graph.gmap[child])
 			slices.Sort(sorted)
-			scope.addSymbol(Function{FName: graph.types[sorted[0]], SType: Func})
+			scope.addSymbol(Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: &[]*Variable{}})
 		}
 
 		if isNodeNewScope(graph.types[child]) {
 			scope = *newScope(currentScope)
 			scope.Nested = currentScope.Nested + 1
-			*scope.RegionCounter = *currentScope.RegionCounter + 1
-			scope.Region = *currentScope.RegionCounter
+			*scope.regionCounter = *currentScope.regionCounter + 1
+			scope.Region = *currentScope.regionCounter
 			fmt.Println("new scope", currentScope.Region, len(*currentScope.Children))
 
 			*currentScope.Children = append(*currentScope.Children, &scope)
