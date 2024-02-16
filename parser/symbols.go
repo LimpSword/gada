@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"golang.org/x/exp/maps"
 	"slices"
+	"strings"
 )
 
 type Scope struct {
@@ -24,38 +25,39 @@ const (
 	Char
 	Bool
 	Float
-	Func
-	Proc
 	Rec
+	Func    = "func"
+	Proc    = "proc"
+	Unknown = "unknown"
 )
 
 type Symbol interface {
 	// Name returns the name of the symbol
 	Name() string
 	// Type returns the type of the symbol
-	Type() Type
+	Type() string
 	// Offset returns the offset of the symbol
 	Offset() int
 }
 
 type Variable struct {
 	VName   string
-	SType   Type
+	SType   string
 	IsParam bool
 }
 
 type Function struct {
 	FName      string
-	SType      Type
+	SType      string
 	ParamCount int
 	Params     *[]*Variable
-	ReturnType Type
+	ReturnType string
 	children   []int
 }
 
 type Procedure struct {
 	PName      string
-	PType      Type
+	PType      string
 	ParamCount int
 	Params     *[]*Variable
 	children   []int
@@ -71,7 +73,7 @@ func (v Variable) Name() string {
 	return v.VName
 }
 
-func (v Variable) Type() Type {
+func (v Variable) Type() string {
 	return v.SType
 }
 
@@ -83,7 +85,7 @@ func (f Function) Name() string {
 	return f.FName
 }
 
-func (f Function) Type() Type {
+func (f Function) Type() string {
 	return f.SType
 }
 
@@ -95,7 +97,7 @@ func (p Procedure) Name() string {
 	return p.PName
 }
 
-func (p Procedure) Type() Type {
+func (p Procedure) Type() string {
 	return p.PType
 }
 
@@ -103,8 +105,8 @@ func (p Procedure) Offset() int {
 	return 0
 }
 
-func getSymbolType(symbol string) Type {
-	return Int
+func getSymbolType(symbol string) string {
+	return strings.ToLower(symbol)
 }
 
 func newScope(parent *Scope) *Scope {
@@ -156,32 +158,36 @@ func dfs(graph Graph, node int, currentScope *Scope) {
 		case ":=":
 			sorted := maps.Keys(graph.gmap[child])
 			slices.Sort(sorted)
-			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: Int})
+			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: Unknown})
 		case "var":
 			sorted := maps.Keys(graph.gmap[child])
 			slices.Sort(sorted)
-			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: Int})
+			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]])})
 		case "param":
 			sorted := maps.Keys(graph.gmap[child])
 			slices.Sort(sorted)
-			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: Int, IsParam: true})
+			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]]), IsParam: true})
 
 			// Add param to parent function or procedure
 			for _, symbol := range scope.parent.Table {
 				if symbol.Type() == Func && slices.Contains(symbol.(Function).children, child) {
 					function := symbol.(Function)
-					*function.Params = append(*function.Params, &Variable{VName: graph.types[sorted[0]], SType: Int, IsParam: true})
+					*function.Params = append(*function.Params, &Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]]), IsParam: true})
 					function.ParamCount++
 				} else if symbol.Type() == Proc && slices.Contains(symbol.(Procedure).children, child) {
 					procedure := symbol.(Procedure)
-					*procedure.Params = append(*procedure.Params, &Variable{VName: graph.types[sorted[0]], SType: Int, IsParam: true})
+					*procedure.Params = append(*procedure.Params, &Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]]), IsParam: true})
 					procedure.ParamCount++
 				}
 			}
 		case "function":
 			sorted := maps.Keys(graph.gmap[child])
 			slices.Sort(sorted)
-			scope.addSymbol(Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: &[]*Variable{}})
+			scope.addSymbol(Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: &[]*Variable{}, ReturnType: getSymbolType(graph.types[sorted[2]])})
+		case "procedure":
+			sorted := maps.Keys(graph.gmap[child])
+			slices.Sort(sorted)
+			scope.addSymbol(Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: &[]*Variable{}})
 		}
 
 		if isNodeNewScope(graph.types[child]) {
