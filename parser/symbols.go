@@ -128,41 +128,48 @@ func isNodeNewScope(node string) bool {
 	return false
 }
 
+func (scope *Scope) String() string {
+	return fmt.Sprintf("Region: %d, Nested: %d, Table: %v", scope.Region, scope.Nested, scope.Table)
+}
+
 func (scope *Scope) addSymbol(symbol Symbol) {
 	scope.Table[symbol.Name()] = symbol
 }
 
-func ReadAST(graph Graph) {
+func ReadAST(graph Graph) (*Scope, error) {
 	fileScope := newScope(nil)
 	currentScope := *fileScope
 	fileNodeIndex := 0
 
-	dfs(graph, fileNodeIndex, &currentScope)
+	dfsSymbols(graph, fileNodeIndex, &currentScope)
 
 	// fileScope to json
 	b, err := json.MarshalIndent(fileScope, "", "  ")
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil, err
 	}
 	fmt.Println(string(b))
+	return fileScope, nil
 }
 
-func dfs(graph Graph, node int, currentScope *Scope) {
+var test = false
+
+func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 	children := maps.Keys(graph.gmap[node])
 	slices.Sort(children)
 	for _, child := range children {
 		scope := *currentScope
 
 		switch graph.types[child] {
-		case ":=":
-			sorted := maps.Keys(graph.gmap[child])
-			slices.Sort(sorted)
-			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: Unknown})
+		// A node := is not a declaration, it's an assignment
+		case ":=", "body":
+			graph.scopes[child] = &scope
 		case "var":
 			sorted := maps.Keys(graph.gmap[child])
 			slices.Sort(sorted)
 			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]])})
+			graph.scopes[child] = &scope
 		case "param":
 			sorted := maps.Keys(graph.gmap[child])
 			slices.Sort(sorted)
@@ -180,28 +187,35 @@ func dfs(graph Graph, node int, currentScope *Scope) {
 					procedure.ParamCount++
 				}
 			}
+			graph.scopes[child] = &scope
 		case "function":
 			sorted := maps.Keys(graph.gmap[child])
 			slices.Sort(sorted)
 			scope.addSymbol(Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: &[]*Variable{}, ReturnType: getSymbolType(graph.types[sorted[2]])})
+			graph.scopes[child] = &scope
 		case "procedure":
 			sorted := maps.Keys(graph.gmap[child])
 			slices.Sort(sorted)
 			scope.addSymbol(Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: &[]*Variable{}})
+			graph.scopes[child] = &scope
 		}
 
 		if isNodeNewScope(graph.types[child]) {
-			scope = *newScope(currentScope)
-			scope.Nested = currentScope.Nested + 1
-			*scope.regionCounter = *currentScope.regionCounter + 1
-			scope.Region = *currentScope.regionCounter
-			fmt.Println("new scope", currentScope.Region, len(*currentScope.Children))
+			if test {
+				scope = *newScope(currentScope)
+				scope.Nested = currentScope.Nested + 1
+				*scope.regionCounter = *currentScope.regionCounter + 1
+				scope.Region = *currentScope.regionCounter
 
-			*currentScope.Children = append(*currentScope.Children, &scope)
+				*currentScope.Children = append(*currentScope.Children, &scope)
 
-			fmt.Println("new scope", currentScope.Region, len(*currentScope.Children))
+				fmt.Println("new scope", currentScope.Region, len(*currentScope.Children))
+			} else {
+				test = true
+			}
+
 		}
 
-		dfs(graph, child, &scope)
+		dfsSymbols(graph, child, &scope)
 	}
 }
