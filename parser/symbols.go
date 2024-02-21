@@ -161,18 +161,14 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 	for _, child := range children {
 		scope := *currentScope
 
+		sorted := maps.Keys(graph.gmap[child])
+		slices.Sort(sorted)
+
 		switch graph.types[child] {
 		// A node := is not a declaration, it's an assignment
-		case ":=", "body":
-			graph.scopes[child] = &scope
 		case "var":
-			sorted := maps.Keys(graph.gmap[child])
-			slices.Sort(sorted)
 			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]])})
-			graph.scopes[child] = &scope
 		case "param":
-			sorted := maps.Keys(graph.gmap[child])
-			slices.Sort(sorted)
 			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]]), IsParam: true})
 
 			// Add param to parent function or procedure
@@ -187,18 +183,12 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 					procedure.ParamCount++
 				}
 			}
-			graph.scopes[child] = &scope
 		case "function":
-			sorted := maps.Keys(graph.gmap[child])
-			slices.Sort(sorted)
 			scope.addSymbol(Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: &[]*Variable{}, ReturnType: getSymbolType(graph.types[sorted[2]])})
-			graph.scopes[child] = &scope
 		case "procedure":
-			sorted := maps.Keys(graph.gmap[child])
-			slices.Sort(sorted)
 			scope.addSymbol(Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: &[]*Variable{}})
-			graph.scopes[child] = &scope
 		}
+		graph.scopes[child] = &scope
 
 		if isNodeNewScope(graph.types[child]) {
 			if test {
