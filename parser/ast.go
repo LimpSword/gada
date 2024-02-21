@@ -14,6 +14,7 @@ type Graph struct {
 	meaningful map[int]struct{}
 	fathers    map[int]int
 	depth      map[int]int
+	scopes     map[int]*Scope
 	nbNode     int
 	lexer      *lexer.Lexer
 }
@@ -57,7 +58,7 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		return lexer.Lexi[node.Index-1], true
 		// Char
 	case "PrimaryExprChar":
-		return lexer.Lexi[node.Index-1], true
+		return "'" + lexer.Lexi[node.Index-1] + "'", true
 		// True
 	case "PrimaryExprTrue":
 		return "True", true
@@ -312,6 +313,7 @@ func createGraph(node Node, lexer lexer.Lexer) *Graph {
 	graph.meaningful = make(map[int]struct{})
 	graph.fathers = make(map[int]int)
 	graph.depth = make(map[int]int)
+	graph.scopes = make(map[int]*Scope)
 	graph.nbNode = 0
 	addNodes(&node, &graph, lexer, 1, true)
 
