@@ -599,7 +599,7 @@ func Contains(slice []string, term string) bool {
 func removeUselessTerminals(g *Graph) {
 	uselessKeywords := []string{"Access2", "InstrPlus2", "DeclStarBegin", "Instr2Semicolon", "ExprPlusComma2Rparen", "",
 		"ElseIfStar", "IdentPlusComma2Colon", "ParamPlusSemicolon2RParen", "PrimaryExpr3", "InitSemicolon", "ParamsOpt",
-		"ModeOpt", "ReverseInstr", "ChampsPlus2End", "ElseInstrOptEnd", "ExprOptSemicolon",
+		"ModeOpt", "ReverseInstr", "decl", "ChampsPlus2End", "ElseInstrOptEnd", "ExprOptSemicolon",
 		"OrExprTail", "AndExprTail", "EqualityExprTail", "RelationalExprTail"}
 
 	for term := range g.terminals {
