@@ -324,15 +324,11 @@ func clearchains(g *Graph) {
 	// remove chains of single node link to each other
 	for term, _ := range g.meaningful {
 		tpTo := term
-		for len(g.gmap[g.fathers[tpTo]]) == 1 {
-			if _, ok := g.meaningful[g.fathers[tpTo]]; !ok {
-				pastNode := tpTo
-				tpTo = g.fathers[tpTo]
-				if pastNode != term {
-					cleanNode(g, pastNode)
-				}
-			} else {
-				break
+		for len(g.gmap[g.fathers[tpTo]]) == 1 && !keepUsefulNodes(g, g.fathers[tpTo]) {
+			pastNode := tpTo
+			tpTo = g.fathers[tpTo]
+			if pastNode != term {
+				cleanNode(g, pastNode)
 			}
 		}
 		if tpTo != term {
@@ -594,6 +590,14 @@ func Contains(slice []string, term string) bool {
 		}
 	}
 	return false
+}
+
+func keepUsefulNodes(g *Graph, term int) bool {
+	usefullKeywords := []string{"params", "decl", "body"}
+	if _, ok := g.meaningful[g.fathers[term]]; !ok {
+		return false
+	}
+	return Contains(usefullKeywords, g.types[term])
 }
 
 func removeUselessTerminals(g *Graph) {
