@@ -14,7 +14,7 @@ type Scope struct {
 
 	parent        *Scope
 	Children      *[]*Scope
-	Table         map[string]Symbol
+	Table         map[string][]Symbol
 	regionCounter *int
 }
 
@@ -25,7 +25,7 @@ const (
 	Char
 	Bool
 	Float
-	Rec
+	Rec     = "rec"
 	Func    = "func"
 	Proc    = "proc"
 	Unknown = "unknown"
@@ -64,9 +64,9 @@ type Procedure struct {
 }
 
 type Record struct {
-	Name   string
-	Type   Type
-	Fields []Variable
+	RName  string
+	SType  string
+	Fields map[string]string
 }
 
 func (v Variable) Name() string {
@@ -105,6 +105,18 @@ func (p Procedure) Offset() int {
 	return 0
 }
 
+func (r Record) Name() string {
+	return r.RName
+}
+
+func (r Record) Type() string {
+	return r.SType
+}
+
+func (r Record) Offset() int {
+	return 0
+}
+
 func getSymbolType(symbol string) string {
 	return strings.ToLower(symbol)
 }
@@ -116,10 +128,10 @@ func newScope(parent *Scope) *Scope {
 		regionCounter = new(int)
 		*regionCounter = 0
 
-		scope = &Scope{parent: nil, Table: make(map[string]Symbol), Children: &[]*Scope{}, regionCounter: regionCounter, Region: 0, Nested: 0}
+		scope = &Scope{parent: nil, Table: make(map[string][]Symbol), Children: &[]*Scope{}, regionCounter: regionCounter, Region: 0, Nested: 0}
 	} else {
 		*parent.regionCounter++
-		scope = &Scope{parent: parent, Table: make(map[string]Symbol), Children: &[]*Scope{}, regionCounter: parent.regionCounter, Region: *parent.regionCounter, Nested: parent.Nested + 1}
+		scope = &Scope{parent: parent, Table: make(map[string][]Symbol), Children: &[]*Scope{}, regionCounter: parent.regionCounter, Region: *parent.regionCounter, Nested: parent.Nested + 1}
 		*parent.Children = append(*parent.Children, scope)
 		fmt.Println("new scope", scope.Region, len(*parent.Children))
 	}
@@ -127,21 +139,19 @@ func newScope(parent *Scope) *Scope {
 	return scope
 }
 
-func isNodeNewScope(node string) bool {
-	switch node {
-	case "function", "procedure", "record", "for", "while", "if", "else", "elif", "decl":
-		return true
-	}
-	return false
-}
-
 func (scope *Scope) String() string {
 	return fmt.Sprintf("Region: %d, Nested: %d, Table: %v", scope.Region, scope.Nested, scope.Table)
 }
 
 func (scope *Scope) addSymbol(symbol Symbol) {
-	scope.Table[symbol.Name()] = symbol
-	// here you should add check if variable exists
+	name := symbol.Name()
+	if existingSymbols, ok := scope.Table[name]; ok {
+		// Array already exists, append the symbol to it
+		scope.Table[name] = append(existingSymbols, symbol)
+	} else {
+		// Array doesn't exist, create a new array with the symbol
+		scope.Table[name] = []Symbol{symbol}
+	}
 }
 
 func ReadAST(graph Graph) (*Scope, error) {
@@ -175,60 +185,83 @@ func addParam(graph Graph, node int, currentFunc *Function) {
 	}
 }
 
+func addParamProc(graph Graph, node int, currentProc *Procedure) {
+	if graph.types[node] == "param" {
+		children := maps.Keys(graph.gmap[node])
+		slices.Sort(children)
+		if graph.types[children[0]] == "sameType" {
+			for _, child := range maps.Keys(graph.gmap[children[0]]) {
+				*currentProc.Params = append(*currentProc.Params, &Variable{VName: graph.types[child], SType: getSymbolType(graph.types[children[1]]), IsParam: true})
+			}
+		} else {
+			*currentProc.Params = append(*currentProc.Params, &Variable{VName: graph.types[children[0]], SType: getSymbolType(graph.types[children[1]]), IsParam: true})
+		}
+	}
+}
+
 func dfsSymbols(graph Graph, node int, currentScope *Scope) {
-	children := maps.Keys(graph.gmap[node])
-	slices.Sort(children)
-	for _, child := range children {
-		scope := *currentScope
+	sorted := maps.Keys(graph.gmap[node])
+	slices.Sort(sorted)
+	scope := *currentScope
 
-		sorted := maps.Keys(graph.gmap[child])
-		slices.Sort(sorted)
-
-		switch graph.types[node] {
-		case "function":
-			funcElem := Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: &[]*Variable{}}
-			//shift := 0
-			if graph.types[sorted[1]] == "params" {
-
-				for _, param := range maps.Keys(graph.gmap[sorted[1]]) {
-					addParam(graph, param, &funcElem)
-				}
-				funcElem.ReturnType = getSymbolType(graph.types[sorted[2]])
-				scope.addSymbol(funcElem)
-				//shift = 1
+	switch graph.types[node] {
+	case "file":
+		if graph.types[sorted[1]] == "decl" {
+			children := maps.Keys(graph.gmap[sorted[1]])
+			for _, child := range children {
+				dfsSymbols(graph, child, currentScope)
 			}
+		}
+	case "function":
+		funcElem := Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: &[]*Variable{}}
+		shift := 0
+		if graph.types[sorted[1]] == "params" {
 
-			switch graph.types[child] {
-			// A node := is not a declaration, it's an assignment
-			case "var":
-				scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]])})
-			case "param":
-				scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]]), IsParam: true})
-
-				// Add param to parent function or procedure
-				for _, symbol := range scope.parent.Table {
-					if symbol.Type() == Func && slices.Contains(symbol.(Function).children, child) {
-						function := symbol.(Function)
-						*function.Params = append(*function.Params, &Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]]), IsParam: true})
-						function.ParamCount++
-					} else if symbol.Type() == Proc && slices.Contains(symbol.(Procedure).children, child) {
-						procedure := symbol.(Procedure)
-						*procedure.Params = append(*procedure.Params, &Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]]), IsParam: true})
-						procedure.ParamCount++
-					}
-				}
-			case "function":
-				scope.addSymbol(Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: &[]*Variable{}, ReturnType: getSymbolType(graph.types[sorted[2]])})
-			case "procedure":
-				scope.addSymbol(Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: &[]*Variable{}})
+			for _, param := range maps.Keys(graph.gmap[sorted[1]]) {
+				addParam(graph, param, &funcElem)
 			}
-			graph.scopes[child] = &scope
-
-			if isNodeNewScope(graph.types[child]) {
-				scope = *newScope(currentScope)
+			funcElem.ReturnType = getSymbolType(graph.types[sorted[2]])
+			scope.addSymbol(funcElem)
+			shift = 1
+		}
+		if graph.types[sorted[2+shift]] == "decl" {
+			funcScope := newScope(&scope)
+			children := maps.Keys(graph.gmap[sorted[2+shift]])
+			for _, child := range children {
+				dfsSymbols(graph, child, funcScope)
 			}
-
-			dfsSymbols(graph, child, &scope)
+		}
+	case "procedure":
+		procElem := Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: &[]*Variable{}}
+		shift := 0
+		if graph.types[sorted[1]] == "params" {
+			for _, param := range maps.Keys(graph.gmap[sorted[1]]) {
+				addParamProc(graph, param, &procElem)
+			}
+			scope.addSymbol(procElem)
+			shift = 1
+		}
+		if graph.types[sorted[1+shift]] == "decl" {
+			procScope := newScope(&scope)
+			children := maps.Keys(graph.gmap[sorted[1+shift]])
+			for _, child := range children {
+				dfsSymbols(graph, child, procScope)
+			}
+		}
+	case "var":
+		if graph.types[sorted[0]] == "sameType" {
+			for _, child := range maps.Keys(graph.gmap[sorted[0]]) {
+				scope.addSymbol(Variable{VName: graph.types[sorted[child]], SType: getSymbolType(graph.types[sorted[1]])})
+			}
+		} else {
+			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]])})
+		}
+	case "type":
+		recordElem := Record{RName: graph.types[sorted[0]], SType: Rec, Fields: make(map[string]string)}
+		for _, child := range maps.Keys(graph.gmap[sorted[1]]) {
+			childChild := maps.Keys(graph.gmap[child])
+			slices.Sort(childChild)
+			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
 		}
 	}
 }
