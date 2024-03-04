@@ -126,14 +126,6 @@ func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
 		logger.Error("Error while reading AST", "error", err)
 		return
 	}
-	CheckSemantics(graph)
-	if parser.hadError {
-		// no crash for now
-		logger.Error("Compilation failed")
-		return
-	} else {
-		logger.Info("Compilation successful")
-	}
 	if printAst {
 		logger.Info("Rendering AST...")
 		cmd := exec.Command(pythonExecutable, "./test/parser/json_to_image.py")
@@ -150,6 +142,14 @@ func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
 			return
 		}
 		logger.Info("AST rendered")
+	}
+	CheckSemantics(graph)
+	if parser.hadError {
+		// no crash for now
+		logger.Error("Compilation failed")
+		return
+	} else {
+		logger.Info("Compilation successful")
 	}
 }
 

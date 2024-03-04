@@ -300,7 +300,7 @@ func addNodes(node *Node, graph *Graph, lexer lexer.Lexer, depth int, newName bo
 		graph.nbNode++
 		graph.fathers[graph.nbNode] = fatherId
 		graph.gmap[fatherId][graph.nbNode] = struct{}{}
-		addNodes(child, graph, lexer, depth+1, true)
+		addNodes(child, graph, lexer, depth+1, newName)
 	}
 }
 
@@ -324,7 +324,7 @@ func clearchains(g *Graph) {
 	// remove chains of single node link to each other
 	for term, _ := range g.meaningful {
 		tpTo := term
-		for len(g.gmap[g.fathers[tpTo]]) == 1 {
+		for len(g.gmap[g.fathers[tpTo]]) == 1 && !keepUsefulNodes(g, g.fathers[tpTo]) {
 			pastNode := tpTo
 			tpTo = g.fathers[tpTo]
 			if pastNode != term {
@@ -592,11 +592,19 @@ func Contains(slice []string, term string) bool {
 	return false
 }
 
+func keepUsefulNodes(g *Graph, term int) bool {
+	usefullKeywords := []string{"params", "decl", "body", "attribs"}
+	if _, ok := g.meaningful[g.fathers[term]]; !ok {
+		return false
+	}
+	return Contains(usefullKeywords, g.types[term])
+}
+
 func removeUselessTerminals(g *Graph) {
 	uselessKeywords := []string{"Access2", "InstrPlus2", "DeclStarBegin", "Instr2Semicolon", "ExprPlusComma2Rparen", "",
 		"ElseIfStar", "IdentPlusComma2Colon", "ParamPlusSemicolon2RParen", "PrimaryExpr3", "InitSemicolon", "ParamsOpt",
 		"ModeOpt", "ReverseInstr", "decl", "ChampsPlus2End", "ElseInstrOptEnd", "ExprOptSemicolon",
-		"OrExprTail", "AndExprTail", "EqualityExprTail", "RelationalExprTail"}
+		"OrExprTail", "AndExprTail", "EqualityExprTail", "RelationalExprTail", "IdentPlusComma2Semicolon"}
 
 	for term := range g.terminals {
 		if Contains(uselessKeywords, g.types[term]) {

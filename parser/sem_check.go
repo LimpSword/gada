@@ -34,7 +34,13 @@ func dfsSemantics(graph Graph, node int) {
 					//fmt.Println(checkingScope.Table)
 					if symbol, ok := checkingScope.Table[graph.types[sorted[0]]]; ok {
 						//fmt.Println("found")
-						if symbol.Type() != valueType {
+						founded := false
+						for _, symb := range symbol {
+							if symb.Type() == valueType {
+								founded = true
+							}
+						}
+						if !founded {
 							logger.Error("Type mismatch for variable: " + graph.types[sorted[0]])
 						}
 						break
@@ -65,7 +71,7 @@ func (scope *Scope) getValueType(val string) string {
 	var currentScope = scope
 	for currentScope != nil {
 		if symbol, ok := currentScope.Table[val]; ok {
-			t = symbol.Type()
+			t = symbol[0].Type()
 			break
 		}
 		currentScope = currentScope.parent
