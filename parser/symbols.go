@@ -178,9 +178,11 @@ func addParam(graph Graph, node int, currentFunc *Function) {
 		if graph.types[children[0]] == "sameType" {
 			for _, child := range maps.Keys(graph.gmap[children[0]]) {
 				*currentFunc.Params = append(*currentFunc.Params, &Variable{VName: graph.types[child], SType: getSymbolType(graph.types[children[1]]), IsParam: true})
+				currentFunc.ParamCount++
 			}
 		} else {
 			*currentFunc.Params = append(*currentFunc.Params, &Variable{VName: graph.types[children[0]], SType: getSymbolType(graph.types[children[1]]), IsParam: true})
+			currentFunc.ParamCount++
 		}
 	}
 }
@@ -192,9 +194,11 @@ func addParamProc(graph Graph, node int, currentProc *Procedure) {
 		if graph.types[children[0]] == "sameType" {
 			for _, child := range maps.Keys(graph.gmap[children[0]]) {
 				*currentProc.Params = append(*currentProc.Params, &Variable{VName: graph.types[child], SType: getSymbolType(graph.types[children[1]]), IsParam: true})
+				currentProc.ParamCount++
 			}
 		} else {
 			*currentProc.Params = append(*currentProc.Params, &Variable{VName: graph.types[children[0]], SType: getSymbolType(graph.types[children[1]]), IsParam: true})
+			currentProc.ParamCount++
 		}
 	}
 }
@@ -206,12 +210,15 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 
 	switch graph.types[node] {
 	case "file":
+		shift := 0
 		if graph.types[sorted[1]] == "decl" {
 			children := maps.Keys(graph.gmap[sorted[1]])
 			for _, child := range children {
 				dfsSymbols(graph, child, currentScope)
 			}
+			shift++
 		}
+		dfsSymbols(graph, sorted[1+shift], currentScope)
 	case "function":
 		funcElem := Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: &[]*Variable{}}
 		shift := 0
@@ -230,7 +237,9 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 			for _, child := range children {
 				dfsSymbols(graph, child, funcScope)
 			}
+			shift++
 		}
+		dfsSymbols(graph, sorted[2+shift], currentScope)
 	case "procedure":
 		procElem := Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: &[]*Variable{}}
 		shift := 0
@@ -247,7 +256,13 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 			for _, child := range children {
 				dfsSymbols(graph, child, procScope)
 			}
+			shift++
 		}
+		dfsSymbols(graph, sorted[1+shift], currentScope)
+	case "for":
+		fmt.Println("for")
+		forScope := newScope(&scope)
+		forScope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: "integer"})
 	case "var":
 		if graph.types[sorted[0]] == "sameType" {
 			for _, child := range maps.Keys(graph.gmap[sorted[0]]) {
@@ -262,6 +277,11 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 			childChild := maps.Keys(graph.gmap[child])
 			slices.Sort(childChild)
 			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
+		}
+	default:
+		fmt.Println(graph.types[node])
+		for _, node := range sorted {
+			dfsSymbols(graph, node, currentScope)
 		}
 	}
 }
