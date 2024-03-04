@@ -593,7 +593,7 @@ func Contains(slice []string, term string) bool {
 }
 
 func keepUsefulNodes(g *Graph, term int) bool {
-	usefullKeywords := []string{"params", "decl", "body"}
+	usefullKeywords := []string{"params", "decl", "body", "attribs"}
 	if _, ok := g.meaningful[g.fathers[term]]; !ok {
 		return false
 	}
@@ -604,7 +604,7 @@ func removeUselessTerminals(g *Graph) {
 	uselessKeywords := []string{"Access2", "InstrPlus2", "DeclStarBegin", "Instr2Semicolon", "ExprPlusComma2Rparen", "",
 		"ElseIfStar", "IdentPlusComma2Colon", "ParamPlusSemicolon2RParen", "PrimaryExpr3", "InitSemicolon", "ParamsOpt",
 		"ModeOpt", "ReverseInstr", "decl", "ChampsPlus2End", "ElseInstrOptEnd", "ExprOptSemicolon",
-		"OrExprTail", "AndExprTail", "EqualityExprTail", "RelationalExprTail"}
+		"OrExprTail", "AndExprTail", "EqualityExprTail", "RelationalExprTail", "IdentPlusComma2Semicolon"}
 
 	for term := range g.terminals {
 		if Contains(uselessKeywords, g.types[term]) {
