@@ -50,7 +50,7 @@ type Function struct {
 	FName      string
 	SType      string
 	ParamCount int
-	Params     *[]*Variable
+	Params     map[int]*Variable
 	ReturnType string
 	children   []int
 }
@@ -59,7 +59,7 @@ type Procedure struct {
 	PName      string
 	PType      string
 	ParamCount int
-	Params     *[]*Variable
+	Params     map[int]*Variable
 	children   []int
 }
 
@@ -171,34 +171,43 @@ func ReadAST(graph Graph) (*Scope, error) {
 	return fileScope, nil
 }
 
-func addParam(graph Graph, node int, currentFunc *Function) {
+func addParam(graph Graph, node int, currentFunc *Function, funcScope *Scope) {
 	if graph.types[node] == "param" {
 		children := maps.Keys(graph.gmap[node])
 		slices.Sort(children)
 		if graph.types[children[0]] == "sameType" {
 			for _, child := range maps.Keys(graph.gmap[children[0]]) {
-				*currentFunc.Params = append(*currentFunc.Params, &Variable{VName: graph.types[child], SType: getSymbolType(graph.types[children[1]]), IsParam: true})
 				currentFunc.ParamCount++
+				// Assuming currentFunc.Params is defined as a pointer to a map
+				newParam := &Variable{VName: graph.types[child], SType: getSymbolType(graph.types[children[1]]), IsParam: true}
+				currentFunc.Params[currentFunc.ParamCount] = newParam
+				funcScope.addSymbol(*newParam)
 			}
 		} else {
-			*currentFunc.Params = append(*currentFunc.Params, &Variable{VName: graph.types[children[0]], SType: getSymbolType(graph.types[children[1]]), IsParam: true})
 			currentFunc.ParamCount++
+			newParam := &Variable{VName: graph.types[children[0]], SType: getSymbolType(graph.types[children[1]]), IsParam: true}
+			currentFunc.Params[currentFunc.ParamCount] = newParam
+			funcScope.addSymbol(*newParam)
 		}
 	}
 }
 
-func addParamProc(graph Graph, node int, currentProc *Procedure) {
+func addParamProc(graph Graph, node int, currentProc *Procedure, procScope *Scope) {
 	if graph.types[node] == "param" {
 		children := maps.Keys(graph.gmap[node])
 		slices.Sort(children)
 		if graph.types[children[0]] == "sameType" {
 			for _, child := range maps.Keys(graph.gmap[children[0]]) {
-				*currentProc.Params = append(*currentProc.Params, &Variable{VName: graph.types[child], SType: getSymbolType(graph.types[children[1]]), IsParam: true})
 				currentProc.ParamCount++
+				newParam := &Variable{VName: graph.types[child], SType: getSymbolType(graph.types[children[1]]), IsParam: true}
+				currentProc.Params[currentProc.ParamCount] = newParam
+				procScope.addSymbol(*newParam)
 			}
 		} else {
-			*currentProc.Params = append(*currentProc.Params, &Variable{VName: graph.types[children[0]], SType: getSymbolType(graph.types[children[1]]), IsParam: true})
 			currentProc.ParamCount++
+			newParam := &Variable{VName: graph.types[children[0]], SType: getSymbolType(graph.types[children[1]]), IsParam: true}
+			currentProc.Params[currentProc.ParamCount] = newParam
+			procScope.addSymbol(*newParam)
 		}
 	}
 }
@@ -220,19 +229,21 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 		}
 		dfsSymbols(graph, sorted[1+shift], currentScope)
 	case "function":
-		funcElem := Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: &[]*Variable{}}
+		funcParam := make(map[int]*Variable)
+		funcElem := Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: funcParam}
+		funcScope := newScope(&scope)
 		shift := 0
 		if graph.types[sorted[1]] == "params" {
 
 			for _, param := range maps.Keys(graph.gmap[sorted[1]]) {
-				addParam(graph, param, &funcElem)
+				addParam(graph, param, &funcElem, funcScope)
 			}
 			funcElem.ReturnType = getSymbolType(graph.types[sorted[2]])
 			scope.addSymbol(funcElem)
 			shift = 1
 		}
 		if graph.types[sorted[2+shift]] == "decl" {
-			funcScope := newScope(&scope)
+
 			children := maps.Keys(graph.gmap[sorted[2+shift]])
 			for _, child := range children {
 				dfsSymbols(graph, child, funcScope)
@@ -241,17 +252,18 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 		}
 		dfsSymbols(graph, sorted[2+shift], currentScope)
 	case "procedure":
-		procElem := Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: &[]*Variable{}}
+		procParam := make(map[int]*Variable)
+		procElem := Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: procParam}
+		procScope := newScope(&scope)
 		shift := 0
 		if graph.types[sorted[1]] == "params" {
 			for _, param := range maps.Keys(graph.gmap[sorted[1]]) {
-				addParamProc(graph, param, &procElem)
+				addParamProc(graph, param, &procElem, procScope)
 			}
 			scope.addSymbol(procElem)
 			shift = 1
 		}
 		if graph.types[sorted[1+shift]] == "decl" {
-			procScope := newScope(&scope)
 			children := maps.Keys(graph.gmap[sorted[1+shift]])
 			for _, child := range children {
 				dfsSymbols(graph, child, procScope)
@@ -279,9 +291,9 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
 		}
 	default:
-		fmt.Println(graph.types[node])
 		for _, node := range sorted {
 			dfsSymbols(graph, node, currentScope)
 		}
 	}
+	graph.scopes[node] = &scope
 }
