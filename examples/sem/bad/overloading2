@@ -12,7 +12,7 @@ procedure Record4 is
         begin
             return x + 1;
         end f;
-    function f (x:Integer;y,z : Character) return Integer is
+    function f (x1:Integer;y1,z1 : Integer) return Integer is
                     a : Integer := 8;
                     Next  : List;
                     procedure Record5(a:Integer) is

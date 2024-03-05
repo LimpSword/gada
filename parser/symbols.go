@@ -241,10 +241,10 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 			for _, param := range child {
 				addParam(graph, param, &funcElem, funcScope)
 			}
-			funcElem.ReturnType = getSymbolType(graph.types[sorted[2]])
-			scope.addSymbol(funcElem)
 			shift = 1
 		}
+		funcElem.ReturnType = getSymbolType(graph.types[sorted[1+shift]])
+		scope.addSymbol(funcElem)
 		if graph.types[sorted[2+shift]] == "decl" {
 
 			children := maps.Keys(graph.gmap[sorted[2+shift]])
@@ -288,12 +288,13 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]])})
 		}
 	case "type":
-		recordElem := Record{RName: graph.types[sorted[0]], SType: Rec, Fields: make(map[string]string)}
+		recordElem := Record{RName: getSymbolType(graph.types[sorted[0]]), SType: Rec, Fields: make(map[string]string)}
 		for _, child := range maps.Keys(graph.gmap[sorted[1]]) {
 			childChild := maps.Keys(graph.gmap[child])
 			slices.Sort(childChild)
 			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
 		}
+		scope.addSymbol(recordElem)
 	default:
 		for _, node := range sorted {
 			dfsSymbols(graph, node, currentScope)

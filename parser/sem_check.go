@@ -12,8 +12,22 @@ func CheckSemantics(graph Graph) {
 }
 
 func findType(scope *Scope, name string) string {
+	if name == "integer" || name == "character" || name == "boolean" {
+		return name
+	}
 	if symbol, ok := scope.Table[name]; ok {
-		return symbol[0].Type()
+		if symbol[0].Type() == Rec {
+			return symbol[0].Name()
+		} else {
+			logger.Error(name + " is a " + symbol[0].Type())
+		}
+
+	} else {
+		if scope.parent == nil {
+			logger.Error(name + " type is undefined")
+		} else {
+			findType(scope.parent, name)
+		}
 	}
 	return Unknown
 }
@@ -69,9 +83,10 @@ func checkDecl(graph Graph, node int) {
 			for _, param := range child {
 				addParam(graph, param, &funcElem, trashScope)
 			}
-			funcElem.ReturnType = getSymbolType(graph.types[sorted[2]])
 			shift = 1
 		}
+		funcElem.ReturnType = getSymbolType(graph.types[sorted[1+shift]])
+		findType(scope, funcElem.ReturnType)
 		countSame := 0
 		for _, fun := range scope.Table[funcElem.FName] {
 			if fun.Type() == Func {
@@ -133,6 +148,7 @@ func checkDecl(graph Graph, node int) {
 	case "for":
 		// todo stop variable assignation
 	case "var":
+		// check if something is already declared with the same name
 		if graph.types[sorted[0]] == "sameType" {
 			for _, child := range maps.Keys(graph.gmap[sorted[0]]) {
 				if r, ok := scope.Table[graph.types[child]]; ok {
@@ -148,9 +164,15 @@ func checkDecl(graph Graph, node int) {
 				}
 			}
 		}
+		// check if the type exists
+		declType := getSymbolType(graph.types[sorted[1]])
+		findType(scope, declType)
+
 	case "type":
-		if _, ok := scope.Table[graph.types[node]]; ok {
-			logger.Error(graph.types[node] + " is already declared in this scope")
+		if r, ok := scope.Table[graph.types[node]]; ok {
+			if len(r) > 1 {
+				logger.Error(graph.types[node] + " is already declared in this scope")
+			}
 		}
 		recordElem := Record{RName: graph.types[sorted[0]], SType: Rec, Fields: make(map[string]string)}
 		for _, child := range maps.Keys(graph.gmap[sorted[1]]) {
