@@ -56,6 +56,13 @@ func compareProc(f1 Procedure, f2 Procedure) bool {
 	return false
 }
 
+func checkParam(graph Graph, node int, funcScope *Scope) {
+	children := maps.Keys(graph.gmap[node])
+	slices.Sort(children)
+	paramType := getSymbolType(graph.types[children[1]])
+	findType(funcScope, paramType)
+}
+
 func checkDecl(graph Graph, node int) {
 	sorted := maps.Keys(graph.gmap[node])
 	slices.Sort(sorted)
@@ -82,6 +89,7 @@ func checkDecl(graph Graph, node int) {
 			slices.Sort(child)
 			for _, param := range child {
 				addParam(graph, param, &funcElem, trashScope)
+				checkParam(graph, param, scope)
 			}
 			shift = 1
 		}
@@ -119,6 +127,7 @@ func checkDecl(graph Graph, node int) {
 			slices.Sort(child)
 			for _, param := range child {
 				addParamProc(graph, param, &procElem, trashScope)
+				checkParam(graph, param, scope)
 			}
 			shift = 1
 		}

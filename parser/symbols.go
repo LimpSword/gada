@@ -172,25 +172,23 @@ func ReadAST(graph Graph) (*Scope, error) {
 }
 
 func addParam(graph Graph, node int, currentFunc *Function, funcScope *Scope) {
-	if graph.types[node] == "param" {
-		children := maps.Keys(graph.gmap[node])
-		slices.Sort(children)
-		if graph.types[children[0]] == "sameType" {
-			childrenchildren := maps.Keys(graph.gmap[children[0]])
-			slices.Sort(childrenchildren)
-			for _, child := range childrenchildren {
-				currentFunc.ParamCount++
-				// Assuming currentFunc.Params is defined as a pointer to a map
-				newParam := &Variable{VName: graph.types[child], SType: getSymbolType(graph.types[children[1]]), IsParam: true}
-				currentFunc.Params[currentFunc.ParamCount] = newParam
-				funcScope.addSymbol(*newParam)
-			}
-		} else {
+	children := maps.Keys(graph.gmap[node])
+	slices.Sort(children)
+	if graph.types[children[0]] == "sameType" {
+		childrenchildren := maps.Keys(graph.gmap[children[0]])
+		slices.Sort(childrenchildren)
+		for _, child := range childrenchildren {
 			currentFunc.ParamCount++
-			newParam := &Variable{VName: graph.types[children[0]], SType: getSymbolType(graph.types[children[1]]), IsParam: true}
+			// Assuming currentFunc.Params is defined as a pointer to a map
+			newParam := &Variable{VName: graph.types[child], SType: getSymbolType(graph.types[children[1]]), IsParam: true}
 			currentFunc.Params[currentFunc.ParamCount] = newParam
 			funcScope.addSymbol(*newParam)
 		}
+	} else {
+		currentFunc.ParamCount++
+		newParam := &Variable{VName: graph.types[children[0]], SType: getSymbolType(graph.types[children[1]]), IsParam: true}
+		currentFunc.Params[currentFunc.ParamCount] = newParam
+		funcScope.addSymbol(*newParam)
 	}
 }
 
