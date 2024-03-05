@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"golang.org/x/exp/maps"
 	"slices"
 	"strconv"
@@ -9,6 +8,7 @@ import (
 
 func CheckSemantics(graph Graph) {
 	//dfsSemantics(graph, 0)
+	checkDecl(graph, 0)
 }
 
 func findType(scope *Scope, name string) string {
@@ -20,7 +20,7 @@ func findType(scope *Scope, name string) string {
 
 func compareFunc(f1 Function, f2 Function) bool {
 	if f1.ParamCount == f2.ParamCount && f1.ReturnType == f2.ReturnType {
-		for i := 0; i < f1.ParamCount; i++ {
+		for i := 1; i <= f1.ParamCount; i++ {
 			if f1.Params[i].SType != f2.Params[i].SType {
 				return false
 			}
@@ -32,7 +32,7 @@ func compareFunc(f1 Function, f2 Function) bool {
 
 func compareProc(f1 Procedure, f2 Procedure) bool {
 	if f1.ParamCount == f2.ParamCount {
-		for i := 0; i < f1.ParamCount; i++ {
+		for i := 1; i <= f1.ParamCount; i++ {
 			if f1.Params[i].SType != f2.Params[i].SType {
 				return false
 			}
@@ -42,99 +42,116 @@ func compareProc(f1 Procedure, f2 Procedure) bool {
 	return false
 }
 
-func checkDecl(graph Graph, node int, currentScope *Scope) {
+func checkDecl(graph Graph, node int) {
 	sorted := maps.Keys(graph.gmap[node])
 	slices.Sort(sorted)
-	scope := *currentScope
-
+	scope := graph.scopes[node]
+	trashScope := newScope(nil)
 	switch graph.types[node] {
 	case "file":
 		shift := 0
 		if graph.types[sorted[1]] == "decl" {
 			children := maps.Keys(graph.gmap[sorted[1]])
 			for _, child := range children {
-				checkDecl(graph, child, currentScope)
+				checkDecl(graph, child)
 			}
 			shift++
 		}
-		checkDecl(graph, sorted[1+shift], currentScope)
+		checkDecl(graph, sorted[1+shift])
+
 	case "function":
 		funcParam := make(map[int]*Variable)
 		funcElem := Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: funcParam}
 		shift := 0
 		if graph.types[sorted[1]] == "params" {
-
-			for _, param := range maps.Keys(graph.gmap[sorted[1]]) {
-				addParam(graph, param, &funcElem)
+			child := maps.Keys(graph.gmap[sorted[1]])
+			slices.Sort(child)
+			for _, param := range child {
+				addParam(graph, param, &funcElem, trashScope)
 			}
 			funcElem.ReturnType = getSymbolType(graph.types[sorted[2]])
-			scope.addSymbol(funcElem)
 			shift = 1
 		}
+		countSame := 0
 		for _, fun := range scope.Table[funcElem.FName] {
 			if fun.Type() == Func {
 				if compareFunc(fun.(Function), funcElem) {
-					logger.Error("Function redeclared with same parameters and return type")
+					countSame++
+					if countSame > 1 {
+						logger.Error(funcElem.FName + " function redeclared with same parameters and return type")
+						//break is we stop at first conflict
+					}
 				}
 			} else {
 				logger.Error(funcElem.FName + " is already declared in this scope")
-				break
+				//break is we stop at first conflict
 			}
 		}
 		if graph.types[sorted[2+shift]] == "decl" {
-			funcScope := newScope(&scope)
 			children := maps.Keys(graph.gmap[sorted[2+shift]])
 			for _, child := range children {
-				checkDecl(graph, child, funcScope)
+				checkDecl(graph, child)
 			}
 			shift++
 		}
-		checkDecl(graph, sorted[2+shift], currentScope)
+		checkDecl(graph, sorted[2+shift])
 	case "procedure":
 		procParam := make(map[int]*Variable)
 		procElem := Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: procParam}
 		shift := 0
 		if graph.types[sorted[1]] == "params" {
-			for _, param := range maps.Keys(graph.gmap[sorted[1]]) {
-				addParamProc(graph, param, &procElem)
+			child := maps.Keys(graph.gmap[sorted[1]])
+			slices.Sort(child)
+			for _, param := range child {
+				addParamProc(graph, param, &procElem, trashScope)
 			}
-			scope.addSymbol(procElem)
 			shift = 1
 		}
-
+		countSame := 0
 		for _, proc := range scope.Table[procElem.PName] {
 			if proc.Type() == Proc {
 				if compareProc(proc.(Procedure), procElem) {
-					logger.Error("Procedure redeclared with same parameters")
+					countSame++
+					if countSame > 1 {
+						logger.Error("Procedure redeclared with same parameters")
+					}
 				}
 			} else {
 				logger.Error(procElem.PName + " is already declared in this scope")
-				break
+				//break
 			}
 		}
 
 		if graph.types[sorted[1+shift]] == "decl" {
-			procScope := newScope(&scope)
 			children := maps.Keys(graph.gmap[sorted[1+shift]])
 			for _, child := range children {
-				checkDecl(graph, child, procScope)
+				checkDecl(graph, child)
 			}
 			shift++
 		}
-		checkDecl(graph, sorted[1+shift], currentScope)
+		checkDecl(graph, sorted[1+shift])
 	case "for":
-		fmt.Println("for")
-		forScope := newScope(&scope)
-		forScope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: "integer"})
+		// todo stop variable assignation
 	case "var":
 		if graph.types[sorted[0]] == "sameType" {
 			for _, child := range maps.Keys(graph.gmap[sorted[0]]) {
-				scope.addSymbol(Variable{VName: graph.types[sorted[child]], SType: getSymbolType(graph.types[sorted[1]])})
+				if r, ok := scope.Table[graph.types[child]]; ok {
+					if len(r) > 1 {
+						logger.Error(graph.types[child] + " is already declared in this scope")
+					}
+				}
 			}
 		} else {
-			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]])})
+			if r, ok := scope.Table[graph.types[sorted[0]]]; ok {
+				if len(r) > 1 {
+					logger.Error(graph.types[sorted[0]] + " is already declared in this scope")
+				}
+			}
 		}
 	case "type":
+		if _, ok := scope.Table[graph.types[node]]; ok {
+			logger.Error(graph.types[node] + " is already declared in this scope")
+		}
 		recordElem := Record{RName: graph.types[sorted[0]], SType: Rec, Fields: make(map[string]string)}
 		for _, child := range maps.Keys(graph.gmap[sorted[1]]) {
 			childChild := maps.Keys(graph.gmap[child])
@@ -143,10 +160,9 @@ func checkDecl(graph Graph, node int, currentScope *Scope) {
 		}
 	default:
 		for _, node := range sorted {
-			checkDecl(graph, node, currentScope)
+			checkDecl(graph, node)
 		}
 	}
-	graph.scopes[node] = &scope
 }
 
 //func dfsSemantics(graph Graph, node int) {
