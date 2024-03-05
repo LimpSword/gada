@@ -11,6 +11,100 @@ func CheckSemantics(graph Graph) {
 	checkDecl(graph, 0)
 }
 
+func matchFunc(scope *Scope, name string, args map[int]string) string {
+	if symbol, ok := scope.Table[name]; ok {
+		for _, f := range symbol {
+			if f.Type() == Func {
+				if f.(Function).ParamCount == len(args) {
+					for i := 1; i <= len(args); i++ {
+						if f.(Function).Params[i].SType != args[i] {
+							continue
+						}
+					}
+					return f.(Function).ReturnType
+				}
+				continue
+			} else {
+				logger.Error(name + " is a " + symbol[0].Type())
+			}
+		}
+
+	} else {
+		if scope.parent == nil {
+			logger.Error(name + " type is undefined")
+		} else {
+			matchFunc(scope.parent, name, args)
+		}
+	}
+	return Unknown
+}
+
+func getReturnType(graph Graph, scope *Scope, node int) string {
+	children := maps.Keys(graph.gmap[node])
+	slices.Sort(children)
+	if len(children) == 0 {
+		val := graph.types[node]
+		if val == "true" || val == "false" {
+			return "boolean"
+		}
+		if val[0] == '\'' {
+			return "character"
+		}
+		_, err := strconv.Atoi(val)
+		if err == nil {
+			return "integer"
+		} else {
+			return findIdentifierType(graph, scope, node)
+		}
+	}
+
+	switch graph.types[node] {
+	case "+", "-", "*", "/":
+		if getReturnType(graph, scope, children[0]) == "integer" && getReturnType(graph, scope, children[1]) == "integer" {
+			return "integer"
+		} else {
+			logger.Error("Operator " + graph.types[node] + " should have integer operands")
+		}
+	case "and", "or":
+		if getReturnType(graph, scope, children[0]) == "boolean" && getReturnType(graph, scope, children[1]) == "boolean" {
+			return "boolean"
+		} else {
+			logger.Error("Operator " + graph.types[node] + " should have boolean operands")
+		}
+	case "call":
+		args := make(map[int]string)
+		sorted := maps.Keys(graph.gmap[children[1]])
+		slices.Sort(sorted)
+		for ind, val := range sorted {
+			args[ind] = getReturnType(graph, scope, val)
+		}
+		return matchFunc(scope, graph.types[children[0]], args)
+	}
+	return Unknown
+}
+
+func findIdentifierType(graph Graph, scope *Scope, node int) string {
+	name := graph.types[node]
+	if symbol, ok := scope.Table[name]; ok {
+		if symbol[0].Type() == "integer" || symbol[0].Type() == "character" || symbol[0].Type() == "boolean" {
+			return symbol[0].Type()
+		} else {
+			if symbol[0].Type() == Func {
+				return symbol[0].(Function).ReturnType
+			} else {
+				findIdentifierType(graph, scope.parent, node)
+			}
+		}
+	} else {
+		if scope.parent == nil {
+			logger.Error(name + " type is undefined")
+		} else {
+			findIdentifierType(graph, scope.parent, node)
+		}
+	}
+	return Unknown
+}
+
 func findType(scope *Scope, name string) string {
 	if name == "integer" || name == "character" || name == "boolean" {
 		return name
@@ -21,7 +115,6 @@ func findType(scope *Scope, name string) string {
 		} else {
 			logger.Error(name + " is a " + symbol[0].Type())
 		}
-
 	} else {
 		if scope.parent == nil {
 			logger.Error(name + " type is undefined")
