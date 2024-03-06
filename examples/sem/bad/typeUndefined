@@ -6,6 +6,7 @@ procedure Record4 is
             Next  : List;
             procedure Record5(a:Integer) is
                 type List is record hi : Double2; hi : Integer; end record;
+                type Double2 is array(1..10) of Integer;
                 begin
                     Put('x');
                 end Record5;

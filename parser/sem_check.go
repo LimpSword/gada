@@ -145,6 +145,24 @@ func findIdentifierType(graph Graph, scope *Scope, node int) string {
 	return Unknown
 }
 
+func findStruct(graph Graph, scope *Scope, node int) *Variable {
+	name := graph.types[node]
+	if symbol, ok := scope.Table[name]; ok {
+		if variable, ok := symbol[0].(Variable); ok {
+			return &variable
+		} else {
+			logger.Error("left side of assignment " + name + " is not a variable")
+		}
+	} else {
+		if scope.parent == nil {
+			logger.Error("left side of assignment " + name + " is undefined")
+		} else {
+			return findStruct(graph, scope.parent, node)
+		}
+	}
+	return nil
+}
+
 func findType(scope *Scope, name string) string {
 	if name == "integer" || name == "character" || name == "boolean" {
 		return name
@@ -347,6 +365,12 @@ func semCheck(graph Graph, node int) {
 		assignType := getReturnType(graph, scope, sorted[1])
 		if varType != assignType {
 			logger.Error("Type mismatch for variable: " + findAccessName(graph, sorted[0], "") + " is " + varType + " and was assigned to " + assignType)
+		}
+		varStruct := findStruct(graph, scope, sorted[0])
+		if varStruct != nil {
+			if !varStruct.IsParamOut && varStruct.IsParamIn {
+				logger.Error("Variable " + varStruct.VName + " is an in parameter and cannot be assigned")
+			}
 		}
 	default:
 		for _, child := range sorted {

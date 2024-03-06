@@ -5,7 +5,6 @@ procedure Test is
       x : Integer;
       y : integer;
    begin
-      H := 4;
       x := 5;
       y := 3 + x;
       return y;
