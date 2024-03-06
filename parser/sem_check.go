@@ -11,6 +11,18 @@ func CheckSemantics(graph Graph) {
 	semCheck(graph, 0)
 }
 
+func findAccessType(graph Graph, scope *Scope, node int) string {
+	children := maps.Keys(graph.gmap[node])
+	slices.Sort(children)
+	//structType := getReturnType(graph,scope, children[0])
+
+	switch graph.types[node] {
+	case "access":
+		return findAccessType(graph, scope, children[0])
+	}
+	return Unknown
+}
+
 func matchFunc(scope *Scope, name string, args map[int]string) string {
 	if symbol, ok := scope.Table[name]; ok {
 		for _, f := range symbol {
@@ -80,6 +92,8 @@ func getReturnType(graph Graph, scope *Scope, node int) string {
 			args[ind] = getReturnType(graph, scope, val)
 		}
 		return matchFunc(scope, graph.types[children[0]], args)
+	case "access":
+
 	}
 	return Unknown
 }
@@ -281,7 +295,11 @@ func semCheck(graph Graph, node int) {
 		for _, child := range maps.Keys(graph.gmap[sorted[1]]) {
 			childChild := maps.Keys(graph.gmap[child])
 			slices.Sort(childChild)
+			if _, ok := recordElem.Fields[graph.types[childChild[0]]]; ok {
+				logger.Error("Field " + graph.types[childChild[0]] + " is duplicate in record " + graph.types[sorted[0]] + " declaration")
+			}
 			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
+			findType(scope, getSymbolType(graph.types[childChild[1]]))
 		}
 	case ":=":
 		varType := getReturnType(graph, scope, sorted[0])

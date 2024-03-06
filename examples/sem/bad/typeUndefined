@@ -5,7 +5,7 @@ procedure Record4 is
             a : Integer := 8;
             Next  : List;
             procedure Record5(a:Integer) is
-                type List is record hi : Integer; end record;
+                type List is record hi : Double2; hi : Integer; end record;
                 begin
                     Put('x');
                 end Record5;
