@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"gada/lexer"
+	"slices"
 	"sort"
 )
 
@@ -28,6 +29,7 @@ func (g Graph) GetChildren(node int) []int {
 	for child := range g.gmap[node] {
 		children = append(children, child)
 	}
+	slices.Sort(children)
 	return children
 }
 

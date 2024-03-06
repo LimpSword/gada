@@ -29,7 +29,8 @@ const (
 	R11
 	R12
 	R13
-	R14
+	SP  = 13
+	R14 = iota - 1
 	R15
 )
 
@@ -97,6 +98,11 @@ func (a *AssemblyFile) AddFromStackPointer(register Register, intermediateRegist
 	a.Text += "ADD " + register.String() + ", " + register.String() + ", " + intermediateRegister.String() + "\n"
 }
 
+func (a *AssemblyFile) AddWithOffset(register Register, intermediateRegister Register, offset int) {
+	a.Text += "LDR " + intermediateRegister.String() + ", [SP, #" + strconv.Itoa(offset) + "]\n"
+	a.Text += "ADD " + register.String() + ", " + intermediateRegister.String() + ", " + register.String() + "\n"
+}
+
 func (a *AssemblyFile) Sub(register Register, value int) {
 	str := strconv.Itoa(value)
 	a.Text += "SUB " + register.String() + ", " + register.String() + ", #" + str + "\n"
@@ -104,6 +110,11 @@ func (a *AssemblyFile) Sub(register Register, value int) {
 
 func (a *AssemblyFile) SubFromStackPointer(register Register, intermediateRegister Register) {
 	a.Text += "LDR " + intermediateRegister.String() + ", [SP]\n"
+	a.Text += "SUB " + register.String() + ", " + intermediateRegister.String() + ", " + register.String() + "\n"
+}
+
+func (a *AssemblyFile) SubWithOffset(register Register, intermediateRegister Register, offset int) {
+	a.Text += "LDR " + intermediateRegister.String() + ", [SP, #" + strconv.Itoa(offset) + "]\n"
 	a.Text += "SUB " + register.String() + ", " + intermediateRegister.String() + ", " + register.String() + "\n"
 }
 
@@ -127,23 +138,24 @@ func (a AssemblyFile) Execute() []string {
 func ReadASTToASM(graph Graph) {
 	log.Info("Reading AST to ASM")
 	file := NewAssemblyFile("test")
-	file.ReadOperand(graph, 22)
+	file.ReadOperand(graph, 21)
 
 	file.Text += "end\n"
 
 	file.Text += `
 mul      MOV     R0, #0
 mul_loop LSRS    R2, R2, #1
-         ADDCS   R0, R0, #1
+         ADDCS   R0, R0, R1
          LSL     R1, R1, #1
          TST     R2, R2
          BNE     mul_loop
+		 LDMFD   SP!, {PC}
 `
 	log.Info("\n" + file.Text)
 }
 
 func (a *AssemblyFile) CallProcedure(name string) {
-	// TODO
+	a.Text += "STMFD SP!, {PC}\n"
 	a.Text += "BL " + name + "\n"
 }
 
@@ -152,20 +164,29 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 	// If the operands are values, use them
 	// Else, save them in stack and use them
 	children := graph.GetChildren(node)
+	// sort
 
 	if len(children) == 0 {
 		// The operand is a value
 		// Different cases: int, char or ident
 		intValue, err := strconv.Atoi(graph.GetNode(node))
 		if err == nil {
+			// Move the stack pointer
+			a.Sub(SP, 4)
+
 			// The operand is an int
 			// Load the int value to r0
 			a.Mov(R0, intValue)
+			a.StrWithOffset(R0, 4)
 		} else {
 			if graph.GetNode(node)[0] == '\'' {
+				// Move the stack pointer
+				a.Sub(SP, 4)
+
 				// The operand is a char
 				// Load the char value to r0
 				a.Mov(R0, int(graph.GetNode(node)[1]))
+				a.StrWithOffset(R0, 4)
 			} else {
 				// The operand is an ident
 				// Load the ident value to r0
@@ -179,44 +200,49 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 	case "+":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
-		a.MovToStackPointer(R0)
 
 		// Read right operand
 		a.ReadOperand(graph, children[1])
-		a.AddFromStackPointer(R0, R1)
+		a.Ldr(R0, 4)
+		a.AddWithOffset(R0, R1, 8)
+
+		// Move the stack pointer
+		a.Add(SP, 4)
 
 		// Save the result in stack
-		a.Str(R0)
+		a.StrWithOffset(R0, 4)
 	case "-":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
-		a.MovToStackPointer(R0)
 
 		// Read right operand
 		a.ReadOperand(graph, children[1])
-		a.SubFromStackPointer(R0, R1)
+		a.Ldr(R0, 4)
+		a.SubWithOffset(R0, R1, 8)
+
+		// Move the stack pointer
+		a.Add(SP, 4)
 
 		// Save the result in stack
-		a.Str(R0)
+		a.StrWithOffset(R0, 4)
 	case "*":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
-		a.StrWithOffset(R0, 0)
 
 		// Read right operand
 		a.ReadOperand(graph, children[1])
-		a.StrWithOffset(R0, 4)
 
 		// Left operand in R1, right operand in R2
-		a.Ldr(R1, 0)
-		a.Ldr(R2, 4)
+		a.Ldr(R1, 4)
+		a.Ldr(R2, 8)
 
 		// Use the multiplication algorithm at the label mul
 		a.CallProcedure("mul")
 
 		// Clear the stack (move the stack pointer)
+		a.Add(SP, 4)
 
 		// Save the result in stack
-		a.Str(R1)
+		a.StrWithOffset(R0, 4)
 	}
 }
