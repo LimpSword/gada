@@ -50,10 +50,16 @@ func matchFunc(scope *Scope, name string, args map[int]string) string {
 		for _, f := range symbol {
 			if f.Type() == Func {
 				if f.(Function).ParamCount == len(args) {
+					breaked := false
 					for i := 1; i <= len(args); i++ {
 						if f.(Function).Params[i].SType != args[i] {
-							continue
+							breaked = true
+							break
 						}
+					}
+
+					if breaked {
+						continue
 					}
 					return f.(Function).ReturnType
 					// TODO: check return type overloadding and return the correct one
@@ -79,7 +85,7 @@ func getReturnType(graph Graph, scope *Scope, node int) string {
 	slices.Sort(children)
 	if len(children) == 0 {
 		val := graph.types[node]
-		if val == "true" || val == "false" {
+		if val == "True" || val == "False" {
 			return "boolean"
 		}
 		if val[0] == '\'' {
@@ -112,7 +118,7 @@ func getReturnType(graph Graph, scope *Scope, node int) string {
 		sorted := maps.Keys(graph.gmap[children[1]])
 		slices.Sort(sorted)
 		for ind, val := range sorted {
-			args[ind] = getReturnType(graph, scope, val)
+			args[ind+1] = getReturnType(graph, scope, val)
 		}
 		return matchFunc(scope, graph.types[children[0]], args)
 	case "access":
