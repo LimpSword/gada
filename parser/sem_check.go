@@ -8,7 +8,7 @@ import (
 
 func CheckSemantics(graph Graph) {
 	//dfsSemantics(graph, 0)
-	checkDecl(graph, 0)
+	semCheck(graph, 0)
 }
 
 func matchFunc(scope *Scope, name string, args map[int]string) string {
@@ -22,6 +22,7 @@ func matchFunc(scope *Scope, name string, args map[int]string) string {
 						}
 					}
 					return f.(Function).ReturnType
+					// TODO: check return type overloadding and return the correct one
 				}
 				continue
 			} else {
@@ -156,7 +157,7 @@ func checkParam(graph Graph, node int, funcScope *Scope) {
 	findType(funcScope, paramType)
 }
 
-func checkDecl(graph Graph, node int) {
+func semCheck(graph Graph, node int) {
 	sorted := maps.Keys(graph.gmap[node])
 	slices.Sort(sorted)
 	scope := graph.scopes[node]
@@ -167,11 +168,11 @@ func checkDecl(graph Graph, node int) {
 		if graph.types[sorted[1]] == "decl" {
 			children := maps.Keys(graph.gmap[sorted[1]])
 			for _, child := range children {
-				checkDecl(graph, child)
+				semCheck(graph, child)
 			}
 			shift++
 		}
-		checkDecl(graph, sorted[1+shift])
+		semCheck(graph, sorted[1+shift])
 
 	case "function":
 		funcParam := make(map[int]*Variable)
@@ -206,11 +207,11 @@ func checkDecl(graph Graph, node int) {
 		if graph.types[sorted[2+shift]] == "decl" {
 			children := maps.Keys(graph.gmap[sorted[2+shift]])
 			for _, child := range children {
-				checkDecl(graph, child)
+				semCheck(graph, child)
 			}
 			shift++
 		}
-		checkDecl(graph, sorted[2+shift])
+		semCheck(graph, sorted[2+shift])
 	case "procedure":
 		procParam := make(map[int]*Variable)
 		procElem := Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: procParam}
@@ -242,11 +243,11 @@ func checkDecl(graph Graph, node int) {
 		if graph.types[sorted[1+shift]] == "decl" {
 			children := maps.Keys(graph.gmap[sorted[1+shift]])
 			for _, child := range children {
-				checkDecl(graph, child)
+				semCheck(graph, child)
 			}
 			shift++
 		}
-		checkDecl(graph, sorted[1+shift])
+		semCheck(graph, sorted[1+shift])
 	case "for":
 		// todo stop variable assignation
 	case "var":
@@ -282,9 +283,15 @@ func checkDecl(graph Graph, node int) {
 			slices.Sort(childChild)
 			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
 		}
+	case ":=":
+		varType := getReturnType(graph, scope, sorted[0])
+		assignType := getReturnType(graph, scope, sorted[1])
+		if varType != assignType {
+			logger.Error("Type mismatch for variable: " + graph.types[sorted[0]] + " is " + varType + " and was assigned to " + assignType)
+		}
 	default:
-		for _, node := range sorted {
-			checkDecl(graph, node)
+		for _, child := range sorted {
+			semCheck(graph, child)
 		}
 	}
 }
