@@ -89,6 +89,7 @@ func getReturnType(graph Graph, scope *Scope, node int) string {
 		if err == nil {
 			return "integer"
 		} else {
+
 			return findIdentifierType(graph, scope, node)
 		}
 	}
@@ -136,9 +137,9 @@ func findIdentifierType(graph Graph, scope *Scope, node int) string {
 		}
 	} else {
 		if scope.parent == nil {
-			logger.Error(name + " type is undefined")
+			logger.Error(name + " variable is undefined")
 		} else {
-			findIdentifierType(graph, scope.parent, node)
+			return findIdentifierType(graph, scope.parent, node)
 		}
 	}
 	return Unknown
@@ -202,7 +203,7 @@ func compareProc(f1 Procedure, f2 Procedure) bool {
 func checkParam(graph Graph, node int, funcScope *Scope) {
 	children := maps.Keys(graph.gmap[node])
 	slices.Sort(children)
-	paramType := getSymbolType(graph.types[children[1]])
+	paramType := getSymbolType(graph.types[children[len(children)-1]])
 	findType(funcScope, paramType)
 }
 
@@ -227,6 +228,11 @@ func semCheck(graph Graph, node int) {
 		funcParam := make(map[int]*Variable)
 		funcElem := Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: funcParam}
 		shift := 0
+		if graph.types[sorted[0]] != graph.types[sorted[len(sorted)-1]] {
+			if graph.types[sorted[len(sorted)-1]] != "end" {
+				logger.Error("Function " + graph.types[sorted[0]] + " end name do not match")
+			}
+		}
 		if graph.types[sorted[1]] == "params" {
 			child := maps.Keys(graph.gmap[sorted[1]])
 			slices.Sort(child)
@@ -347,73 +353,4 @@ func semCheck(graph Graph, node int) {
 			semCheck(graph, child)
 		}
 	}
-}
-
-//func dfsSemantics(graph Graph, node int) {
-//	children := maps.Keys(graph.gmap[node])
-//	slices.Sort(children)
-//	scope := graph.scopes[node]
-//	if scope != nil {
-//		//fmt.Println(scope.String())
-//
-//		switch graph.types[node] {
-//		case ":=":
-//			//fmt.Println(graph.types[sorted[0]], ":", graph.types[sorted[1]])
-//			var valueType = scope.getValueType(graph.types[sorted[1]])
-//
-//			// TODO: check operations
-//
-//			//fmt.Println(graph.types[sorted[0]], ":", valueType)
-//
-//			// check if the variable is already declared with the same type
-//			checkingScope := scope
-//			for checkingScope != nil {
-//				//fmt.Println(checkingScope.Table)
-//				if symbol, ok := checkingScope.Table[graph.types[sorted[0]]]; ok {
-//					//fmt.Println("found")
-//					founded := false
-//					for _, symb := range symbol {
-//						if symb.Type() == valueType {
-//							founded = true
-//						}
-//					}
-//					if !founded {
-//						logger.Error("Type mismatch for variable: " + graph.types[sorted[0]])
-//					}
-//					break
-//				}
-//				checkingScope = checkingScope.parent
-//			}
-//		case "var":
-//		}
-//	}
-//}
-
-func (scope *Scope) getValueType(val string) string {
-	//fmt.Println("val: ", val)
-	if val == "true" || val == "false" {
-		return "bool"
-	}
-	if val[0] == '\'' {
-		return "char"
-	}
-	_, err := strconv.Atoi(val)
-	if err == nil {
-		return "int"
-	}
-	// might be identifier
-	var t string
-	var currentScope = scope
-	for currentScope != nil {
-		if symbol, ok := currentScope.Table[val]; ok {
-			t = symbol[0].Type()
-			break
-		}
-		currentScope = currentScope.parent
-	}
-	if t == "" {
-		t = Unknown
-		logger.Warn("Unknown type for value: ", val)
-	}
-	return t
 }

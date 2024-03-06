@@ -681,6 +681,10 @@ func upTheNode(g *Graph, node int) {
 		if g.types[g.fathers[node]] == "InstrReturn" {
 			goUpReplaceNode(g, node, "return")
 		}
+	case "param":
+		if g.types[g.fathers[node]] == "ParamPlusSemicolon2" {
+			goUpChilds(g, g.fathers[node])
+		}
 	case "CharTok":
 		makeChild(g, node, "cast", "char")
 	}

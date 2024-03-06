@@ -1,0 +1,17 @@
+with Ada.Text_IO; use Ada.Text_IO;
+
+procedure Test is
+   function Mp(N:Integer;H: in Integer;C: in out Character) return Integer is
+      x : Integer;
+      y : integer;
+   begin
+      H := 4;
+      x := 5;
+      y := 3 + x;
+      return y;
+   end;
+   X : CHaracter;
+begin
+    X := 'a';
+    Put(X);
+end;
