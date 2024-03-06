@@ -1,0 +1,20 @@
+with Ada.Text_IO; use Ada.Text_IO;
+
+procedure Record4 is
+    type List is record hi : Integer; end record;
+    function f (x,y,z : Integer) return Integer is
+    a : Integer := 8;
+begin
+    return x + 1;
+end f;
+function f (x,y,z : Integer) return Boolean is
+    a : Integer := 8;
+begin
+    return true;
+end f;
+    t : Integer;
+    t1 : Boolean;
+begin
+    t := f(1,2,3);
+    t1 := f(1,2,3);
+end Record4;

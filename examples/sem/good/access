@@ -1,0 +1,24 @@
+with Ada.Text_IO; use Ada.Text_IO;
+
+procedure Record4 is
+    type atype is record
+        j : Integer;
+        c : Integer;
+    end record;
+    type Gtype is record
+        h : Atype;
+        b : ATYPE;
+    end record;
+    g : Gtype;
+    a : Gtype;
+    type btype is record
+            z : gtype;
+            y : integer;
+    end record;
+    k : btype;
+begin
+   g.h.j := 8/8 *1 - 7/ a.b.c;
+   k.y := 8 - 7 + 2 * 8 - 9 - 12;
+   k.z := g;
+
+end Record4;

@@ -11,14 +11,36 @@ func CheckSemantics(graph Graph) {
 	semCheck(graph, 0)
 }
 
-func findAccessType(graph Graph, scope *Scope, node int) string {
+func findAccessType(graph Graph, scope *Scope, node int, curType string) string {
 	children := maps.Keys(graph.gmap[node])
 	slices.Sort(children)
-	//structType := getReturnType(graph,scope, children[0])
+	if symbol, ok := scope.Table[curType]; ok {
+		if symbol[0].Type() == Rec {
+			if graph.types[node] == "access" {
+				if _, ok1 := symbol[0].(Record).Fields[graph.types[children[0]]]; ok1 {
+					newType := symbol[0].(Record).Fields[graph.types[children[0]]]
+					return findAccessType(graph, scope, children[1], newType)
+				} else {
+					logger.Error(graph.types[children[0]] + " is not a field of " + curType)
+				}
+			} else {
 
-	switch graph.types[node] {
-	case "access":
-		return findAccessType(graph, scope, children[0])
+				if _, ok1 := symbol[0].(Record).Fields[graph.types[node]]; ok1 {
+					newType := symbol[0].(Record).Fields[graph.types[node]]
+					return newType
+				} else {
+					logger.Error(graph.types[node] + " is not a field of " + curType)
+				}
+			}
+		} else {
+			logger.Error(curType + " is a " + symbol[0].Type() + " and not a record")
+		}
+	} else {
+		if scope.parent == nil {
+			logger.Error(curType + " type is undefined")
+		} else {
+			return findAccessType(graph, scope.parent, node, curType)
+		}
 	}
 	return Unknown
 }
@@ -93,7 +115,9 @@ func getReturnType(graph Graph, scope *Scope, node int) string {
 		}
 		return matchFunc(scope, graph.types[children[0]], args)
 	case "access":
-
+		mainType := findIdentifierType(graph, scope, children[0])
+		finalType := findAccessType(graph, scope, children[1], mainType)
+		return finalType
 	}
 	return Unknown
 }
@@ -104,7 +128,7 @@ func findIdentifierType(graph Graph, scope *Scope, node int) string {
 		if symbol[0].Type() == "integer" || symbol[0].Type() == "character" || symbol[0].Type() == "boolean" {
 			return symbol[0].Type()
 		} else {
-			if symbol[0].Type() == Func {
+			if symbol[0].Type() == Func { //it mean it's a function without arguments
 				return symbol[0].(Function).ReturnType
 			} else {
 				return symbol[0].Type()
@@ -150,6 +174,17 @@ func compareFunc(f1 Function, f2 Function) bool {
 		return true
 	}
 	return false
+}
+
+func findAccessName(graph Graph, node int, buffer string) string {
+	if graph.types[node] == "access" {
+		children := maps.Keys(graph.gmap[node])
+		slices.Sort(children)
+		buffer = buffer + graph.types[children[0]] + "."
+		return findAccessName(graph, children[1], buffer)
+	} else {
+		return buffer + graph.types[node]
+	}
 }
 
 func compareProc(f1 Procedure, f2 Procedure) bool {
@@ -305,7 +340,7 @@ func semCheck(graph Graph, node int) {
 		varType := getReturnType(graph, scope, sorted[0])
 		assignType := getReturnType(graph, scope, sorted[1])
 		if varType != assignType {
-			logger.Error("Type mismatch for variable: " + graph.types[sorted[0]] + " is " + varType + " and was assigned to " + assignType)
+			logger.Error("Type mismatch for variable: " + findAccessName(graph, sorted[0], "") + " is " + varType + " and was assigned to " + assignType)
 		}
 	default:
 		for _, child := range sorted {
