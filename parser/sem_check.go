@@ -45,21 +45,35 @@ func findAccessType(graph Graph, scope *Scope, node int, curType string) string 
 	return Unknown
 }
 
-func matchFunc(scope *Scope, name string, args map[int]string) string {
+func matchFunc(graph Graph, scope *Scope, name string, args []int) string {
+	argstype := make(map[int]string)
+	slices.Sort(args)
+	for ind, val := range args {
+		argstype[ind+1] = getReturnType(graph, scope, val)
+	}
 	if symbol, ok := scope.Table[name]; ok {
 		for _, f := range symbol {
 			if f.Type() == Func {
-				if f.(Function).ParamCount == len(args) {
+				fun := f.(Function)
+				if fun.ParamCount == len(argstype) {
+					buffer := []string{}
 					breaked := false
-					for i := 1; i <= len(args); i++ {
-						if f.(Function).Params[i].SType != args[i] {
+					for i := 1; i <= len(argstype); i++ {
+						if fun.Params[i].SType != argstype[i] {
 							breaked = true
 							break
+						} else if fun.Params[i].IsParamOut {
+							if whichFinal(graph, args[i-1]) != "identifier" || findStruct(graph, scope, args[i-1]) == nil {
+								buffer = append(buffer, "Parameter in out "+fun.Params[i].VName+" should be a variable currently is "+graph.types[args[i-1]])
+							}
 						}
 					}
 
 					if breaked {
 						continue
+					}
+					for _, val := range buffer {
+						logger.Error(val)
 					}
 					return f.(Function).ReturnType
 					// TODO: check return type overloadding and return the correct one
@@ -74,30 +88,37 @@ func matchFunc(scope *Scope, name string, args map[int]string) string {
 		if scope.parent == nil {
 			logger.Error(name + " type is undefined")
 		} else {
-			matchFunc(scope.parent, name, args)
+			matchFunc(graph, scope.parent, name, args)
 		}
 	}
 	return Unknown
+}
+
+func whichFinal(graph Graph, node int) string {
+	val := graph.types[node]
+	if val == "True" || val == "False" {
+		return "boolean"
+	}
+	if val[0] == '\'' {
+		return "character"
+	}
+	_, err := strconv.Atoi(val)
+	if err == nil {
+		return "integer"
+	} else {
+		return "identifier"
+	}
 }
 
 func getReturnType(graph Graph, scope *Scope, node int) string {
 	children := maps.Keys(graph.gmap[node])
 	slices.Sort(children)
 	if len(children) == 0 {
-		val := graph.types[node]
-		if val == "True" || val == "False" {
-			return "boolean"
-		}
-		if val[0] == '\'' {
-			return "character"
-		}
-		_, err := strconv.Atoi(val)
-		if err == nil {
-			return "integer"
-		} else {
-
+		theType := whichFinal(graph, node)
+		if theType == "identifier" {
 			return findIdentifierType(graph, scope, node)
 		}
+		return theType
 	}
 
 	switch graph.types[node] {
@@ -114,13 +135,7 @@ func getReturnType(graph Graph, scope *Scope, node int) string {
 			logger.Error("Operator " + graph.types[node] + " should have boolean operands")
 		}
 	case "call":
-		args := make(map[int]string)
-		sorted := maps.Keys(graph.gmap[children[1]])
-		slices.Sort(sorted)
-		for ind, val := range sorted {
-			args[ind+1] = getReturnType(graph, scope, val)
-		}
-		return matchFunc(scope, graph.types[children[0]], args)
+		return matchFunc(graph, scope, graph.types[children[0]], maps.Keys(graph.gmap[children[1]]))
 	case "access":
 		mainType := findIdentifierType(graph, scope, children[0])
 		finalType := findAccessType(graph, scope, children[1], mainType)

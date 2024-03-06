@@ -2,7 +2,7 @@ with Ada.Text_IO; use Ada.Text_IO;
 
 procedure Record4 is
     type List is record hi : Integer; end record;
-    function f (x,y,z : Integer) return Integer is
+    function f (x,z : Integer; y: boolean) return Integer is
     a : Integer := 8;
 begin
     return x + 1;
@@ -15,6 +15,6 @@ end f;
     t : Integer;
     t1 : Boolean;
 begin
-    t := f(1+2,2,3);
+    t := f(1,2,true);
     t1 := f(1,2,3);
 end Record4;
