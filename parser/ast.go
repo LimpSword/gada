@@ -19,6 +19,18 @@ type Graph struct {
 	lexer      *lexer.Lexer
 }
 
+func (g Graph) GetNode(node int) string {
+	return g.types[node]
+}
+
+func (g Graph) GetChildren(node int) []int {
+	var children []int
+	for child := range g.gmap[node] {
+		children = append(children, child)
+	}
+	return children
+}
+
 func (g Graph) toJson() string {
 	result := make(map[string]interface{})
 	result["gmap"] = g.gmap
