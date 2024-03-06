@@ -107,7 +107,7 @@ func findIdentifierType(graph Graph, scope *Scope, node int) string {
 			if symbol[0].Type() == Func {
 				return symbol[0].(Function).ReturnType
 			} else {
-				findIdentifierType(graph, scope.parent, node)
+				return symbol[0].Type()
 			}
 		}
 	} else {
