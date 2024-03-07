@@ -159,7 +159,7 @@ func ReadAST(graph Graph) (*Scope, error) {
 	fileScope := newScope(nil)
 	currentScope := *fileScope
 	fileNodeIndex := 0
-
+	currentScope.addSymbol(Procedure{PName: "Put", PType: Proc, ParamCount: 1, Params: map[int]*Variable{1: &Variable{VName: "x", SType: "character"}}, children: []int{}})
 	dfsSymbols(graph, fileNodeIndex, &currentScope)
 
 	// fileScope to json

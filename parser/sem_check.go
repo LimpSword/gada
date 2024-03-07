@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"golang.org/x/exp/maps"
 	"slices"
 	"strconv"
@@ -63,7 +64,7 @@ func matchFunc(graph Graph, scope *Scope, name string, args []int) string {
 							breaked = true
 							break
 						} else if fun.Params[i].IsParamOut {
-							if whichFinal(graph, args[i-1]) != "identifier" || findStruct(graph, scope, args[i-1]) == nil {
+							if whichFinal(graph, args[i-1]) != "identifier" || findStruct(graph, scope, args[i-1], false) == nil {
 								buffer = append(buffer, "Parameter in out "+fun.Params[i].VName+" should be a variable currently is "+graph.types[args[i-1]])
 							}
 						}
@@ -80,15 +81,62 @@ func matchFunc(graph Graph, scope *Scope, name string, args []int) string {
 				}
 				continue
 			} else {
-				logger.Error(name + " is a " + symbol[0].Type())
+				logger.Error(name + " is a " + symbol[0].Type() + " and not a function")
 			}
 		}
 
 	} else {
 		if scope.parent == nil {
-			logger.Error(name + " type is undefined")
+			logger.Error(name + " function is undefined")
 		} else {
 			matchFunc(graph, scope.parent, name, args)
+		}
+	}
+	return Unknown
+}
+
+func matchProc(graph Graph, scope *Scope, name string, args []int) string {
+	argstype := make(map[int]string)
+	slices.Sort(args)
+	for ind, val := range args {
+		argstype[ind+1] = getReturnType(graph, scope, val)
+	}
+	if symbol, ok := scope.Table[name]; ok {
+		for _, f := range symbol {
+			if f.Type() == Proc {
+				fun := f.(Procedure)
+				if fun.ParamCount == len(argstype) {
+					buffer := []string{}
+					breaked := false
+					for i := 1; i <= len(argstype); i++ {
+						if fun.Params[i].SType != argstype[i] {
+							breaked = true
+							break
+						} else if fun.Params[i].IsParamOut {
+							if whichFinal(graph, args[i-1]) != "identifier" || findStruct(graph, scope, args[i-1], false) == nil {
+								buffer = append(buffer, "Parameter in out "+fun.Params[i].VName+" should be a variable currently is "+graph.types[args[i-1]])
+							}
+						}
+					}
+
+					if breaked {
+						continue
+					}
+					for _, val := range buffer {
+						logger.Error(val)
+					}
+				}
+				continue
+			} else {
+				logger.Error(name + " is a " + symbol[0].Type() + " and not a procedure")
+			}
+		}
+
+	} else {
+		if scope.parent == nil {
+			logger.Error(name + " procedure is undefined")
+		} else {
+			matchProc(graph, scope.parent, name, args)
 		}
 	}
 	return Unknown
@@ -110,7 +158,23 @@ func whichFinal(graph Graph, node int) string {
 	}
 }
 
+func getSymbol(graph Graph, scope *Scope, node int) string {
+	// give the symbol type of the identifier
+	name := graph.types[node]
+	if symbol, ok := scope.Table[name]; ok {
+		return symbol[0].Type()
+	} else {
+		if scope.parent == nil {
+			logger.Error(name + " ident is undefined")
+		} else {
+			return findIdentifierType(graph, scope.parent, node)
+		}
+	}
+	return Unknown
+}
+
 func getReturnType(graph Graph, scope *Scope, node int) string {
+	// give the return type of the node
 	children := maps.Keys(graph.gmap[node])
 	slices.Sort(children)
 	if len(children) == 0 {
@@ -145,6 +209,7 @@ func getReturnType(graph Graph, scope *Scope, node int) string {
 }
 
 func findIdentifierType(graph Graph, scope *Scope, node int) string {
+	// give the return type of the identifier
 	name := graph.types[node]
 	if symbol, ok := scope.Table[name]; ok {
 		if symbol[0].Type() == "integer" || symbol[0].Type() == "character" || symbol[0].Type() == "boolean" {
@@ -158,7 +223,7 @@ func findIdentifierType(graph Graph, scope *Scope, node int) string {
 		}
 	} else {
 		if scope.parent == nil {
-			logger.Error(name + " variable is undefined")
+			logger.Error(name + " ident is undefined")
 		} else {
 			return findIdentifierType(graph, scope.parent, node)
 		}
@@ -166,19 +231,28 @@ func findIdentifierType(graph Graph, scope *Scope, node int) string {
 	return Unknown
 }
 
-func findStruct(graph Graph, scope *Scope, node int) *Variable {
+func findStruct(graph Graph, scope *Scope, node int, log bool) *Variable {
 	name := graph.types[node]
+	if name == "access" {
+		children := maps.Keys(graph.gmap[node])
+		slices.Sort(children)
+		return findStruct(graph, scope, children[0], log)
+	}
 	if symbol, ok := scope.Table[name]; ok {
 		if variable, ok := symbol[0].(Variable); ok {
 			return &variable
 		} else {
-			logger.Error("left side of assignment " + name + " is not a variable")
+			if log {
+				logger.Error("left side of assignment " + name + " is not a variable")
+			}
 		}
 	} else {
 		if scope.parent == nil {
-			logger.Error("left side of assignment " + name + " is undefined")
+			if log {
+				logger.Error("left side of assignment " + name + " is undefined")
+			}
 		} else {
-			return findStruct(graph, scope.parent, node)
+			return findStruct(graph, scope.parent, node, log)
 		}
 	}
 	return nil
@@ -192,7 +266,7 @@ func findType(scope *Scope, name string) string {
 		if symbol[0].Type() == Rec {
 			return symbol[0].Name()
 		} else {
-			logger.Error(name + " is a " + symbol[0].Type())
+			logger.Error(name + " is a " + symbol[0].Type() + " and not a type")
 		}
 	} else {
 		if scope.parent == nil {
@@ -387,11 +461,30 @@ func semCheck(graph Graph, node int) {
 		if varType != assignType {
 			logger.Error("Type mismatch for variable: " + findAccessName(graph, sorted[0], "") + " is " + varType + " and was assigned to " + assignType)
 		}
-		varStruct := findStruct(graph, scope, sorted[0])
+		varStruct := findStruct(graph, scope, sorted[0], true)
 		if varStruct != nil {
 			if !varStruct.IsParamOut && varStruct.IsParamIn {
 				logger.Error("Variable " + varStruct.VName + " is an in parameter and cannot be assigned")
 			}
+		}
+	case "return":
+		//todo check if the return type is the same as the function return type
+		//todo check if the return is in a function
+
+	case "call":
+		symbolType := getSymbol(graph, scope, sorted[0])
+		fmt.Println("symbolType", symbolType, graph.types[sorted[0]])
+		if symbolType == Func { //todo handle after return only
+			logger.Error("Cannot use call to function " + graph.types[sorted[0]] + " as a statement")
+		} else if symbolType == Proc {
+			//fmt.Println("Proc", graph.types[sorted[0]], maps.Keys(graph.gmap[sorted[1]]))
+			matchProc(graph, scope, graph.types[sorted[0]], maps.Keys(graph.gmap[sorted[1]]))
+		} else if symbolType == Rec {
+			logger.Error("Cannot use call to type " + graph.types[sorted[0]] + " as a statement")
+		} else if symbolType == Unknown {
+			logger.Error("Cannot use call to " + graph.types[sorted[0]] + " as a statement")
+		} else {
+			logger.Error("Cannot use call to variable" + graph.types[sorted[0]] + " as a statement")
 		}
 	default:
 		for _, child := range sorted {
