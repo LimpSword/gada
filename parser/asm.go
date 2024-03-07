@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"gada/asm"
 	"github.com/charmbracelet/log"
 	"os"
@@ -118,6 +119,20 @@ func (a *AssemblyFile) SubWithOffset(register Register, intermediateRegister Reg
 	a.Text += "SUB " + register.String() + ", " + intermediateRegister.String() + ", " + register.String() + "\n"
 }
 
+func (a *AssemblyFile) Negate(register Register) {
+	a.Text += "; Negate " + register.String() + "\n"
+	a.Text += "RSB " + register.String() + ", " + register.String() + ", #0\n\n"
+}
+
+func (a *AssemblyFile) Positive(register Register) {
+	a.Text += fmt.Sprintf(`; Make %[1]v positive
+CMP     %[1]v, #0 ; Compare %[1]v with zero
+MOVGE   %[1]v, %[1]v ; If %[1]v is greater than or equal to zero, keep its value (no change)
+RSBLT   %[1]v, %[1]v, #0 ; If %[1]v is less than zero, negate it
+
+`, register.String())
+}
+
 func (a AssemblyFile) Write() {
 	file, err := os.Create(a.FileName + ".s")
 	if err != nil {
@@ -142,7 +157,10 @@ func ReadASTToASM(graph Graph) {
 
 	file.Text += "end\n"
 
+	// Multiplication algorithm
 	file.Text += `
+;       Multiplication algorithm
+;       R0 = result, R1 = multiplicand, R2 = multiplier
 mul      MOV     R0, #0
 mul_loop LSRS    R2, R2, #1
          ADDCS   R0, R0, R1
@@ -151,6 +169,48 @@ mul_loop LSRS    R2, R2, #1
          BNE     mul_loop
 		 LDMFD   SP!, {PC}
 `
+
+	// Integer division algorithm
+	file.Text += `
+;       Integer division routine
+;       Arguments:
+;       R0 = Dividend
+;       R1 = Divisor
+;       Returns:
+;       R0 = Quotient
+;       R1 = Remainder
+div32  
+       STMFD   SP!, {R2-R4, LR} ; Save registers on the stack
+       MOV     R4, #1 ; Bit position = 1
+       MOV     R2, #0 ; Quotient = 0
+       MOV     R3, R0 ; Remainder = Dividend
+
+loop   
+       CMP     R3, R1 ; Compare remainder and divisor
+       BCC     shift ; If remainder < divisor, shift
+       SUB     R3, R3, R1 ; Remainder = Remainder - Divisor
+       ADD     R2, R2, R4 ; Quotient = Quotient + Bit position
+       B       loop
+
+shift  
+       MOV     R0, R2 ; R0 = Quotient
+       MOV     R1, R3 ; R1 = Remainder
+       LDMFD   SP!, {R2-R4, PC} ; Restore registers and return
+`
+
+	// Fix sign for division
+	file.Text += `
+fix_sign   
+       stmfd   sp!, {PC}
+       bl      mul
+       subs    r0, r0, #0
+       blt     minus_sign
+       LDMFD   SP!, {PC}
+minus_sign 
+       rsb     r3, r3, #0
+       LDMFD   SP!, {PC}
+`
+
 	log.Info("\n" + file.Text)
 }
 
@@ -244,5 +304,45 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 		// Save the result in stack
 		a.StrWithOffset(R0, 4)
+	case "/":
+		// Read left operand
+		a.ReadOperand(graph, children[0])
+
+		// Read right operand
+		a.ReadOperand(graph, children[1])
+
+		// Left operand in R0, right operand in R1
+		a.Ldr(R1, 4)
+		a.Ldr(R0, 8)
+
+		// Make R0 and R1 positive
+		a.Positive(R0)
+		a.Positive(R1)
+
+		// Use the division algorithm at the label div32
+		a.CallProcedure("div32")
+
+		// Clear the stack (move the stack pointer)
+		a.Add(SP, 8)
+
+		// Apply the sign
+		// Move left operand in R1, right operand in R2, result in R3
+		a.Ldr(R1, 0)
+		a.Ldr(R2, 4)
+		a.MovRegister(R3, R0)
+		a.CallProcedure("fix_sign")
+
+		// Save the result in stack
+		a.StrWithOffset(R3, 4)
+	case "call":
+		if graph.GetNode(children[0]) == "-" {
+			// Read right operand
+			a.ReadOperand(graph, children[1])
+
+			a.Ldr(R0, 4)
+			a.Negate(R0)
+
+			a.StrWithOffset(R0, 4)
+		}
 	}
 }
