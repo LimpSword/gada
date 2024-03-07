@@ -227,6 +227,27 @@ func findType(scope *Scope, name string) string {
 	return Unknown
 }
 
+// goUpScope: get the scope containing the variable and the total offset to reach it
+func goUpScope(scope *Scope, name string) (*Scope, int) {
+	if symbol, ok := scope.Table[name]; ok {
+		for _, s := range symbol {
+			if variable, ok := s.(Variable); ok {
+				return scope, variable.Offset
+			}
+		}
+	}
+
+	totalOffset := scope.getCurrentOffset()
+	if scope.parent == nil {
+		// should never happen
+		logger.Error(name + " variable is undefined")
+	} else {
+		parentScope, offset := goUpScope(scope.parent, name)
+		return parentScope, totalOffset + offset
+	}
+	return nil, 0
+}
+
 func compareFunc(f1 Function, f2 Function) bool {
 	if f1.ParamCount == f2.ParamCount && f1.ReturnType == f2.ReturnType {
 		for i := 1; i <= f1.ParamCount; i++ {

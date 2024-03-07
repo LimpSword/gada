@@ -236,7 +236,20 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 	children := graph.GetChildren(node)
 	for _, child := range children {
 		if graph.GetNode(child) == ":=" {
+			left := graph.GetChildren(child)[0]
+			right := graph.GetChildren(child)[1]
 
+			a.ReadOperand(graph, right)
+
+			// Move the result to the left operand
+			scope := graph.getScope(node)
+			_, offset := goUpScope(scope, graph.GetNode(left))
+
+			varType := scope.Table[graph.GetNode(left)][0].(Variable).SType
+			offset += getTypeSize(varType, *scope)
+
+			// Save the result in stack
+			a.StrWithOffset(R0, offset)
 		}
 	}
 }
@@ -328,6 +341,11 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 				// Load the ident value to r0
 
 				// Get the address of the ident using the symbol table
+				scope := graph.getScope(node)
+				_, offset := goUpScope(scope, graph.GetNode(node))
+
+				// Load the value from the stack
+				a.Ldr(R0, offset)
 			}
 		}
 	}
