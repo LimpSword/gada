@@ -282,7 +282,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			left := graph.GetChildren(child)[0]
 			right := graph.GetChildren(child)[1]
 
-			a.ReadOperand(graph, right)
+			a.ReadOperand(graph, right, 0)
 
 			a.Add(SP, 4)
 
@@ -403,7 +403,7 @@ func (a *AssemblyFile) ReadVar(graph Graph, node int) {
 	}
 }
 
-func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
+func (a *AssemblyFile) ReadOperand(graph Graph, node int, fixOffset int) {
 	// Read left and right operands and do the operation
 	// If the operands are values, use them
 	// Else, save them in stack and use them
@@ -440,7 +440,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 				_, offset := goUpScope(scope, graph.GetNode(node))
 
 				// Load the value from the stack
-				a.Ldr(R0, offset)
+				a.Ldr(R0, offset+fixOffset)
 
 				// Move the stack pointer
 				a.Sub(SP, 4)
@@ -452,10 +452,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 	switch graph.GetNode(node) {
 	case "+":
 		// Read left operand
-		a.ReadOperand(graph, children[0])
+		a.ReadOperand(graph, children[0], fixOffset+0)
 
 		// Read right operand
-		a.ReadOperand(graph, children[1])
+		a.ReadOperand(graph, children[1], fixOffset+4)
 		a.Ldr(R0, 4)
 		a.AddWithOffset(R0, R1, 8)
 
@@ -466,10 +466,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		a.StrWithOffset(R0, 4)
 	case "-":
 		// Read left operand
-		a.ReadOperand(graph, children[0])
+		a.ReadOperand(graph, children[0], fixOffset+0)
 
 		// Read right operand
-		a.ReadOperand(graph, children[1])
+		a.ReadOperand(graph, children[1], fixOffset+4)
 		a.Ldr(R0, 4)
 		a.SubWithOffset(R0, R1, 8)
 
@@ -480,10 +480,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		a.StrWithOffset(R0, 4)
 	case "*":
 		// Read left operand
-		a.ReadOperand(graph, children[0])
+		a.ReadOperand(graph, children[0], fixOffset+0)
 
 		// Read right operand
-		a.ReadOperand(graph, children[1])
+		a.ReadOperand(graph, children[1], fixOffset+4)
 
 		// Left operand in R1, right operand in R2
 		a.Ldr(R1, 4)
@@ -499,10 +499,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		a.StrWithOffset(R0, 4)
 	case "/":
 		// Read left operand
-		a.ReadOperand(graph, children[0])
+		a.ReadOperand(graph, children[0], fixOffset+0)
 
 		// Read right operand
-		a.ReadOperand(graph, children[1])
+		a.ReadOperand(graph, children[1], fixOffset+4)
 
 		// Left operand in R0, right operand in R1
 		a.Ldr(R1, 4)
@@ -530,7 +530,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 	case "call":
 		if graph.GetNode(children[0]) == "-" {
 			// Read right operand
-			a.ReadOperand(graph, children[1])
+			a.ReadOperand(graph, children[1], fixOffset+0)
 
 			a.Ldr(R0, 4)
 			a.Negate(R0)
