@@ -12,6 +12,29 @@ func CheckSemantics(graph Graph) {
 	semCheck(graph, 0)
 }
 
+func getTypeSize(t string, scope Scope) int {
+	switch t {
+	case "integer":
+		return 4
+	case "character":
+		return 1
+	case "boolean":
+		return 1
+	default:
+		// Is it a record?
+		if symbol, ok := scope.Table[t]; ok {
+			if symbol[0].Type() == Rec {
+				size := 0
+				for _, field := range symbol[0].(Record).Fields {
+					size += getTypeSize(field, scope)
+				}
+				return size
+			}
+		}
+		return 0
+	}
+}
+
 func findAccessType(graph Graph, scope *Scope, node int, curType string) string {
 	children := maps.Keys(graph.gmap[node])
 	slices.Sort(children)
@@ -276,6 +299,27 @@ func findType(scope *Scope, name string) string {
 		}
 	}
 	return Unknown
+}
+
+// goUpScope: get the scope containing the variable and the total offset to reach it
+func goUpScope(scope *Scope, name string) (*Scope, int) {
+	if symbol, ok := scope.Table[name]; ok {
+		for _, s := range symbol {
+			if variable, ok := s.(Variable); ok {
+				return scope, variable.Offset
+			}
+		}
+	}
+
+	totalOffset := scope.getCurrentOffset()
+	if scope.parent == nil {
+		// should never happen
+		logger.Error(name + " variable is undefined")
+	} else {
+		parentScope, offset := goUpScope(scope.parent, name)
+		return parentScope, totalOffset + offset
+	}
+	return nil, 0
 }
 
 func compareFunc(f1 Function, f2 Function) bool {

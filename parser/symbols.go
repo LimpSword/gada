@@ -36,8 +36,6 @@ type Symbol interface {
 	Name() string
 	// Type returns the type of the symbol
 	Type() string
-	// Offset returns the offset of the symbol
-	Offset() int
 }
 
 type Variable struct {
@@ -45,6 +43,7 @@ type Variable struct {
 	SType      string
 	IsParamIn  bool
 	IsParamOut bool
+	Offset     int
 }
 
 type Function struct {
@@ -78,10 +77,6 @@ func (v Variable) Type() string {
 	return v.SType
 }
 
-func (v Variable) Offset() int {
-	return 0
-}
-
 func (f Function) Name() string {
 	return f.FName
 }
@@ -90,20 +85,12 @@ func (f Function) Type() string {
 	return f.SType
 }
 
-func (f Function) Offset() int {
-	return 0
-}
-
 func (p Procedure) Name() string {
 	return p.PName
 }
 
 func (p Procedure) Type() string {
 	return p.PType
-}
-
-func (p Procedure) Offset() int {
-	return 0
 }
 
 func (r Record) Name() string {
@@ -138,6 +125,20 @@ func newScope(parent *Scope) *Scope {
 	}
 
 	return scope
+}
+
+func (scope *Scope) getCurrentOffset() int {
+	maxOffset := 0
+	for _, symbols := range scope.Table {
+		for _, symbol := range symbols {
+			if symbol, ok := symbol.(Variable); ok {
+				if symbol.Offset > maxOffset {
+					maxOffset = symbol.Offset
+				}
+			}
+		}
+	}
+	return maxOffset
 }
 
 func (scope *Scope) String() string {
@@ -300,12 +301,15 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 		forScope := newScope(&scope)
 		forScope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: "integer"})
 	case "var":
+		currentOffset := scope.getCurrentOffset()
 		if graph.types[sorted[0]] == "sameType" {
-			for _, child := range maps.Keys(graph.gmap[sorted[0]]) {
-				scope.addSymbol(Variable{VName: graph.types[sorted[child]], SType: getSymbolType(graph.types[sorted[1]])})
+			for _, k := range maps.Keys(graph.gmap[sorted[0]]) {
+				currentOffset += getTypeSize(getSymbolType(graph.types[sorted[1]]), scope)
+				scope.addSymbol(Variable{VName: graph.types[k], SType: getSymbolType(graph.types[sorted[1]]), Offset: currentOffset})
 			}
 		} else {
-			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]])})
+			currentOffset += getTypeSize(getSymbolType(graph.types[sorted[1]]), scope)
+			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]]), Offset: currentOffset})
 		}
 	case "type":
 		recordElem := Record{RName: getSymbolType(graph.types[sorted[0]]), SType: Rec, Fields: make(map[string]string)}
