@@ -279,6 +279,8 @@ func nodeManagement(node Node, lexer lexer.Lexer) (string, bool) {
 		// Char cast
 	case "PrimaryExprCharTok":
 		return "CharTok", true
+	case "InstrReturn":
+		return "return", true
 	default:
 		return node.Type, false
 	}
@@ -605,7 +607,7 @@ func Contains(slice []string, term string) bool {
 }
 
 func keepUsefulNodes(g *Graph, term int) bool {
-	usefullKeywords := []string{"params", "decl", "body", "attribs"}
+	usefullKeywords := []string{"params", "decl", "body", "attribs", "return"}
 	if _, ok := g.meaningful[g.fathers[term]]; !ok {
 		return false
 	}
