@@ -299,7 +299,8 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 		dfsSymbols(graph, sorted[1+shift], procScope)
 	case "for":
 		forScope := newScope(&scope)
-		forScope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: "integer"})
+		forScope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: "integer", Offset: 4})
+		dfsSymbols(graph, sorted[4], forScope)
 	case "var":
 		currentOffset := scope.getCurrentOffset()
 		if graph.types[sorted[0]] == "sameType" {

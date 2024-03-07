@@ -11,6 +11,9 @@ import (
 type AssemblyFile struct {
 	FileName string
 	Text     string
+
+	ForCounter int
+	CurrentFor int
 }
 
 type Register int
@@ -33,6 +36,24 @@ const (
 	SP  = 13
 	R14 = iota - 1
 	R15
+)
+
+const (
+	EQ = "EQ"
+	NE = "NE"
+	CS = "CS"
+	CC = "CC"
+	MI = "MI"
+	PL = "PL"
+	VS = "VS"
+	VC = "VC"
+	HI = "HI"
+	LS = "LS"
+	GE = "GE"
+	LT = "LT"
+	GT = "GT"
+	LE = "LE"
+	AL = "AL"
 )
 
 func (r Register) String() string {
@@ -131,6 +152,27 @@ MOVGE   %[1]v, %[1]v ; If %[1]v is greater than or equal to zero, keep its value
 RSBLT   %[1]v, %[1]v, #0 ; If %[1]v is less than zero, negate it
 
 `, register.String())
+}
+
+func (a *AssemblyFile) Cmp(register Register, value int) {
+	str := strconv.Itoa(value)
+	a.Text += "CMP " + register.String() + ", #" + str + "\n"
+}
+
+func (a *AssemblyFile) AddLabel(label string) {
+	a.Text += label + "\n"
+}
+
+func (a *AssemblyFile) AddComment(comment string) {
+	a.Text += "; " + comment + "\n"
+}
+
+func (a *AssemblyFile) BranchToLabel(label string) {
+	a.Text += "B " + label + "\n"
+}
+
+func (a *AssemblyFile) BranchToLabelWithCondition(label string, condition string) {
+	a.Text += "B" + condition + " " + label + "\n"
 }
 
 func (a AssemblyFile) Write() {
@@ -235,23 +277,76 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 	// Read all the children
 	children := graph.GetChildren(node)
 	for _, child := range children {
-		if graph.GetNode(child) == ":=" {
+		switch graph.GetNode(child) {
+		case ":=":
 			left := graph.GetChildren(child)[0]
 			right := graph.GetChildren(child)[1]
 
 			a.ReadOperand(graph, right)
 
+			a.Add(SP, 4)
+
 			// Move the result to the left operand
 			scope := graph.getScope(node)
 			_, offset := goUpScope(scope, graph.GetNode(left))
 
-			varType := scope.Table[graph.GetNode(left)][0].(Variable).SType
-			offset += getTypeSize(varType, *scope)
-
 			// Save the result in stack
 			a.StrWithOffset(R0, offset)
+		case "for":
+			a.ReadFor(graph, child)
 		}
 	}
+}
+
+func (a *AssemblyFile) ReadFor(graph Graph, node int) {
+	goodCounter := a.ForCounter
+	a.ForCounter++
+	a.CurrentFor++
+
+	// Reserve space for the loop variable and the current for index
+	a.AddComment("Loop #" + strconv.Itoa(goodCounter) + " start")
+	a.Sub(SP, 4)
+
+	children := graph.GetChildren(node)
+	counterStart, _ := strconv.Atoi(graph.GetNode(children[2]))
+	counterEnd, _ := strconv.Atoi(graph.GetNode(children[3]))
+
+	a.Mov(R0, counterStart)
+	a.StrWithOffset(R0, 4)
+
+	a.AddLabel("for" + strconv.Itoa(goodCounter))
+
+	a.Ldr(R0, 4)
+	a.Cmp(R0, counterEnd)
+	if graph.GetNode(children[1]) == "not reverse" {
+		a.BranchToLabelWithCondition("endfor"+strconv.Itoa(goodCounter), "GT")
+	} else {
+		a.BranchToLabelWithCondition("endfor"+strconv.Itoa(goodCounter), "LT")
+	}
+
+	// Read the body of the for loop
+	a.ReadBody(graph, children[4])
+
+	// Increment the counter
+	a.Ldr(R0, 4)
+	if graph.GetNode(children[1]) == "not reverse" {
+		a.Add(R0, 1)
+	} else {
+		a.Sub(R0, 1)
+	}
+	a.StrWithOffset(R0, 4)
+
+	// Go to the beginning of the loop
+	a.BranchToLabel("for" + strconv.Itoa(goodCounter))
+
+	// End of the for loop
+	a.AddLabel("endfor" + strconv.Itoa(goodCounter))
+
+	// Clear the stack
+	a.CurrentFor--
+	a.Add(SP, 4)
+
+	a.AddComment("Loop #" + strconv.Itoa(goodCounter) + " end")
 }
 
 func (a *AssemblyFile) ReadDecl(graph Graph, node int) {
@@ -346,6 +441,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 				// Load the value from the stack
 				a.Ldr(R0, offset)
+
+				// Move the stack pointer
+				a.Sub(SP, 4)
+				a.StrWithOffset(R0, 4)
 			}
 		}
 	}
