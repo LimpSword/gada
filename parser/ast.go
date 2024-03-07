@@ -24,6 +24,10 @@ func (g Graph) GetNode(node int) string {
 	return g.types[node]
 }
 
+func (g Graph) getScope(node int) *Scope {
+	return g.scopes[node]
+}
+
 func (g Graph) GetChildren(node int) []int {
 	var children []int
 	for child := range g.gmap[node] {

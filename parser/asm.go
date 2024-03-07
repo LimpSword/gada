@@ -153,7 +153,7 @@ func (a AssemblyFile) Execute() []string {
 func ReadASTToASM(graph Graph) {
 	log.Info("Reading AST to ASM")
 	file := NewAssemblyFile("test")
-	file.ReadOperand(graph, 21)
+	file.ReadFile(graph, 0)
 
 	file.Text += "end\n"
 
@@ -217,6 +217,82 @@ minus_sign
 func (a *AssemblyFile) CallProcedure(name string) {
 	a.Text += "STMFD SP!, {PC}\n"
 	a.Text += "BL " + name + "\n"
+}
+
+func (a *AssemblyFile) ReadFile(graph Graph, node int) {
+	// Read all the children
+	children := graph.GetChildren(node)
+	for _, child := range children {
+		if graph.GetNode(child) == "decl" {
+			a.ReadDecl(graph, child)
+		} else if graph.GetNode(child) == "body" {
+			a.ReadBody(graph, child)
+		}
+	}
+}
+
+func (a *AssemblyFile) ReadBody(graph Graph, node int) {
+	// Read all the children
+	children := graph.GetChildren(node)
+	for _, child := range children {
+		if graph.GetNode(child) == ":=" {
+
+		}
+	}
+}
+
+func (a *AssemblyFile) ReadDecl(graph Graph, node int) {
+	// Read all the children
+	children := graph.GetChildren(node)
+	for _, child := range children {
+		if graph.GetNode(child) == "var" {
+			a.ReadVar(graph, child)
+		}
+	}
+}
+
+func (a *AssemblyFile) ReadVar(graph Graph, node int) {
+	var nameList []string
+	var value *int
+
+	name := graph.GetChildren(node)[0]
+
+	if graph.GetNode(name) == "sameType" {
+		for _, child := range graph.GetChildren(name) {
+			nameList = append(nameList, graph.GetNode(child))
+		}
+	} else {
+		nameList = append(nameList, graph.GetNode(name))
+	}
+	if len(graph.GetChildren(node)) > 2 {
+		v, _ := strconv.Atoi(graph.GetNode(graph.GetChildren(node)[2]))
+		value = &v
+	}
+
+	// use values from the symbol table
+	scope := graph.getScope(node)
+
+	for _, name := range nameList {
+		for _, symbol := range scope.Table[name] {
+			if variable, ok := symbol.(Variable); ok {
+				if value != nil {
+					offset := getTypeSize(variable.SType, *scope)
+
+					// Move the stack pointer
+					a.Sub(SP, offset)
+
+					// Load the int value to r0
+					a.Mov(R0, *value)
+					a.StrWithOffset(R0, offset)
+				} else {
+					offset := getTypeSize(variable.SType, *scope)
+
+					// Move the stack pointer
+					a.Sub(SP, offset)
+				}
+			}
+		}
+	}
 }
 
 func (a *AssemblyFile) ReadOperand(graph Graph, node int) {

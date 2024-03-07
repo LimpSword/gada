@@ -11,6 +11,29 @@ func CheckSemantics(graph Graph) {
 	semCheck(graph, 0)
 }
 
+func getTypeSize(t string, scope Scope) int {
+	switch t {
+	case "integer":
+		return 4
+	case "character":
+		return 1
+	case "boolean":
+		return 1
+	default:
+		// Is it a record?
+		if symbol, ok := scope.Table[t]; ok {
+			if symbol[0].Type() == Rec {
+				size := 0
+				for _, field := range symbol[0].(Record).Fields {
+					size += getTypeSize(field, scope)
+				}
+				return size
+			}
+		}
+		return 0
+	}
+}
+
 func findAccessType(graph Graph, scope *Scope, node int, curType string) string {
 	children := maps.Keys(graph.gmap[node])
 	slices.Sort(children)
