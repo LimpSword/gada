@@ -617,7 +617,6 @@ func keepUsefulNodes(g *Graph, term int) bool {
 	if _, ok := g.meaningful[term]; !ok {
 		return false
 	}
-	fmt.Println()
 	return Contains(usefullKeywords, g.types[term])
 }
 
