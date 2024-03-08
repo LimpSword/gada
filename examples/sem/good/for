@@ -1,0 +1,11 @@
+with Ada.Text_IO; use Ada.Text_IO;
+procedure Test is
+    y : Integer := 0;
+begin
+   for i in 0..10 loop
+        y := y + (-1);
+        for j in 0..10 loop
+            Put('l');
+        end loop;
+   end loop;
+end Test;

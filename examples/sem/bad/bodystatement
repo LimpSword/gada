@@ -9,11 +9,9 @@ procedure Record4 is
                 end Record5;
         begin
             return x + 1;
-            Record5(a);
-            f(a);
         end f;
     f1 : Integer;
 begin
-    f1 := f(1,2,3);
-
+    f(1,2,3);
+    f1;
 end Record4;

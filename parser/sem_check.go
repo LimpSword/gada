@@ -108,14 +108,13 @@ func matchFunc(graph Graph, scope *Scope, name string, args []int) string {
 			}
 		}
 
-	} else {
-		if scope.parent == nil {
-			logger.Error(name + " function is undefined")
-		} else {
-			matchFunc(graph, scope.parent, name, args)
-		}
 	}
-	return Unknown
+	if scope.parent == nil {
+		logger.Error(name + " function is undefined")
+		return Unknown
+	} else {
+		return matchFunc(graph, scope.parent, name, args)
+	}
 }
 
 func matchProc(graph Graph, scope *Scope, name string, args []int) string {
@@ -127,6 +126,7 @@ func matchProc(graph Graph, scope *Scope, name string, args []int) string {
 	if symbol, ok := scope.Table[name]; ok {
 		for _, f := range symbol {
 			if f.Type() == Proc {
+
 				fun := f.(Procedure)
 				if fun.ParamCount == len(argstype) {
 					buffer := []string{}
@@ -148,6 +148,7 @@ func matchProc(graph Graph, scope *Scope, name string, args []int) string {
 					for _, val := range buffer {
 						logger.Error(val)
 					}
+					return "found"
 				}
 				continue
 			} else {
@@ -155,17 +156,17 @@ func matchProc(graph Graph, scope *Scope, name string, args []int) string {
 			}
 		}
 
-	} else {
-		if scope.parent == nil {
-			logger.Error(name + " procedure is undefined")
-		} else {
-			matchProc(graph, scope.parent, name, args)
-		}
 	}
-	return Unknown
+	if scope.parent == nil {
+		logger.Error(name + " procedure is undefined")
+		return Unknown
+	} else {
+		return matchProc(graph, scope.parent, name, args)
+	}
 }
 
 func whichFinal(graph Graph, node int) string {
+	// give the final type of the node
 	val := graph.types[node]
 	if val == "True" || val == "False" {
 		return "boolean"
@@ -190,7 +191,7 @@ func getSymbol(graph Graph, scope *Scope, node int) string {
 		if scope.parent == nil {
 			logger.Error(name + " ident is undefined")
 		} else {
-			return findIdentifierType(graph, scope.parent, node)
+			return getSymbol(graph, scope.parent, node)
 		}
 	}
 	return Unknown
@@ -222,7 +223,15 @@ func getReturnType(graph Graph, scope *Scope, node int) string {
 			logger.Error("Operator " + graph.types[node] + " should have boolean operands")
 		}
 	case "call":
-		return matchFunc(graph, scope, graph.types[children[0]], maps.Keys(graph.gmap[children[1]]))
+		if graph.types[children[0]] == "-" {
+			if getReturnType(graph, scope, children[1]) == "integer" {
+				return "integer"
+			} else {
+				logger.Error("Operator - should have integer operands")
+			}
+		} else {
+			return matchFunc(graph, scope, graph.types[children[0]], maps.Keys(graph.gmap[children[1]]))
+		}
 	case "access":
 		mainType := findIdentifierType(graph, scope, children[0])
 		finalType := findAccessType(graph, scope, children[1], mainType)
@@ -238,7 +247,7 @@ func findIdentifierType(graph Graph, scope *Scope, node int) string {
 		if symbol[0].Type() == "integer" || symbol[0].Type() == "character" || symbol[0].Type() == "boolean" {
 			return symbol[0].Type()
 		} else {
-			if symbol[0].Type() == Func { //it mean it's a function without arguments
+			if symbol[0].Type() == Func { //it means it's a function without arguments
 				return symbol[0].(Function).ReturnType
 			} else {
 				return symbol[0].Type()
@@ -461,6 +470,11 @@ func semCheck(graph Graph, node int) {
 		}
 		semCheck(graph, sorted[1+shift])
 	case "for":
+		for _, child := range sorted {
+			if graph.types[child] == "body" {
+				semCheck(graph, child)
+			}
+		}
 		// todo stop variable assignation
 	case "var":
 		// check if something is already declared with the same name
@@ -500,6 +514,13 @@ func semCheck(graph Graph, node int) {
 			findType(scope, getSymbolType(graph.types[childChild[1]]))
 		}
 	case ":=":
+		if whichFinal(graph, sorted[0]) != "identifier" {
+			logger.Error("Left side of assignment is not a variable")
+		} else {
+			if Contains([]string{Func, Proc, Rec, Unknown}, getSymbol(graph, scope, sorted[0])) {
+				logger.Error("Left side of assignment is not a variable")
+			}
+		}
 		varType := getReturnType(graph, scope, sorted[0])
 		assignType := getReturnType(graph, scope, sorted[1])
 		if varType != assignType {
@@ -507,6 +528,9 @@ func semCheck(graph Graph, node int) {
 		}
 		varStruct := findStruct(graph, scope, sorted[0], true)
 		if varStruct != nil {
+			if varStruct.IsLoop {
+				logger.Error("Loop variable " + varStruct.VName + " cannot be assigned")
+			}
 			if !varStruct.IsParamOut && varStruct.IsParamIn {
 				logger.Error("Variable " + varStruct.VName + " is an in parameter and cannot be assigned")
 			}
@@ -528,9 +552,13 @@ func semCheck(graph Graph, node int) {
 		} else if symbolType == Unknown {
 			logger.Error("Cannot use call to " + graph.types[sorted[0]] + " as a statement")
 		} else {
-			logger.Error("Cannot use call to variable" + graph.types[sorted[0]] + " as a statement")
+			logger.Error("Cannot use call to variable " + graph.types[sorted[0]] + " as a statement")
 		}
 	default:
+		//is a variable
+		if len(sorted) == 0 && whichFinal(graph, node) == "identifier" {
+			logger.Error("Cannot use call to " + graph.types[node] + " as a statement")
+		}
 		for _, child := range sorted {
 			semCheck(graph, child)
 		}

@@ -43,6 +43,7 @@ type Variable struct {
 	SType      string
 	IsParamIn  bool
 	IsParamOut bool
+	IsLoop     bool
 	Offset     int
 }
 
@@ -299,7 +300,10 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 		dfsSymbols(graph, sorted[1+shift], procScope)
 	case "for":
 		forScope := newScope(&scope)
-		forScope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: "integer"})
+		forScope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: "integer", IsLoop: true})
+		for _, child := range sorted {
+			dfsSymbols(graph, child, forScope)
+		}
 	case "var":
 		currentOffset := scope.getCurrentOffset()
 		if graph.types[sorted[0]] == "sameType" {
@@ -320,8 +324,8 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 		}
 		scope.addSymbol(recordElem)
 	default:
-		for _, node := range sorted {
-			dfsSymbols(graph, node, currentScope)
+		for _, child := range sorted {
+			dfsSymbols(graph, child, currentScope)
 		}
 	}
 	graph.scopes[node] = &scope
