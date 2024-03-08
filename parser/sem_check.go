@@ -61,7 +61,9 @@ func findAccessType(graph Graph, scope *Scope, node int, curType string) string 
 		}
 	} else {
 		if scope.parent == nil {
-			logger.Error(curType + " type is undefined")
+			if curType != "unknown" {
+				logger.Error(curType + " type is undefined")
+			}
 		} else {
 			return findAccessType(graph, scope.parent, node, curType)
 		}
@@ -185,6 +187,16 @@ func whichFinal(graph Graph, node int) string {
 func getSymbol(graph Graph, scope *Scope, node int) string {
 	// give the symbol type of the identifier
 	name := graph.types[node]
+
+	if name == "access" {
+		children := maps.Keys(graph.gmap[node])
+		if len(children) != 0 {
+			//mainType := findIdentifierType(graph, scope, children[0])
+			//finalType := findAccessType(graph, scope, children[1], mainType)
+			return "access"
+		}
+
+	}
 	if symbol, ok := scope.Table[name]; ok {
 		return symbol[0].Type()
 	} else {
@@ -302,7 +314,9 @@ func findType(scope *Scope, name string) string {
 		}
 	} else {
 		if scope.parent == nil {
-			logger.Error(name + " type is undefined")
+			if name != "unknown" {
+				logger.Error(name + " type is undefined")
+			}
 		} else {
 			findType(scope.parent, name)
 		}
@@ -540,9 +554,12 @@ func semCheck(graph Graph, node int) {
 			}
 		}
 		varType := getReturnType(graph, scope, sorted[0])
+
 		assignType := getReturnType(graph, scope, sorted[1])
 		if varType != assignType {
-			logger.Error("Type mismatch for variable: " + findAccessName(graph, sorted[0], "") + " is " + varType + " and was assigned to " + assignType)
+			if varType != "unknown" {
+				logger.Error("Type mismatch for variable: " + findAccessName(graph, sorted[0], "") + " is " + varType + " and was assigned to " + assignType)
+			}
 		}
 		varStruct := findStruct(graph, scope, sorted[0], true)
 		if varStruct != nil {
@@ -550,17 +567,20 @@ func semCheck(graph Graph, node int) {
 				logger.Error("Loop variable " + varStruct.VName + " cannot be assigned")
 			}
 			if !varStruct.IsParamOut && varStruct.IsParamIn {
+
 				logger.Error("Variable " + varStruct.VName + " is an in parameter and cannot be assigned")
 			}
 		}
 	case "return":
-		if len(sorted) == 0 {
-			logger.Error("return is not standalone")
+		scopeSymb := findMotherFunc(scope)
+		// return either func or proc symbol
+		if _, ok := scopeSymb.(Procedure); ok {
+			if len(sorted) != 0 {
+				logger.Error("Procedure can't return a value")
+			}
 		} else {
-			scopeSymb := findMotherFunc(scope)
-			// return either func or proc symbol
-			if _, ok := scopeSymb.(Procedure); ok {
-				logger.Error("Procedure can't return")
+			if len(sorted) == 0 {
+				logger.Error("return can't be standalone in function")
 			} else {
 				returnType := getReturnType(graph, scope, sorted[0])
 				if scopeSymb.(Function).ReturnType != returnType {
