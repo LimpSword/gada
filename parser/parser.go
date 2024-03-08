@@ -121,7 +121,7 @@ func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
 	os.WriteFile("./test/parser/parsetree.json", []byte(node.toJson()), 0644)
 	graph := toAst(node, *lex)
 	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
-	_, err := ReadAST(graph)
+	_, err := ReadAST(graph, true)
 	if err != nil {
 		logger.Error("Error while reading AST", "error", err)
 		return
@@ -144,7 +144,7 @@ func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
 		logger.Info("AST rendered")
 	}
 	CheckSemantics(graph)
-	ReadASTToASM(graph)
+	//ReadASTToASM(graph)
 	if parser.hadError {
 		// no crash for now
 		logger.Error("Compilation failed")

@@ -373,6 +373,14 @@ func checkParam(graph Graph, node int, funcScope *Scope) {
 	findType(funcScope, paramType)
 }
 
+func findMotherFunc(scope *Scope) Symbol {
+	if scope.ScopeSymbol != nil {
+		return scope.ScopeSymbol
+	} else {
+		return findMotherFunc(scope.parent)
+	}
+}
+
 func semCheck(graph Graph, node int) {
 	sorted := maps.Keys(graph.gmap[node])
 	slices.Sort(sorted)
@@ -381,6 +389,11 @@ func semCheck(graph Graph, node int) {
 	switch graph.types[node] {
 	case "file":
 		shift := 0
+		if graph.types[sorted[0]] != graph.types[sorted[len(sorted)-1]] {
+			if graph.types[sorted[len(sorted)-1]] != "end" {
+				logger.Error("Procedure " + graph.types[sorted[0]] + " end name do not match")
+			}
+		}
 		if graph.types[sorted[1]] == "decl" {
 			children := maps.Keys(graph.gmap[sorted[1]])
 			for _, child := range children {
@@ -437,6 +450,11 @@ func semCheck(graph Graph, node int) {
 		procParam := make(map[int]*Variable)
 		procElem := Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: procParam}
 		shift := 0
+		if graph.types[sorted[0]] != graph.types[sorted[len(sorted)-1]] {
+			if graph.types[sorted[len(sorted)-1]] != "end" {
+				logger.Error("Procedure " + graph.types[sorted[0]] + " end name do not match")
+			}
+		}
 		if graph.types[sorted[1]] == "params" {
 			child := maps.Keys(graph.gmap[sorted[1]])
 			slices.Sort(child)
@@ -536,8 +554,20 @@ func semCheck(graph Graph, node int) {
 			}
 		}
 	case "return":
-		//todo check if the return type is the same as the function return type
-		//todo check if the return is in a function
+		if len(sorted) == 0 {
+			logger.Error("return is not standalone")
+		} else {
+			scopeSymb := findMotherFunc(scope)
+			// return either func or proc symbol
+			if _, ok := scopeSymb.(Procedure); ok {
+				logger.Error("Procedure can't return")
+			} else {
+				returnType := getReturnType(graph, scope, sorted[0])
+				if scopeSymb.(Function).ReturnType != returnType {
+					logger.Error("Return type " + returnType + " don't match " + scopeSymb.(Function).FName + " return type " + scopeSymb.(Function).ReturnType)
+				}
+			}
+		}
 
 	case "call":
 		symbolType := getSymbol(graph, scope, sorted[0])

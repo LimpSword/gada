@@ -6,11 +6,11 @@ procedure Record4 is
             procedure Record5(a:Integer) is
                 begin
                     Put('x');
+                    return 5;
                 end Record5;
         begin
-            return f(1,2,3);
-            return x + 1;
-            Record5(5);
+            return 'a';
+            return;
         end f;
     f1 : Integer;
 begin

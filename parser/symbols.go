@@ -13,6 +13,7 @@ type Scope struct {
 	Nested int
 
 	parent        *Scope
+	ScopeSymbol   Symbol
 	Children      *[]*Scope
 	Table         map[string][]Symbol
 	regionCounter *int
@@ -122,7 +123,6 @@ func newScope(parent *Scope) *Scope {
 		*parent.regionCounter++
 		scope = &Scope{parent: parent, Table: make(map[string][]Symbol), Children: &[]*Scope{}, regionCounter: parent.regionCounter, Region: *parent.regionCounter, Nested: parent.Nested + 1}
 		*parent.Children = append(*parent.Children, scope)
-		fmt.Println("new scope", scope.Region, len(*parent.Children))
 	}
 
 	return scope
@@ -142,10 +142,6 @@ func (scope *Scope) getCurrentOffset() int {
 	return maxOffset
 }
 
-func (scope *Scope) String() string {
-	return fmt.Sprintf("Region: %d, Nested: %d, Table: %v", scope.Region, scope.Nested, scope.Table)
-}
-
 func (scope *Scope) addSymbol(symbol Symbol) {
 	name := symbol.Name()
 	if existingSymbols, ok := scope.Table[name]; ok {
@@ -157,20 +153,23 @@ func (scope *Scope) addSymbol(symbol Symbol) {
 	}
 }
 
-func ReadAST(graph Graph) (*Scope, error) {
+func ReadAST(graph Graph, printtds bool) (*Scope, error) {
 	fileScope := newScope(nil)
+	fileScope.ScopeSymbol = Procedure{PName: "file", PType: Proc}
 	currentScope := *fileScope
 	fileNodeIndex := 0
 	currentScope.addSymbol(Procedure{PName: "Put", PType: Proc, ParamCount: 1, Params: map[int]*Variable{1: &Variable{VName: "x", SType: "character"}}, children: []int{}})
 	dfsSymbols(graph, fileNodeIndex, &currentScope)
 
-	// fileScope to json
-	b, err := json.MarshalIndent(fileScope, "", "  ")
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
+	if printtds {
+		// fileScope to json
+		b, err := json.MarshalIndent(fileScope, "", "  ")
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+		fmt.Println(string(b))
 	}
-	fmt.Println(string(b))
 	return fileScope, nil
 }
 
@@ -267,6 +266,7 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 		}
 		funcElem.ReturnType = getSymbolType(graph.types[sorted[1+shift]])
 		scope.addSymbol(funcElem)
+		funcScope.ScopeSymbol = funcElem
 		if graph.types[sorted[2+shift]] == "decl" {
 
 			children := maps.Keys(graph.gmap[sorted[2+shift]])
@@ -287,9 +287,10 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 			for _, param := range child {
 				addParamProc(graph, param, &procElem, procScope)
 			}
-			scope.addSymbol(procElem)
 			shift = 1
 		}
+		scope.addSymbol(procElem)
+		procScope.ScopeSymbol = procElem
 		if graph.types[sorted[1+shift]] == "decl" {
 			children := maps.Keys(graph.gmap[sorted[1+shift]])
 			for _, child := range children {
@@ -302,7 +303,9 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 		forScope := newScope(&scope)
 		forScope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: "integer", IsLoop: true})
 		for _, child := range sorted {
-			dfsSymbols(graph, child, forScope)
+			if graph.types[child] == "body" {
+				dfsSymbols(graph, child, forScope)
+			}
 		}
 	case "var":
 		currentOffset := scope.getCurrentOffset()
