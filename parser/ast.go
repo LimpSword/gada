@@ -9,10 +9,13 @@ import (
 )
 
 type Graph struct {
+	fileName   string
 	gmap       map[int]map[int]struct{}
 	types      map[int]string
 	terminals  map[int]struct{}
 	meaningful map[int]struct{}
+	line       map[int]int
+	column     map[int]int
 	fathers    map[int]int
 	depth      map[int]int
 	scopes     map[int]*Scope
@@ -307,6 +310,9 @@ func addNodes(node *Node, graph *Graph, lexer lexer.Lexer, depth int, newName bo
 	graph.types[graph.nbNode] = newType
 	graph.depth[graph.nbNode] = depth
 
+	graph.line[graph.nbNode] = node.Line
+	graph.column[graph.nbNode] = node.Column
+
 	if len(node.Children) == 0 {
 		meaningfull = true
 		graph.terminals[graph.nbNode] = struct{}{}
@@ -327,11 +333,14 @@ func addNodes(node *Node, graph *Graph, lexer lexer.Lexer, depth int, newName bo
 func createGraph(node Node, lexer lexer.Lexer) *Graph {
 	// initialyze the graph with the parsetree
 	graph := Graph{}
+	graph.fileName = lexer.FileName
 	graph.gmap = make(map[int]map[int]struct{})
 	graph.types = make(map[int]string)
 	graph.terminals = make(map[int]struct{})
 	graph.meaningful = make(map[int]struct{})
 	graph.fathers = make(map[int]int)
+	graph.column = make(map[int]int)
+	graph.line = make(map[int]int)
 	graph.depth = make(map[int]int)
 	graph.scopes = make(map[int]*Scope)
 	graph.nbNode = 0

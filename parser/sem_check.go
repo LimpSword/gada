@@ -201,7 +201,10 @@ func getSymbol(graph Graph, scope *Scope, node int) string {
 		return symbol[0].Type()
 	} else {
 		if scope.parent == nil {
-			logger.Error(name + " ident is undefined")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " ident " + name + " is undefined")
 		} else {
 			return getSymbol(graph, scope.parent, node)
 		}
@@ -267,7 +270,10 @@ func findIdentifierType(graph Graph, scope *Scope, node int) string {
 		}
 	} else {
 		if scope.parent == nil {
-			logger.Error(name + " ident is undefined")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " ident " + name + " is undefined")
 		} else {
 			return findIdentifierType(graph, scope.parent, node)
 		}

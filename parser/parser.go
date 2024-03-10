@@ -19,9 +19,10 @@ type Parser struct {
 }
 
 type Node struct {
-	Type     string
-	Index    int
-	Children []*Node
+	Type         string
+	Index        int
+	Children     []*Node
+	Line, Column int
 }
 
 var logger *log.Logger
@@ -209,6 +210,11 @@ func unexpectedToken(parser *Parser, possible, got string) {
 	logger.Error(file+" "+"Unexpected token: "+red+parser.lexer.GetToken(parser.lexer.Tokens[parser.index])+reset, "possible", possible, "got", got)
 
 	parser.hadError = true
+}
+
+func (node *Node) setLineColumn(parser Parser) {
+	node.Line = parser.lexer.Tokens[parser.index-1].Beginning.Line
+	node.Column = parser.lexer.Tokens[parser.index-1].Beginning.Column
 }
 
 func expectToken(parser *Parser, tkn token.Token) bool {
@@ -1469,6 +1475,9 @@ func readIdent(parser *Parser) Node {
 	_, index := parser.readFullToken()
 	node := Node{Type: "Ident"}
 	node.Index = index
+
+	node.setLineColumn(*parser)
+
 	return node
 }
 
