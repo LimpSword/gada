@@ -293,13 +293,19 @@ func findStruct(graph Graph, scope *Scope, node int, log bool) *Variable {
 			return &variable
 		} else {
 			if log {
-				logger.Error("left side of assignment " + name + " is not a variable")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " left side of assignment " + name + " is undefined")
 			}
 		}
 	} else {
 		if scope.parent == nil {
 			if log {
-				logger.Error("left side of assignment " + name + " is undefined")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " left side of assignment " + name + " is undefined")
 			}
 		} else {
 			return findStruct(graph, scope.parent, node, log)
@@ -308,26 +314,26 @@ func findStruct(graph Graph, scope *Scope, node int, log bool) *Variable {
 	return nil
 }
 
-func findType(scope *Scope, name string) string {
+func findType(scope *Scope, name string) (string, error) {
 	if name == "integer" || name == "character" || name == "boolean" {
-		return name
+		return name, nil
 	}
 	if symbol, ok := scope.Table[name]; ok {
 		if symbol[0].Type() == Rec {
-			return symbol[0].Name()
+			return symbol[0].Name(), nil
 		} else {
-			logger.Error(name + " is a " + symbol[0].Type() + " and not a type")
+			return "", fmt.Errorf(name + " is a " + symbol[0].Type() + " and not a type")
 		}
 	} else {
 		if scope.parent == nil {
 			if name != "unknown" {
-				logger.Error(name + " type is undefined")
+				return "", fmt.Errorf(name + " type is undefined")
 			}
 		} else {
-			findType(scope.parent, name)
+			return findType(scope.parent, name)
 		}
 	}
-	return Unknown
+	return Unknown, nil
 }
 
 // goUpScope: get the scope containing the variable and the total offset to reach it
@@ -343,7 +349,7 @@ func goUpScope(scope *Scope, name string) (*Scope, int) {
 	totalOffset := scope.getCurrentOffset()
 	if scope.parent == nil {
 		// should never happen
-		logger.Error(name + " variable is undefined")
+		logger.Warn(name + " variable is undefined")
 	} else {
 		parentScope, offset := goUpScope(scope.parent, name)
 		return parentScope, totalOffset + offset
@@ -390,7 +396,14 @@ func checkParam(graph Graph, node int, funcScope *Scope) {
 	children := maps.Keys(graph.gmap[node])
 	slices.Sort(children)
 	paramType := getSymbolType(graph.types[children[len(children)-1]])
-	findType(funcScope, paramType)
+	_, err := findType(funcScope, paramType)
+	if err != nil {
+		fileName := graph.fileName
+		line := strconv.Itoa(graph.line[node])
+		column := strconv.Itoa(graph.column[node])
+		errorMessage := fileName + ":" + line + ":" + column + " " + err.Error()
+		logger.Error(errorMessage)
+	}
 }
 
 func findMotherFunc(scope *Scope) Symbol {
@@ -442,7 +455,16 @@ func semCheck(graph Graph, node int) {
 			shift = 1
 		}
 		funcElem.ReturnType = getSymbolType(graph.types[sorted[1+shift]])
-		findType(scope, funcElem.ReturnType)
+
+		_, err := findType(scope, funcElem.ReturnType)
+		if err != nil {
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			errorMessage := fileName + ":" + line + ":" + column + " " + err.Error()
+			logger.Error(errorMessage)
+		}
+
 		countSame := 0
 		for _, fun := range scope.Table[funcElem.FName] {
 			if fun.Type() == Func {
@@ -533,7 +555,15 @@ func semCheck(graph Graph, node int) {
 		}
 		// check if the type exists
 		declType := getSymbolType(graph.types[sorted[1]])
-		findType(scope, declType)
+
+		_, err := findType(scope, declType)
+		if err != nil {
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[sorted[1]])
+			column := strconv.Itoa(graph.column[sorted[1]])
+			errorMessage := fileName + ":" + line + ":" + column + " " + err.Error()
+			logger.Error(errorMessage)
+		}
 
 	case "type":
 		if r, ok := scope.Table[graph.types[node]]; ok {
@@ -549,14 +579,29 @@ func semCheck(graph Graph, node int) {
 				logger.Error("Field " + graph.types[childChild[0]] + " is duplicate in record " + graph.types[sorted[0]] + " declaration")
 			}
 			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
-			findType(scope, getSymbolType(graph.types[childChild[1]]))
+
+			_, err := findType(scope, getSymbolType(graph.types[childChild[1]]))
+			if err != nil {
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				errorMessage := fileName + ":" + line + ":" + column + " " + err.Error()
+				logger.Error(errorMessage)
+			}
+
 		}
 	case ":=":
 		if whichFinal(graph, sorted[0]) != "identifier" {
-			logger.Error("Left side of assignment is not a variable")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[sorted[0]])
+			column := strconv.Itoa(graph.column[sorted[0]])
+			logger.Error(fileName + ":" + line + ":" + column + " " + "Left side of assignment is not a variable")
 		} else {
 			if Contains([]string{Func, Proc, Rec, Unknown}, getSymbol(graph, scope, sorted[0])) {
-				logger.Error("Left side of assignment is not a variable")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[sorted[0]])
+				column := strconv.Itoa(graph.column[sorted[0]])
+				logger.Error(fileName + ":" + line + ":" + column + " " + "Left side of assignment is not a variable")
 			}
 		}
 		varType := getReturnType(graph, scope, sorted[0])
