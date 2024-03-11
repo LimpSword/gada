@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gada/asm"
 	"gada/reader"
 	"os"
 	"strings"
@@ -10,7 +11,18 @@ func main() {
 
 	argsWithoutProg := os.Args[1:]
 	if len(argsWithoutProg) > 0 {
-		compileConfig := reader.CompileConfig{Path: getProgramName()}
+		if argsWithoutProg[0] == "run" {
+			compileConfig := reader.CompileConfig{Path: getProgramName(2)}
+
+			reader.CompileFile(compileConfig)
+
+			// Run the compiled program
+			asm.Execute(compileConfig.Path)
+
+			return
+		}
+
+		compileConfig := reader.CompileConfig{Path: getProgramName(1)}
 
 		// Arguments
 		printAst, _ := containsArgument(argsWithoutProg, "--print-ast")
@@ -28,9 +40,9 @@ func main() {
 	reader.CompileFile(reader.CompileConfig{Path: "examples/expressions/helloWorld.ada", PrintAst: true})
 }
 
-func getProgramName() string {
+func getProgramName(startIndex int) string {
 	var programName string
-	for _, arg := range os.Args[1:] {
+	for _, arg := range os.Args[startIndex:] {
 		if !strings.HasPrefix(arg, "--") {
 			programName = arg
 			break

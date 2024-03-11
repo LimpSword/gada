@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/log"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type AssemblyFile struct {
@@ -176,9 +177,9 @@ func (a *AssemblyFile) BranchToLabelWithCondition(label string, condition string
 }
 
 func (a AssemblyFile) Write() {
-	file, err := os.Create(a.FileName + ".s")
+	file, err := os.Create(a.FileName)
 	if err != nil {
-		log.Fatal("Error while creating file")
+		log.Fatal("Error while creating file", err)
 	}
 	defer file.Close()
 	_, err = file.WriteString(a.Text)
@@ -188,13 +189,13 @@ func (a AssemblyFile) Write() {
 }
 
 func (a AssemblyFile) Execute() []string {
-	output := asm.Execute(a.FileName + ".s")
+	output := asm.Execute(a.FileName)
 	return output
 }
 
 func ReadASTToASM(graph Graph) {
 	log.Info("Reading AST to ASM")
-	file := NewAssemblyFile("test")
+	file := NewAssemblyFile(strings.Replace(graph.fileName, ".ada", ".s", -1))
 	file.ReadFile(graph, 0)
 
 	file.Text += "end\n"
@@ -254,6 +255,8 @@ minus_sign
 `
 
 	log.Info("\n" + file.Text)
+
+	file.Write()
 }
 
 func (a *AssemblyFile) CallProcedure(name string) {
