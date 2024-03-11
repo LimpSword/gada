@@ -424,7 +424,10 @@ func semCheck(graph Graph, node int) {
 		shift := 0
 		if graph.types[sorted[0]] != graph.types[sorted[len(sorted)-1]] {
 			if graph.types[sorted[len(sorted)-1]] != "end" {
-				logger.Error("Procedure " + graph.types[sorted[0]] + " end name do not match")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[sorted[len(sorted)-1]])
+				column := strconv.Itoa(graph.column[sorted[len(sorted)-1]])
+				logger.Error(fileName + ":" + line + ":" + column + " " + "Procedure " + graph.types[sorted[0]] + " end name do not match")
 			}
 		}
 		if graph.types[sorted[1]] == "decl" {
@@ -615,11 +618,16 @@ func semCheck(graph Graph, node int) {
 		varStruct := findStruct(graph, scope, sorted[0], true)
 		if varStruct != nil {
 			if varStruct.IsLoop {
-				logger.Error("Loop variable " + varStruct.VName + " cannot be assigned")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[sorted[0]])
+				column := strconv.Itoa(graph.column[sorted[0]])
+				logger.Error(fileName + ":" + line + ":" + column + " " + "Loop variable " + varStruct.VName + " cannot be assigned")
 			}
 			if !varStruct.IsParamOut && varStruct.IsParamIn {
-
-				logger.Error("Variable " + varStruct.VName + " is an in parameter and cannot be assigned")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[sorted[0]])
+				column := strconv.Itoa(graph.column[sorted[0]])
+				logger.Error(fileName + ":" + line + ":" + column + " " + "Variable " + varStruct.VName + " is an in parameter and cannot be assigned")
 			}
 		}
 	case "return":
