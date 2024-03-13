@@ -19,3 +19,6 @@
 
 # Go workspace file
 go.work
+test/parser/ast.json
+test/parser/parsetree.json
+test/parser/ast.png
