@@ -19,6 +19,7 @@ type Graph struct {
 	fathers    map[int]int
 	depth      map[int]int
 	scopes     map[int]*Scope
+	hasReturn  map[int]struct{}
 	nbNode     int
 	lexer      *lexer.Lexer
 }
@@ -343,6 +344,7 @@ func createGraph(node Node, lexer lexer.Lexer) *Graph {
 	graph.line = make(map[int]int)
 	graph.depth = make(map[int]int)
 	graph.scopes = make(map[int]*Scope)
+	graph.hasReturn = make(map[int]struct{})
 	graph.nbNode = 0
 	addNodes(&node, &graph, lexer, 1, true)
 

@@ -414,6 +414,15 @@ func findMotherFunc(scope *Scope) Symbol {
 	}
 }
 
+func updateReturn(graph Graph, node int) {
+	if _, ok := graph.hasReturn[node]; !ok {
+		graph.hasReturn[node] = struct{}{}
+		if (graph.types[node] != "function") && node != 0 {
+			updateReturn(graph, graph.fathers[node])
+		}
+	}
+}
+
 func semCheck(graph Graph, node int) {
 	sorted := maps.Keys(graph.gmap[node])
 	slices.Sort(sorted)
@@ -491,6 +500,9 @@ func semCheck(graph Graph, node int) {
 			shift++
 		}
 		semCheck(graph, sorted[2+shift])
+		if _, ok := graph.hasReturn[node]; !ok {
+			logger.Error("Function " + funcElem.FName + " has no return statement")
+		}
 	case "procedure":
 		procParam := make(map[int]*Variable)
 		procElem := Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: procParam}
@@ -647,7 +659,7 @@ func semCheck(graph Graph, node int) {
 				}
 			}
 		}
-
+		updateReturn(graph, node)
 	case "call":
 		symbolType := getSymbol(graph, scope, sorted[0])
 		fmt.Println("symbolType", symbolType, graph.types[sorted[0]])
