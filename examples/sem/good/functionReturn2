@@ -1,0 +1,31 @@
+    with Ada.Text_IO; use Ada.Text_IO;
+
+    procedure Record4 is
+        type List is record hi : Integer; end record;
+        function f1 (x,z : Integer; y: boolean) return Integer is
+        a : Integer := 8;
+    begin
+        if 0=1 then a:=3;
+            return 1;
+            elsif true then
+            if a=2 then a:= 3;
+                else a:= 3;
+                return 2;
+            end if;
+            else a:= 3;
+            return 2;
+        end if;
+
+    end f1;
+    function f (x,y,z : Integer) return Boolean is
+        a : Integer := 8;
+    begin
+        a := 3;
+        return true;
+    end f;
+        t : Integer;
+        t1 : Boolean;
+    begin
+        t := f1(1,2,true);
+        t1 := f(1,2,3);
+    end Record4;

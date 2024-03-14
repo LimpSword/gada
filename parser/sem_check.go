@@ -414,6 +414,26 @@ func findMotherFunc(scope *Scope) Symbol {
 	}
 }
 
+func isHardReturn(graph Graph, node int) bool {
+	hasHardReturn := false
+	if graph.types[node] == "return" {
+		return true
+	} else {
+		children := maps.Keys(graph.gmap[node])
+		slices.Sort(children)
+		for ind, child := range children {
+			if isHardReturn(graph, child) {
+				hasHardReturn = true
+			} else {
+				if ind != 0 && (graph.types[node] == "if" || graph.types[node] == "elif") {
+					return false
+				}
+			}
+		}
+	}
+	return hasHardReturn
+}
+
 func updateReturn(graph Graph, node int) {
 	if _, ok := graph.hasReturn[node]; !ok {
 		graph.hasReturn[node] = struct{}{}
@@ -502,6 +522,10 @@ func semCheck(graph Graph, node int) {
 		semCheck(graph, sorted[2+shift])
 		if _, ok := graph.hasReturn[node]; !ok {
 			logger.Error("Function " + funcElem.FName + " has no return statement")
+		} else {
+			if !isHardReturn(graph, sorted[2+shift]) {
+				logger.Error("Function " + funcElem.FName + " may miss return statement")
+			}
 		}
 	case "procedure":
 		procParam := make(map[int]*Variable)
@@ -623,7 +647,7 @@ func semCheck(graph Graph, node int) {
 
 		assignType := getReturnType(graph, scope, sorted[1])
 		if varType != assignType {
-			if varType != "unknown" {
+			if varType != "unknown" && assignType != "unknown" {
 				logger.Error("Type mismatch for variable: " + findAccessName(graph, sorted[0], "") + " is " + varType + " and was assigned to " + assignType)
 			}
 		}
@@ -662,7 +686,7 @@ func semCheck(graph Graph, node int) {
 		updateReturn(graph, node)
 	case "call":
 		symbolType := getSymbol(graph, scope, sorted[0])
-		fmt.Println("symbolType", symbolType, graph.types[sorted[0]])
+		//fmt.Println("symbolType", symbolType, graph.types[sorted[0]])
 		if symbolType == Func { //todo handle after return only
 			logger.Error("Cannot use call to function " + graph.types[sorted[0]] + " as a statement")
 		} else if symbolType == Proc {
