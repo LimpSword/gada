@@ -225,17 +225,29 @@ func getReturnType(graph Graph, scope *Scope, node int) string {
 	}
 
 	switch graph.types[node] {
-	case "+", "-", "*", "/":
+	case "+", "-", "*", "/", "rem":
 		if getReturnType(graph, scope, children[0]) == "integer" && getReturnType(graph, scope, children[1]) == "integer" {
 			return "integer"
 		} else {
 			logger.Error("Operator " + graph.types[node] + " should have integer operands")
 		}
-	case "and", "or":
+	case "and", "or", "and then", "or else":
 		if getReturnType(graph, scope, children[0]) == "boolean" && getReturnType(graph, scope, children[1]) == "boolean" {
 			return "boolean"
 		} else {
 			logger.Error("Operator " + graph.types[node] + " should have boolean operands")
+		}
+	case "not":
+		if getReturnType(graph, scope, children[0]) == "boolean" {
+			return "boolean"
+		} else {
+			logger.Error("Operator not should have boolean operands")
+		}
+	case ">", "<", ">=", "<=", "=", "/=":
+		if getReturnType(graph, scope, children[0]) == "integer" && getReturnType(graph, scope, children[1]) == "integer" {
+			return "boolean"
+		} else {
+			logger.Error("Operator " + graph.types[node] + " should have integer operands")
 		}
 	case "call":
 		if graph.types[children[0]] == "-" {
@@ -698,6 +710,13 @@ func semCheck(graph Graph, node int) {
 			logger.Error("Cannot use call to " + graph.types[sorted[0]] + " as a statement")
 		} else {
 			logger.Error("Cannot use call to variable " + graph.types[sorted[0]] + " as a statement")
+		}
+	case "if", "elif":
+		if getReturnType(graph, scope, sorted[0]) != "boolean" {
+			logger.Error("Condition should be boolean")
+		}
+		for _, child := range sorted[1:] {
+			semCheck(graph, child)
 		}
 	default:
 		//is a variable
