@@ -45,7 +45,10 @@ func findAccessType(graph Graph, scope *Scope, node int, curType string) string 
 					newType := symbol[0].(Record).Fields[graph.types[children[0]]]
 					return findAccessType(graph, scope, children[1], newType)
 				} else {
-					logger.Error(graph.types[children[0]] + " is not a field of " + curType)
+					fileName := graph.fileName
+					line := strconv.Itoa(graph.line[node])
+					column := strconv.Itoa(graph.column[node])
+					logger.Error(fileName + ":" + line + ":" + column + " " + graph.types[children[0]] + " is not a field of " + curType)
 				}
 			} else {
 
@@ -53,16 +56,25 @@ func findAccessType(graph Graph, scope *Scope, node int, curType string) string 
 					newType := symbol[0].(Record).Fields[graph.types[node]]
 					return newType
 				} else {
-					logger.Error(graph.types[node] + " is not a field of " + curType)
+					fileName := graph.fileName
+					line := strconv.Itoa(graph.line[node])
+					column := strconv.Itoa(graph.column[node])
+					logger.Error(fileName + ":" + line + ":" + column + " " + graph.types[node] + " is not a field of " + curType)
 				}
 			}
 		} else {
-			logger.Error(curType + " is a " + symbol[0].Type() + " and not a record")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " " + curType + " is a " + symbol[0].Type() + " and not a record")
 		}
 	} else {
 		if scope.parent == nil {
 			if curType != "unknown" {
-				logger.Error(curType + " type is undefined")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " " + curType + " type is undefined")
 			}
 		} else {
 			return findAccessType(graph, scope.parent, node, curType)
@@ -79,6 +91,11 @@ func matchFuncReturn(graph Graph, scope *Scope, name string, args []int, returnT
 	}
 	matching := []Function{}
 	returnTypes := make(map[string]struct{})
+
+	fileName := graph.fileName
+	line := strconv.Itoa(graph.line[args[0]])
+	column := strconv.Itoa(graph.column[args[0]])
+
 	if symbol, ok := scope.Table[name]; ok {
 		for _, f := range symbol {
 			if f.Type() == Func {
@@ -92,7 +109,7 @@ func matchFuncReturn(graph Graph, scope *Scope, name string, args []int, returnT
 							break
 						} else if fun.Params[i].IsParamOut {
 							if whichFinal(graph, args[i-1]) != "identifier" || findStruct(graph, scope, args[i-1], false) == nil {
-								buffer = append(buffer, "Parameter in out "+fun.Params[i].VName+" should be a variable currently is "+graph.types[args[i-1]])
+								buffer = append(buffer, fileName+":"+line+":"+column+" "+"Parameter in out "+fun.Params[i].VName+" should be a variable currently is "+graph.types[args[i-1]])
 							}
 						}
 					}
@@ -107,11 +124,11 @@ func matchFuncReturn(graph Graph, scope *Scope, name string, args []int, returnT
 				}
 				continue
 			} else {
-				logger.Error(name + " is a " + f.Type() + " and not a function")
+				logger.Error(fileName + ":" + line + ":" + column + " " + name + " is a " + f.Type() + " and not a function")
 			}
 		}
 		if len(matching) > 1 {
-			logger.Error(name + " call is ambiguous")
+			logger.Error(fileName + ":" + line + ":" + column + " " + name + " call is ambiguous")
 			returnTypes[Unknown] = struct{}{}
 			return returnTypes
 		}
@@ -122,7 +139,7 @@ func matchFuncReturn(graph Graph, scope *Scope, name string, args []int, returnT
 
 	}
 	if scope.parent == nil {
-		logger.Error(name + " function is undefined")
+		logger.Error(fileName + ":" + line + ":" + column + " " + name + " function is undefined")
 		returnTypes[Unknown] = struct{}{}
 		return returnTypes
 	} else {
@@ -138,6 +155,11 @@ func matchFunc(graph Graph, scope *Scope, name string, args []int) map[string]st
 	}
 	matching := []Function{}
 	returnTypes := make(map[string]struct{})
+
+	fileName := graph.fileName
+	line := strconv.Itoa(graph.line[args[0]])
+	column := strconv.Itoa(graph.column[args[0]])
+
 	if symbol, ok := scope.Table[name]; ok {
 		for _, f := range symbol {
 			if f.Type() == Func {
@@ -151,7 +173,7 @@ func matchFunc(graph Graph, scope *Scope, name string, args []int) map[string]st
 							break
 						} else if fun.Params[i].IsParamOut {
 							if whichFinal(graph, args[i-1]) != "identifier" || findStruct(graph, scope, args[i-1], false) == nil {
-								buffer = append(buffer, "Parameter in out "+fun.Params[i].VName+" should be a variable currently is "+graph.types[args[i-1]])
+								buffer = append(buffer, fileName+":"+line+":"+column+" "+"Parameter in out "+fun.Params[i].VName+" should be a variable currently is "+graph.types[args[i-1]])
 							}
 						}
 					}
@@ -168,7 +190,7 @@ func matchFunc(graph Graph, scope *Scope, name string, args []int) map[string]st
 				}
 				continue
 			} else {
-				logger.Error(name + " is a " + f.Type() + " and not a function")
+				logger.Error(fileName + ":" + line + ":" + column + " " + name + " is a " + f.Type() + " and not a function")
 			}
 		}
 		for _, f := range matching {
@@ -184,7 +206,7 @@ func matchFunc(graph Graph, scope *Scope, name string, args []int) map[string]st
 
 	}
 	if scope.parent == nil {
-		logger.Error(name + " function is undefined")
+		logger.Error(fileName + ":" + line + ":" + column + " " + name + " function is undefined")
 		returnTypes[Unknown] = struct{}{}
 		return returnTypes
 	} else {
@@ -199,6 +221,11 @@ func matchProc(graph Graph, scope *Scope, name string, args []int) string {
 		argstype[ind+1] = getReturnType(graph, scope, val, make(map[string]struct{}))
 	}
 	matching := []Procedure{}
+
+	fileName := graph.fileName
+	line := strconv.Itoa(graph.line[args[0]])
+	column := strconv.Itoa(graph.column[args[0]])
+
 	if symbol, ok := scope.Table[name]; ok {
 		for _, f := range symbol {
 			if f.Type() == Proc {
@@ -213,7 +240,7 @@ func matchProc(graph Graph, scope *Scope, name string, args []int) string {
 							break
 						} else if fun.Params[i].IsParamOut {
 							if whichFinal(graph, args[i-1]) != "identifier" || findStruct(graph, scope, args[i-1], false) == nil {
-								buffer = append(buffer, "Parameter in out "+fun.Params[i].VName+" should be a variable currently is "+graph.types[args[i-1]])
+								buffer = append(buffer, fileName+":"+line+":"+column+" "+"Parameter in out "+fun.Params[i].VName+" should be a variable currently is "+graph.types[args[i-1]])
 							}
 						}
 					}
@@ -221,23 +248,24 @@ func matchProc(graph Graph, scope *Scope, name string, args []int) string {
 						continue
 					}
 					for _, val := range buffer {
+
 						logger.Error(val)
 					}
 					matching = append(matching, f.(Procedure))
 				}
 				continue
 			} else {
-				logger.Error(name + " is a " + f.Type() + " and not a procedure")
+				logger.Error(fileName + ":" + line + ":" + column + " " + name + " is a " + f.Type() + " and not a procedure")
 			}
 		}
 		if len(matching) > 1 {
-			logger.Error(name + " call is ambiguous")
+			logger.Error(fileName + ":" + line + ":" + column + " " + name + " call is ambiguous")
 		} else if len(matching) == 1 {
 			return "found"
 		}
 	}
 	if scope.parent == nil {
-		logger.Error(name + " procedure is undefined")
+		logger.Error(fileName + ":" + line + ":" + column + " " + name + " procedure is undefined")
 		return Unknown
 	} else {
 		return matchProc(graph, scope.parent, name, args)
@@ -281,7 +309,7 @@ func getSymbol(graph Graph, scope *Scope, node int) string {
 			fileName := graph.fileName
 			line := strconv.Itoa(graph.line[node])
 			column := strconv.Itoa(graph.column[node])
-			logger.Error(fileName + ":" + line + ":" + column + " ident " + name + " is undefined")
+			logger.Error(fileName + ":" + line + ":" + column + " " + " ident " + name + " is undefined")
 		} else {
 			return getSymbol(graph, scope.parent, node)
 		}
@@ -348,28 +376,40 @@ func getReturnType(graph Graph, scope *Scope, node int, expectedReturn map[strin
 			returnTypes["integer"] = struct{}{}
 			return returnTypes
 		} else {
-			logger.Error("Operator " + graph.types[node] + " should have integer operands")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " Operator " + graph.types[node] + " should have integer operands")
 		}
 	case "and", "or", "and then", "or else":
 		if haveType(getReturnType(graph, scope, children[0], expectedReturn), "boolean") && haveType(getReturnType(graph, scope, children[1], expectedReturn), "boolean") {
 			returnTypes["boolean"] = struct{}{}
 			return returnTypes
 		} else {
-			logger.Error("Operator " + graph.types[node] + " should have boolean operands")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " Operator " + graph.types[node] + " should have boolean operands")
 		}
 	case "not":
 		if haveType(getReturnType(graph, scope, children[0], expectedReturn), "boolean") {
 			returnTypes["boolean"] = struct{}{}
 			return returnTypes
 		} else {
-			logger.Error("Operator not should have boolean operands")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " Operator not should have boolean operands")
 		}
 	case ">", "<", ">=", "<=", "=", "/=":
 		if haveType(getReturnType(graph, scope, children[0], expectedReturn), "integer") && haveType(getReturnType(graph, scope, children[1], expectedReturn), "integer") {
 			returnTypes["boolean"] = struct{}{}
 			return returnTypes
 		} else {
-			logger.Error("Operator " + graph.types[node] + " should have integer operands")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " Operator " + graph.types[node] + " should have integer operands")
 		}
 	case "call":
 		if graph.types[children[0]] == "-" {
@@ -377,7 +417,10 @@ func getReturnType(graph Graph, scope *Scope, node int, expectedReturn map[strin
 				returnTypes["integer"] = struct{}{}
 				return returnTypes
 			} else {
-				logger.Error("Operator - should have integer operands")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " Operator - should have integer operands")
 			}
 		} else {
 			if len(expectedReturn) == 0 {
@@ -624,7 +667,10 @@ func semCheck(graph Graph, node int) {
 		shift := 0
 		if graph.types[sorted[0]] != graph.types[sorted[len(sorted)-1]] {
 			if graph.types[sorted[len(sorted)-1]] != "end" {
-				logger.Error("Function " + graph.types[sorted[0]] + " end name do not match")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " Function " + graph.types[sorted[0]] + " end name do not match")
 			}
 		}
 		if graph.types[sorted[1]] == "params" {
@@ -653,12 +699,18 @@ func semCheck(graph Graph, node int) {
 				if compareFunc(fun.(Function), funcElem) {
 					countSame++
 					if countSame > 1 {
-						logger.Error(funcElem.FName + " function redeclared with same parameters and return type")
+						fileName := graph.fileName
+						line := strconv.Itoa(graph.line[node])
+						column := strconv.Itoa(graph.column[node])
+						logger.Error(fileName + ":" + line + ":" + column + " " + funcElem.FName + " function redeclared with same parameters and return type")
 						//break is we stop at first conflict
 					}
 				}
 			} else {
-				logger.Error(funcElem.FName + " is already declared in this scope")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " " + funcElem.FName + " is already declared in this scope")
 				//break is we stop at first conflict
 			}
 		}
@@ -671,10 +723,16 @@ func semCheck(graph Graph, node int) {
 		}
 		semCheck(graph, sorted[2+shift])
 		if _, ok := graph.hasReturn[node]; !ok {
-			logger.Error("Function " + funcElem.FName + " has no return statement")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " " + "Function " + funcElem.FName + " has no return statement")
 		} else {
 			if !isHardReturn(graph, sorted[2+shift]) {
-				logger.Error("Function " + funcElem.FName + " may miss return statement")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " " + "Function " + funcElem.FName + " may miss return statement")
 			}
 		}
 	case "procedure":
@@ -683,7 +741,10 @@ func semCheck(graph Graph, node int) {
 		shift := 0
 		if graph.types[sorted[0]] != graph.types[sorted[len(sorted)-1]] {
 			if graph.types[sorted[len(sorted)-1]] != "end" {
-				logger.Error("Procedure " + graph.types[sorted[0]] + " end name do not match")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " " + "Procedure " + graph.types[sorted[0]] + " end name do not match")
 			}
 		}
 		if graph.types[sorted[1]] == "params" {
@@ -701,11 +762,17 @@ func semCheck(graph Graph, node int) {
 				if compareProc(proc.(Procedure), procElem) {
 					countSame++
 					if countSame > 1 {
-						logger.Error("Procedure redeclared with same parameters")
+						fileName := graph.fileName
+						line := strconv.Itoa(graph.line[node])
+						column := strconv.Itoa(graph.column[node])
+						logger.Error(fileName + ":" + line + ":" + column + " " + "Procedure redeclared with same parameters")
 					}
 				}
 			} else {
-				logger.Error(procElem.PName + " is already declared in this scope")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " " + procElem.PName + " is already declared in this scope")
 				//break
 			}
 		}
@@ -731,14 +798,20 @@ func semCheck(graph Graph, node int) {
 			for _, child := range maps.Keys(graph.gmap[sorted[0]]) {
 				if r, ok := scope.Table[graph.types[child]]; ok {
 					if len(r) > 1 {
-						logger.Error(graph.types[child] + " is already declared in this scope")
+						fileName := graph.fileName
+						line := strconv.Itoa(graph.line[node])
+						column := strconv.Itoa(graph.column[node])
+						logger.Error(fileName + ":" + line + ":" + column + " " + graph.types[child] + " is already declared in this scope")
 					}
 				}
 			}
 		} else {
 			if r, ok := scope.Table[graph.types[sorted[0]]]; ok {
 				if len(r) > 1 {
-					logger.Error(graph.types[sorted[0]] + " is already declared in this scope")
+					fileName := graph.fileName
+					line := strconv.Itoa(graph.line[node])
+					column := strconv.Itoa(graph.column[node])
+					logger.Error(fileName + ":" + line + ":" + column + " " + graph.types[sorted[0]] + " is already declared in this scope")
 				}
 			}
 		}
@@ -757,7 +830,10 @@ func semCheck(graph Graph, node int) {
 	case "type":
 		if r, ok := scope.Table[graph.types[node]]; ok {
 			if len(r) > 1 {
-				logger.Error(graph.types[node] + " is already declared in this scope")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " " + graph.types[node] + " is already declared in this scope")
 			}
 		}
 		recordElem := Record{RName: graph.types[sorted[0]], SType: Rec, Fields: make(map[string]string)}
@@ -765,7 +841,10 @@ func semCheck(graph Graph, node int) {
 			childChild := maps.Keys(graph.gmap[child])
 			slices.Sort(childChild)
 			if _, ok := recordElem.Fields[graph.types[childChild[0]]]; ok {
-				logger.Error("Field " + graph.types[childChild[0]] + " is duplicate in record " + graph.types[sorted[0]] + " declaration")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " " + "Field " + graph.types[childChild[0]] + " is duplicate in record " + graph.types[sorted[0]] + " declaration")
 			}
 			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
 
@@ -808,7 +887,10 @@ func semCheck(graph Graph, node int) {
 		}
 		if varType != assignType {
 			if varType != "unknown" && assignType != "unknown" {
-				logger.Error("Type mismatch for variable: " + findAccessName(graph, sorted[0], "") + " is " + varType + " and was assigned to " + assignType)
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " " + "Type mismatch for variable: " + findAccessName(graph, sorted[0], "") + " is " + varType + " and was assigned to " + assignType)
 			}
 		}
 		varStruct := findStruct(graph, scope, sorted[0], true)
@@ -831,11 +913,17 @@ func semCheck(graph Graph, node int) {
 		// return either func or proc symbol
 		if _, ok := scopeSymb.(Procedure); ok {
 			if len(sorted) != 0 {
-				logger.Error("Procedure can't return a value")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " " + "Procedure can't return a value")
 			}
 		} else {
 			if len(sorted) == 0 {
-				logger.Error("return can't be standalone in function")
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " " + "return can't be standalone in function")
 			} else {
 				expectedType := make(map[string]struct{})
 				expectedType[scopeSymb.(Function).ReturnType] = struct{}{}
@@ -846,7 +934,10 @@ func semCheck(graph Graph, node int) {
 					for k := range returnType {
 						stringTypes = stringTypes + ", " + k
 					}
-					logger.Error("Return types " + stringTypes[2:] + " don't match " + scopeSymb.(Function).FName + " return type " + scopeSymb.(Function).ReturnType)
+					fileName := graph.fileName
+					line := strconv.Itoa(graph.line[node])
+					column := strconv.Itoa(graph.column[node])
+					logger.Error(fileName + ":" + line + ":" + column + " " + "Return types " + stringTypes[2:] + " don't match " + scopeSymb.(Function).FName + " return type " + scopeSymb.(Function).ReturnType)
 				}
 			}
 		}
@@ -855,20 +946,35 @@ func semCheck(graph Graph, node int) {
 		symbolType := getSymbol(graph, scope, sorted[0])
 		//fmt.Println("symbolType", symbolType, graph.types[sorted[0]])
 		if symbolType == Func {
-			logger.Error("Cannot use call to function " + graph.types[sorted[0]] + " as a statement")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " " + "Cannot use call to function " + graph.types[sorted[0]] + " as a statement")
 		} else if symbolType == Proc {
 			//fmt.Println("Proc", graph.types[sorted[0]], maps.Keys(graph.gmap[sorted[1]]))
 			matchProc(graph, scope, graph.types[sorted[0]], maps.Keys(graph.gmap[sorted[1]]))
 		} else if symbolType == Rec {
-			logger.Error("Cannot use call to type " + graph.types[sorted[0]] + " as a statement")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " " + "Cannot use call to type " + graph.types[sorted[0]] + " as a statement")
 		} else if symbolType == Unknown {
-			logger.Error("Cannot use call to " + graph.types[sorted[0]] + " as a statement")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " " + "Cannot use call to " + graph.types[sorted[0]] + " as a statement")
 		} else {
-			logger.Error("Cannot use call to variable " + graph.types[sorted[0]] + " as a statement")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " " + "Cannot use call to variable " + graph.types[sorted[0]] + " as a statement")
 		}
 	case "if", "elif":
 		if !haveType(getReturnType(graph, scope, sorted[0], make(map[string]struct{})), "boolean") {
-			logger.Error("Condition should be boolean")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " " + "Condition should be boolean")
 		}
 		for _, child := range sorted[1:] {
 			semCheck(graph, child)
@@ -876,7 +982,10 @@ func semCheck(graph Graph, node int) {
 	default:
 		//is something not accepted
 		if len(sorted) == 0 && whichFinal(graph, node) == "identifier" {
-			logger.Error("Wrong Statement")
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " " + "Wrong Statement")
 		}
 		for _, child := range sorted {
 			semCheck(graph, child)
