@@ -71,11 +71,70 @@ func findAccessType(graph Graph, scope *Scope, node int, curType string) string 
 	return Unknown
 }
 
+func matchFuncReturn(graph Graph, scope *Scope, name string, args []int, returnType map[string]struct{}) map[string]struct{} {
+	argstype := make(map[int]map[string]struct{})
+	slices.Sort(args)
+	for ind, val := range args {
+		argstype[ind+1] = getReturnType(graph, scope, val, make(map[string]struct{}))
+	}
+	matching := []Function{}
+	returnTypes := make(map[string]struct{})
+	if symbol, ok := scope.Table[name]; ok {
+		for _, f := range symbol {
+			if f.Type() == Func {
+				fun := f.(Function)
+				if fun.ParamCount == len(argstype) && haveType(returnType, fun.ReturnType) {
+					buffer := []string{}
+					breaked := false
+					for i := 1; i <= len(argstype); i++ {
+						if !haveType(argstype[i], fun.Params[i].SType) {
+							breaked = true
+							break
+						} else if fun.Params[i].IsParamOut {
+							if whichFinal(graph, args[i-1]) != "identifier" || findStruct(graph, scope, args[i-1], false) == nil {
+								buffer = append(buffer, "Parameter in out "+fun.Params[i].VName+" should be a variable currently is "+graph.types[args[i-1]])
+							}
+						}
+					}
+
+					if breaked {
+						continue
+					}
+					for _, val := range buffer {
+						logger.Error(val)
+					}
+					matching = append(matching, f.(Function))
+				}
+				continue
+			} else {
+				logger.Error(name + " is a " + f.Type() + " and not a function")
+			}
+		}
+		if len(matching) > 1 {
+			logger.Error(name + " call is ambiguous")
+			returnTypes[Unknown] = struct{}{}
+			return returnTypes
+		}
+		if len(matching) > 0 {
+			returnTypes[matching[0].ReturnType] = struct{}{}
+			return returnTypes
+		}
+
+	}
+	if scope.parent == nil {
+		logger.Error(name + " function is undefined")
+		returnTypes[Unknown] = struct{}{}
+		return returnTypes
+	} else {
+		return matchFuncReturn(graph, scope.parent, name, args, returnType)
+	}
+}
+
 func matchFunc(graph Graph, scope *Scope, name string, args []int) map[string]struct{} {
 	argstype := make(map[int]map[string]struct{})
 	slices.Sort(args)
 	for ind, val := range args {
-		argstype[ind+1] = getReturnType(graph, scope, val)
+		argstype[ind+1] = getReturnType(graph, scope, val, make(map[string]struct{}))
 	}
 	matching := []Function{}
 	returnTypes := make(map[string]struct{})
@@ -109,12 +168,12 @@ func matchFunc(graph Graph, scope *Scope, name string, args []int) map[string]st
 				}
 				continue
 			} else {
-				logger.Error(name + " is a " + symbol[0].Type() + " and not a function")
+				logger.Error(name + " is a " + f.Type() + " and not a function")
 			}
 		}
 		for _, f := range matching {
 			if _, ok := returnTypes[f.ReturnType]; ok {
-				logger.Error(name + " call is ambiguous")
+				fmt.Println(name + " call have multiple possibilities")
 			} else {
 				returnTypes[f.ReturnType] = struct{}{}
 			}
@@ -137,7 +196,7 @@ func matchProc(graph Graph, scope *Scope, name string, args []int) string {
 	argstype := make(map[int]map[string]struct{})
 	slices.Sort(args)
 	for ind, val := range args {
-		argstype[ind+1] = getReturnType(graph, scope, val)
+		argstype[ind+1] = getReturnType(graph, scope, val, make(map[string]struct{}))
 	}
 	matching := []Procedure{}
 	if symbol, ok := scope.Table[name]; ok {
@@ -168,7 +227,7 @@ func matchProc(graph Graph, scope *Scope, name string, args []int) string {
 				}
 				continue
 			} else {
-				logger.Error(name + " is a " + symbol[0].Type() + " and not a procedure")
+				logger.Error(name + " is a " + f.Type() + " and not a procedure")
 			}
 		}
 		if len(matching) > 1 {
@@ -238,33 +297,39 @@ func haveType(types map[string]struct{}, wantedtype string) bool {
 	}
 }
 
-func getExpectedTypes(graph Graph, scope *Scope, node int, ind int) map[string]struct{} {
-	// give the expected types of the node
-	switch graph.types[graph.fathers[node]] {
-	case ":=":
-		return getExpectedTypes(graph, scope, graph.fathers[node], -1)
-	case "args":
-		childs := maps.Keys(graph.gmap[graph.fathers[node]])
-		slices.Sort(childs)
-		//childs.index(node)
-		getExpectedTypes(graph, scope, graph.fathers[node], -1)
-	case "call":
-		break
-	}
+//func getExpectedTypes(graph Graph, scope *Scope, node int, ind int) map[string]struct{} {
+//	// give the expected types of the node
+//	switch graph.types[graph.fathers[node]] {
+//	case ":=":
+//		return getExpectedTypes(graph, scope, graph.fathers[node], -1)
+//	case "args":
+//		childs := maps.Keys(graph.gmap[graph.fathers[node]])
+//		slices.Sort(childs)
+//		for argsInd, child := range childs {
+//			if child == node {
+//				return getExpectedTypes(graph, scope, graph.fathers[node], argsInd)
+//			}
+//		}
+//	case "call":
+//		childs := maps.Keys(graph.gmap[graph.fathers[node]])
+//		slices.Sort(childs)
+//		return matchFunc(graph, scope, graph.types[childs[0]], maps.Keys(graph.gmap[childs[1]]))
+//	}
+//
+//	returnTypes := make(map[string]struct{})
+//	childs := maps.Keys(graph.gmap[node])
+//	slices.Sort(childs)
+//	switch graph.types[node] {
+//	case ":=":
+//		return getReturnType(graph, scope, childs[0])
+//	case "args":
+//
+//	}
+//	returnTypes[Unknown] = struct{}{}
+//	return returnTypes
+//}
 
-	returnTypes := make(map[string]struct{})
-	childs := maps.Keys(graph.gmap[node])
-	slices.Sort(childs)
-	switch graph.types[node] {
-	case ":=":
-		return getReturnType(graph, scope, childs[0])
-	case "args":
-	}
-	returnTypes[Unknown] = struct{}{}
-	return returnTypes
-}
-
-func getReturnType(graph Graph, scope *Scope, node int) map[string]struct{} {
+func getReturnType(graph Graph, scope *Scope, node int, expectedReturn map[string]struct{}) map[string]struct{} {
 	// give the return type of the node
 	returnTypes := make(map[string]struct{})
 	children := maps.Keys(graph.gmap[node])
@@ -279,28 +344,28 @@ func getReturnType(graph Graph, scope *Scope, node int) map[string]struct{} {
 	}
 	switch graph.types[node] {
 	case "+", "-", "*", "/", "rem":
-		if haveType(getReturnType(graph, scope, children[0]), "integer") && haveType(getReturnType(graph, scope, children[1]), "integer") {
+		if haveType(getReturnType(graph, scope, children[0], expectedReturn), "integer") && haveType(getReturnType(graph, scope, children[1], expectedReturn), "integer") {
 			returnTypes["integer"] = struct{}{}
 			return returnTypes
 		} else {
 			logger.Error("Operator " + graph.types[node] + " should have integer operands")
 		}
 	case "and", "or", "and then", "or else":
-		if haveType(getReturnType(graph, scope, children[0]), "boolean") && haveType(getReturnType(graph, scope, children[1]), "boolean") {
+		if haveType(getReturnType(graph, scope, children[0], expectedReturn), "boolean") && haveType(getReturnType(graph, scope, children[1], expectedReturn), "boolean") {
 			returnTypes["boolean"] = struct{}{}
 			return returnTypes
 		} else {
 			logger.Error("Operator " + graph.types[node] + " should have boolean operands")
 		}
 	case "not":
-		if haveType(getReturnType(graph, scope, children[0]), "boolean") {
+		if haveType(getReturnType(graph, scope, children[0], expectedReturn), "boolean") {
 			returnTypes["boolean"] = struct{}{}
 			return returnTypes
 		} else {
 			logger.Error("Operator not should have boolean operands")
 		}
 	case ">", "<", ">=", "<=", "=", "/=":
-		if haveType(getReturnType(graph, scope, children[0]), "integer") && haveType(getReturnType(graph, scope, children[1]), "integer") {
+		if haveType(getReturnType(graph, scope, children[0], expectedReturn), "integer") && haveType(getReturnType(graph, scope, children[1], expectedReturn), "integer") {
 			returnTypes["boolean"] = struct{}{}
 			return returnTypes
 		} else {
@@ -308,14 +373,18 @@ func getReturnType(graph Graph, scope *Scope, node int) map[string]struct{} {
 		}
 	case "call":
 		if graph.types[children[0]] == "-" {
-			if haveType(getReturnType(graph, scope, children[1]), "integer") {
+			if haveType(getReturnType(graph, scope, children[1], expectedReturn), "integer") {
 				returnTypes["integer"] = struct{}{}
 				return returnTypes
 			} else {
 				logger.Error("Operator - should have integer operands")
 			}
 		} else {
-			return matchFunc(graph, scope, graph.types[children[0]], maps.Keys(graph.gmap[children[1]]))
+			if len(expectedReturn) == 0 {
+				return matchFunc(graph, scope, graph.types[children[0]], maps.Keys(graph.gmap[children[1]]))
+			} else {
+				return matchFuncReturn(graph, scope, graph.types[children[0]], maps.Keys(graph.gmap[children[1]]), expectedReturn)
+			}
 		}
 	case "access":
 		mainTypes := findIdentifierType(graph, scope, children[0])
@@ -377,7 +446,7 @@ func findStruct(graph Graph, scope *Scope, node int, log bool) *Variable {
 				fileName := graph.fileName
 				line := strconv.Itoa(graph.line[node])
 				column := strconv.Itoa(graph.column[node])
-				logger.Error(fileName + ":" + line + ":" + column + " left side of assignment " + name + " is undefined")
+				logger.Error(fileName + ":" + line + ":" + column + " left side of assignment " + name + " is not a variable")
 			}
 		}
 	} else {
@@ -717,7 +786,7 @@ func semCheck(graph Graph, node int) {
 			column := strconv.Itoa(graph.column[sorted[0]])
 			logger.Error(fileName + ":" + line + ":" + column + " " + "Left side of assignment is not a variable")
 		} else {
-			if Contains([]string{Func, Proc, Rec, Unknown}, getSymbol(graph, scope, sorted[0])) {
+			if Contains([]string{Func, Proc, Rec}, getSymbol(graph, scope, sorted[0])) {
 				fileName := graph.fileName
 				line := strconv.Itoa(graph.line[sorted[0]])
 				column := strconv.Itoa(graph.column[sorted[0]])
@@ -725,17 +794,17 @@ func semCheck(graph Graph, node int) {
 			}
 		}
 
-		varTypes := getReturnType(graph, scope, sorted[0])
+		varTypes := getReturnType(graph, scope, sorted[0], make(map[string]struct{}))
 		var varType string
 		for k := range varTypes {
 			varType = k
-			break // Exit the loop after extracting the key
+			break
 		}
-		assignTypes := getReturnType(graph, scope, sorted[1])
+		assignTypes := getReturnType(graph, scope, sorted[1], varTypes)
 		var assignType string
 		for k := range assignTypes {
 			assignType = k
-			break // Exit the loop after extracting the key
+			break
 		}
 		if varType != assignType {
 			if varType != "unknown" && assignType != "unknown" {
@@ -768,7 +837,9 @@ func semCheck(graph Graph, node int) {
 			if len(sorted) == 0 {
 				logger.Error("return can't be standalone in function")
 			} else {
-				returnType := getReturnType(graph, scope, sorted[0])
+				expectedType := make(map[string]struct{})
+				expectedType[scopeSymb.(Function).ReturnType] = struct{}{}
+				returnType := getReturnType(graph, scope, sorted[0], expectedType)
 				//fmt.Println(scopeSymb.(Function).ReturnType, returnType)
 				if !haveType(returnType, scopeSymb.(Function).ReturnType) {
 					stringTypes := ""
@@ -796,16 +867,16 @@ func semCheck(graph Graph, node int) {
 			logger.Error("Cannot use call to variable " + graph.types[sorted[0]] + " as a statement")
 		}
 	case "if", "elif":
-		if !haveType(getReturnType(graph, scope, sorted[0]), "boolean") {
+		if !haveType(getReturnType(graph, scope, sorted[0], make(map[string]struct{})), "boolean") {
 			logger.Error("Condition should be boolean")
 		}
 		for _, child := range sorted[1:] {
 			semCheck(graph, child)
 		}
 	default:
-		//is a variable
+		//is something not accepted
 		if len(sorted) == 0 && whichFinal(graph, node) == "identifier" {
-			logger.Error("Cannot use call to " + graph.types[node] + " as a statement")
+			logger.Error("Wrong Statement")
 		}
 		for _, child := range sorted {
 			semCheck(graph, child)

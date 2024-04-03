@@ -5,7 +5,7 @@ procedure Test is
       x : Integer;
       y : integer;
    begin
-      H := 5;
+      H := 5; -- can't assign an in parameter
       x := 5;
       y := 3 + x;
       return y;
@@ -14,5 +14,5 @@ procedure Test is
    j: Integer;
 begin
     Put(X);
-    j := Mp(1,2,'a');
+    j := Mp(1,2,'a'); -- in out parameter have to be variable
 end;

@@ -12,18 +12,18 @@ procedure Record4 is
         begin
             return x + 1;
         end f;
-    function f (x1:Integer;y1,z1 : Integer) return Integer is
+    function f (x1:Integer;y1,z1 : Integer) return Integer is -- f is redeclared
                     a : Integer := 8;
-                    Next  : List;
+                    Next  : List; -- type undefined
                     procedure Record5(a:Integer) is
                         type List is record hi : Integer; end record;
                         begin
                             Put('x');
                         end Record5;
                 begin
-                    return x + 1;
+                    return x + 1;-- x is undefined
     end f;
-    f : Integer;
+    f : Integer; -- f is already decleared
 begin
-    t := f(1,2,3);
+    t := f(1,2,3); -- t is undefined
 end Record4;

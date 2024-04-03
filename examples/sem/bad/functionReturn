@@ -11,6 +11,7 @@
             if 1=2 then a:= 3;
                 else a:= 3;
                 return 2;
+            -- here a return is missing
             end if;
             else a:= 3;
             return 2;
@@ -20,7 +21,7 @@
     function f (x,y,z : Integer) return Boolean is
         a : Integer := 8;
     begin
-        a := 3;
+        a := 3; -- there is no return statement
     end f;
         t : Integer;
         t1 : Boolean;

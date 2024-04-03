@@ -24,5 +24,5 @@ end f;
     end f1;
     t : Integer;
 begin
-    t := f1(1,2,f(1,2,3));
+    t := f1(1,2,f(1,2,3)); -- ambiguous call since f can be either bool of integer
 end Record4;

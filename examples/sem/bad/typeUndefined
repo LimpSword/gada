@@ -1,17 +1,17 @@
 with Ada.Text_IO; use Ada.Text_IO;
 
 procedure Record4 is
-    function f (x,y,z : Graph) return Double is
+    function f (x,y,z : Graph) return Double is -- graph and double undefined
             a : Integer := 8;
             Next  : List;
             procedure Record5(a:Integer) is
                 type List is record hi : Double2; hi : Integer; end record;
-                type Double2 is array(1..10) of Integer;
+                type Double2 is array(1..10) of Integer; -- type not well defined
                 begin
                     Put('x');
                 end Record5;
         begin
-            return x + 1;
+            return x + 1; -- x type is not integer (unknown type) return type don t match
         end f;
     f1 : Integer;
 begin

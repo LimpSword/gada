@@ -3,6 +3,6 @@ procedure put is
     i: integer;
 begin
   for i in 0..10 loop
-        i:=3;
+        i:=3;-- loop variable can t be assigned
    end loop;
 end put;
