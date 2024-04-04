@@ -493,7 +493,7 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 	counterStart, err := strconv.Atoi(graph.GetNode(children[2]))
 	if err != nil {
 		// FIXME: But it should be read as an operand
-		scope := graph.getScope(node)
+		/*scope := graph.getScope(node)
 		endScope, offset := goUpScope(scope, graph.GetNode(children[2]))
 
 		baseOffset := scope.getCurrentOffset()
@@ -506,7 +506,11 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 		}
 
 		// Load the value from the stack
-		a.Ldr(R0, realOffset)
+		a.Ldr(R0, realOffset)*/
+
+		a.ReadOperand(graph, children[2], 0)
+		a.Ldr(R0, 4)
+		a.Add(SP, 4)
 	} else {
 		a.Mov(R0, counterStart)
 	}

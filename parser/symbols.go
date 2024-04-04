@@ -330,9 +330,9 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 		forScope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: "integer", Offset: 4, IsLoop: true})
 		for _, child := range sorted {
 			// FIXME: loop from and to should be read at least to know their scope
-			if graph.types[child] == "body" {
-				dfsSymbols(graph, child, forScope)
-			}
+			//if graph.types[child] == "body" {
+			dfsSymbols(graph, child, forScope)
+			//}
 		}
 	case "var":
 		currentOffset := scope.getCurrentOffset()
