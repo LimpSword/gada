@@ -350,20 +350,27 @@ func findType(scope *Scope, name string) (string, error) {
 
 // goUpScope: get the scope containing the variable and the total offset to reach it
 func goUpScope(scope *Scope, name string) (*Scope, int) {
+	totalOffset := scope.getCurrentOffset()
 	if symbol, ok := scope.Table[name]; ok {
 		for _, s := range symbol {
 			if variable, ok := s.(Variable); ok {
-				return scope, variable.Offset
+				if variable.IsParamIn || variable.IsParamOut {
+					fmt.Println("looking for", name, "returning", totalOffset-variable.Offset+4-8)
+					return scope, totalOffset - variable.Offset + 4 + 8
+				}
+				return scope, totalOffset - variable.Offset + 4
 			}
 		}
 	}
 
-	totalOffset := scope.getCurrentOffset()
 	if scope.parent == nil {
 		// should never happen
 		logger.Warn(name + " variable is undefined")
 	} else {
 		parentScope, offset := goUpScope(scope.parent, name)
+		if _, ok := scope.ScopeSymbol.(Procedure); ok {
+			offset += 8
+		}
 		return parentScope, totalOffset + offset
 	}
 	return nil, 0
