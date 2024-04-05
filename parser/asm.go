@@ -5,6 +5,7 @@ import (
 	"gada/asm"
 	"github.com/charmbracelet/log"
 	"golang.org/x/exp/maps"
+	"math/rand"
 	"os"
 	"slices"
 	"strconv"
@@ -43,24 +44,27 @@ const (
 	R14 = iota - 1
 	R15
 	PC = 15
+	LR = 14
 )
 
+type Condition string
+
 const (
-	EQ = "EQ"
-	NE = "NE"
-	CS = "CS"
-	CC = "CC"
-	MI = "MI"
-	PL = "PL"
-	VS = "VS"
-	VC = "VC"
-	HI = "HI"
-	LS = "LS"
-	GE = "GE"
-	LT = "LT"
-	GT = "GT"
-	LE = "LE"
-	AL = "AL"
+	EQ = Condition("EQ")
+	NE = Condition("NE")
+	CS = Condition("CS")
+	CC = Condition("CC")
+	MI = Condition("MI")
+	PL = Condition("PL")
+	VS = Condition("VS")
+	VC = Condition("VC")
+	HI = Condition("HI")
+	LS = Condition("LS")
+	GE = Condition("GE")
+	LT = Condition("LT")
+	GT = Condition("GT")
+	LE = Condition("LE")
+	AL = Condition("AL")
 )
 
 func (r Register) String() string {
@@ -129,6 +133,15 @@ func (a *AssemblyFile) Mov(register Register, value int) {
 		a.EndText += "MOV " + register.String() + ", #" + str + "\n"
 	} else {
 		a.Text += "MOV " + register.String() + ", #" + str + "\n"
+	}
+}
+
+func (a *AssemblyFile) MovCond(register Register, value int, condition Condition) {
+	str := strconv.Itoa(value)
+	if a.WritingAtEnd {
+		a.EndText += "MOV" + string(condition) + " " + register.String() + ", #" + str + "\n"
+	} else {
+		a.Text += "MOV" + string(condition) + " " + register.String() + ", #" + str + "\n"
 	}
 }
 
@@ -292,11 +305,11 @@ func (a *AssemblyFile) BranchToLabel(label string) {
 	}
 }
 
-func (a *AssemblyFile) BranchToLabelWithCondition(label string, condition string) {
+func (a *AssemblyFile) BranchToLabelWithCondition(label string, condition Condition) {
 	if a.WritingAtEnd {
-		a.EndText += "B" + condition + " " + label + "\n"
+		a.EndText += "B" + string(condition) + " " + label + "\n"
 	} else {
-		a.Text += "B" + condition + " " + label + "\n"
+		a.Text += "B" + string(condition) + " " + label + "\n"
 	}
 }
 
@@ -386,23 +399,23 @@ minus_sign
 
 func (a *AssemblyFile) CallProcedure(name string) {
 	if a.WritingAtEnd {
-		a.EndText += "STMFD SP!, {PC}\n"
+		a.EndText += "STMFD SP!, {LR}\n"
 		a.EndText += "BL " + name + "\n"
 	} else {
-		a.Text += "STMFD SP!, {PC}\n"
+		a.Text += "STMFD SP!, {LR}\n"
 		a.Text += "BL " + name + "\n"
 	}
 }
 
 func (a *AssemblyFile) CallProcedureWithParameters(name string, scope *Scope, removedOffset int) {
 	if a.WritingAtEnd {
-		a.EndText += "STMFD SP!, {PC}\n"
+		a.EndText += "STMFD SP!, {LR}\n"
 		a.EndText += "BL " + name + "\n"
 
 		// clear the stack
 		a.Add(SP, removedOffset)
 	} else {
-		a.Text += "STMFD SP!, {PC}\n"
+		a.Text += "STMFD SP!, {LR}\n"
 		a.Text += "BL " + name + "\n"
 
 		// clear the stack
@@ -430,7 +443,26 @@ func (a *AssemblyFile) ReadFile(graph Graph, node int) {
 }
 
 func (a *AssemblyFile) ReadIf(graph Graph, node int) {
+	a.AddComment("If statement")
 
+	// Read condition
+	condition := graph.GetChildren(node)[0]
+	a.ReadOperand(graph, condition, 0)
+
+	a.Ldr(R0, 4)
+	a.Add(SP, 4)
+
+	randomLabel := rand.Int()
+
+	a.Cmp(R0, 0)
+	a.BranchToLabelWithCondition("else"+strconv.Itoa(randomLabel), "EQ")
+
+	// Read body
+	a.ReadBody(graph, graph.GetChildren(node)[1])
+
+	a.AddLabel("else" + strconv.Itoa(randomLabel))
+
+	a.AddComment("End of if statement")
 }
 
 func (a *AssemblyFile) ReadBody(graph Graph, node int) {
@@ -470,11 +502,24 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			name := graph.GetChildren(child)[0]
 			args := graph.GetChildren(child)[1]
 
+			if graph.GetNode(name) == "Put" {
+				a.ReadOperand(graph, args, 0)
+
+				// Move the result to R0
+				a.Ldr(R0, 4)
+				a.Add(SP, 4)
+
+				a.CallProcedure("put")
+				continue
+			}
+
 			for _, arg := range graph.GetChildren(args) {
 				a.ReadOperand(graph, arg, 0)
 			}
 
 			a.CallProcedureWithParameters(graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4)
+		case "if":
+			a.ReadIf(graph, child)
 		}
 	}
 }
@@ -492,22 +537,6 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 	children := graph.GetChildren(node)
 	counterStart, err := strconv.Atoi(graph.GetNode(children[2]))
 	if err != nil {
-		// FIXME: But it should be read as an operand
-		/*scope := graph.getScope(node)
-		endScope, offset := goUpScope(scope, graph.GetNode(children[2]))
-
-		baseOffset := scope.getCurrentOffset()
-		var realOffset int
-		if scope == endScope {
-			realOffset = baseOffset + offset
-		} else {
-			fmt.Println(graph.GetNode(children[2]), "endscope loop differs", baseOffset, offset, 0)
-			realOffset = offset + 4
-		}
-
-		// Load the value from the stack
-		a.Ldr(R0, realOffset)*/
-
 		a.ReadOperand(graph, children[2], 0)
 		a.Ldr(R0, 4)
 		a.Add(SP, 4)
@@ -633,7 +662,8 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	a.ReadBody(graph, bodyNode)
 	a.Add(SP, 4)
 	// Return
-	a.Ldmfd(PC)
+	//a.Ldmfd(PC)
+	a.MovRegister(PC, LR)
 	a.AddComment("End of procedure " + procedureName)
 
 	a.ReadDecl(graph, declNode)
@@ -848,6 +878,30 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int, fixOffset int) {
 		// Use the AND operation
 		a.And(R1, R2)
 
+		a.Add(SP, 8)
+
+		// Save the result in stack
+		a.Str(R0)
+
+		// Move the stack pointer
+		a.Sub(SP, 4)
+	case ">":
+		// Read left operand
+		a.ReadOperand(graph, children[0], fixOffset+0)
+
+		// Read right operand
+		a.ReadOperand(graph, children[1], fixOffset+4)
+
+		// Left operand in R0, right operand in R1
+		a.Ldr(R1, 4)
+		a.Ldr(R0, 8)
+
+		// Compare the operands
+		a.CmpRegisters(R0, R1)
+		a.MovCond(R0, 1, GT)
+		a.MovCond(R0, 0, LE)
+
+		// Move the stack pointer
 		a.Add(SP, 8)
 
 		// Save the result in stack
