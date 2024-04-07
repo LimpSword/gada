@@ -110,11 +110,47 @@ func (a *AssemblyFile) Ldr(register Register, offset int) {
 	}
 }
 
+func (a *AssemblyFile) LdrFrom(register Register, fromRegister Register, offset int) {
+	str := strconv.Itoa(offset)
+	if a.WritingAtEnd {
+		a.EndText += "LDR " + register.String() + ", [" + fromRegister.String() + ", #" + str + "]\n"
+	} else {
+		a.Text += "LDR " + register.String() + ", [" + fromRegister.String() + ", #" + str + "]\n"
+	}
+}
+
+func (a *AssemblyFile) LdrFromFramePointer(register Register, offset int) {
+	str := strconv.Itoa(offset)
+	if a.WritingAtEnd {
+		a.EndText += "LDR " + register.String() + ", [R11, #" + str + "]\n"
+	} else {
+		a.Text += "LDR " + register.String() + ", [R11, #" + str + "]\n"
+	}
+}
+
 func (a *AssemblyFile) Str(register Register) {
 	if a.WritingAtEnd {
 		a.EndText += "STR " + register.String() + ", [SP]\n"
 	} else {
 		a.Text += "STR " + register.String() + ", [SP]\n"
+	}
+}
+
+func (a *AssemblyFile) StrFrom(register Register, fromRegister Register, offset int) {
+	str := strconv.Itoa(offset)
+	if a.WritingAtEnd {
+		a.EndText += "STR " + register.String() + ", [" + fromRegister.String() + ", #" + str + "]\n"
+	} else {
+		a.Text += "STR " + register.String() + ", [" + fromRegister.String() + ", #" + str + "]\n"
+	}
+}
+
+func (a *AssemblyFile) StrFromFramePointer(register Register, offset int) {
+	str := strconv.Itoa(offset)
+	if a.WritingAtEnd {
+		a.EndText += "STR " + register.String() + ", [R11, #" + str + "]\n"
+	} else {
+		a.Text += "STR " + register.String() + ", [R11, #" + str + "]\n"
 	}
 }
 
@@ -333,6 +369,9 @@ func (a AssemblyFile) Execute() []string {
 func ReadASTToASM(graph Graph) {
 	log.Info("Reading AST to ASM")
 	file := NewAssemblyFile(strings.Replace(graph.fileName, ".ada", ".s", -1))
+
+	file.Text += "MOV R11, SP\n"
+
 	file.ReadFile(graph, 0)
 
 	file.Text += "end\n\n"
@@ -343,7 +382,8 @@ func ReadASTToASM(graph Graph) {
 	file.Text += `
 ;       Multiplication algorithm
 ;       R0 = result, R1 = multiplicand, R2 = multiplier
-mul      MOV     R0, #0
+mul      STMFD   SP!, {LR}
+         MOV     R0, #0
 mul_loop LSRS    R2, R2, #1
          ADDCS   R0, R0, R1
          LSL     R1, R1, #1
@@ -361,7 +401,8 @@ mul_loop LSRS    R2, R2, #1
 ;       Returns:
 ;       R0 = Quotient
 ;       R1 = Remainder
-div32  
+div32
+       STMFD   SP!, {LR}
        MOV     R4, #1 ; Bit position = 1
        MOV     R2, #0 ; Quotient = 0
        MOV     R3, R0 ; Remainder = Dividend
@@ -399,23 +440,19 @@ minus_sign
 
 func (a *AssemblyFile) CallProcedure(name string) {
 	if a.WritingAtEnd {
-		a.EndText += "STMFD SP!, {LR}\n"
 		a.EndText += "BL " + name + "\n"
 	} else {
-		a.Text += "STMFD SP!, {LR}\n"
 		a.Text += "BL " + name + "\n"
 	}
 }
 
 func (a *AssemblyFile) CallProcedureWithParameters(name string, scope *Scope, removedOffset int) {
 	if a.WritingAtEnd {
-		a.EndText += "STMFD SP!, {LR}\n"
 		a.EndText += "BL " + name + "\n"
 
 		// clear the stack
 		a.Add(SP, removedOffset)
 	} else {
-		a.Text += "STMFD SP!, {LR}\n"
 		a.Text += "BL " + name + "\n"
 
 		// clear the stack
@@ -438,6 +475,8 @@ func (a *AssemblyFile) ReadFile(graph Graph, node int) {
 		}
 	}
 
+	a.MovRegister(R9, R11)
+
 	a.ReadDecl(graph, declNode)
 	a.ReadBody(graph, bodyNode)
 }
@@ -447,7 +486,7 @@ func (a *AssemblyFile) ReadIf(graph Graph, node int) {
 
 	// Read condition
 	condition := graph.GetChildren(node)[0]
-	a.ReadOperand(graph, condition, 0)
+	a.ReadOperand(graph, condition)
 
 	a.Ldr(R0, 4)
 	a.Add(SP, 4)
@@ -474,28 +513,31 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			left := graph.GetChildren(child)[0]
 			right := graph.GetChildren(child)[1]
 
-			a.ReadOperand(graph, right, 0)
+			a.ReadOperand(graph, right)
 
 			a.Add(SP, 4)
 
-			// Move the result to the left operand
+			// Get the address of the ident using the symbol table
 			scope := graph.getScope(node)
 			endScope, offset := goUpScope(scope, graph.GetNode(left))
 
-			baseOffset := scope.getCurrentOffset()
-			var realOffset int
+			// Save previous R11 for the static chain
+			a.MovRegister(R10, R11)
+
 			if scope == endScope {
-				realOffset = baseOffset - offset + 4
+				a.StrFrom(R0, R9, offset)
 			} else {
-				fmt.Println(":=", baseOffset, offset)
-				realOffset = offset
+				scope = scope.parent
+				for scope != endScope {
+					// Load the static chain
+					a.LdrFromFramePointer(R11, 0)
+					scope = scope.parent
+				}
+				a.StrFromFramePointer(R0, offset)
 			}
 
-			// Save the result in stack
-			//a.StrWithOffset(R0, offset)
-			a.StrWithOffset(R0, realOffset)
-
-			//a.Add(SP, 4)
+			// Restore R11
+			a.MovRegister(R11, R10)
 		case "for":
 			a.ReadFor(graph, child)
 		case "call":
@@ -503,7 +545,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			args := graph.GetChildren(child)[1]
 
 			if graph.GetNode(name) == "Put" {
-				a.ReadOperand(graph, args, 0)
+				a.ReadOperand(graph, args)
 
 				// Move the result to R0
 				a.Ldr(R0, 4)
@@ -514,7 +556,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			}
 
 			for _, arg := range graph.GetChildren(args) {
-				a.ReadOperand(graph, arg, 0)
+				a.ReadOperand(graph, arg)
 			}
 
 			a.CallProcedureWithParameters(graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4)
@@ -529,26 +571,36 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 	a.ForCounter++
 	a.CurrentFor++
 
+	a.MovRegister(R8, R11) // Assuming R11 holds the frame pointer of the enclosing scope
+
 	// Reserve space for the index
 	a.Sub(SP, 4)
+
+	// Save R11
+	a.Sub(SP, 4)
+	a.StrWithOffset(R8, 4)
+
+	// Save current base pointer
+	a.MovRegister(R9, SP)
+	a.Add(R9, 8) // jump the FP to the index
 
 	a.AddComment("Loop #" + strconv.Itoa(goodCounter) + " start")
 
 	children := graph.GetChildren(node)
 	counterStart, err := strconv.Atoi(graph.GetNode(children[2]))
 	if err != nil {
-		a.ReadOperand(graph, children[2], 0)
+		a.ReadOperand(graph, children[2])
 		a.Ldr(R0, 4)
 		a.Add(SP, 4)
 	} else {
 		a.Mov(R0, counterStart)
 	}
 
-	a.StrWithOffset(R0, 4)
+	a.StrWithOffset(R0, 8) // jump the FP
 
 	a.AddLabel("for" + strconv.Itoa(goodCounter))
 
-	a.Ldr(R0, 4)
+	a.Ldr(R0, 8)
 	counterEnd, err := strconv.Atoi(graph.GetNode(children[3]))
 	if err != nil {
 		// FIXME: But it should be read as an operand
@@ -558,16 +610,13 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 		baseOffset := scope.getCurrentOffset()
 		var realOffset int
 		if scope == endScope {
-			fmt.Println(graph.GetNode(children[3]), "loop", baseOffset, offset, 0)
-			//realOffset = baseOffset - offset + 4 + 4
 			realOffset = baseOffset + offset
 		} else {
-			fmt.Println(graph.GetNode(children[3]), "endscope loop differs", baseOffset, offset, 0)
 			realOffset = offset + 4
 		}
 
 		// Load the value from the stack
-		a.Ldr(R1, realOffset)
+		a.LdrFromFramePointer(R1, realOffset)
 
 		a.CmpRegisters(R0, R1)
 	} else {
@@ -583,13 +632,13 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 	a.ReadBody(graph, children[4])
 
 	// Increment the counter
-	a.Ldr(R0, 4)
+	a.Ldr(R0, 8)
 	if graph.GetNode(children[1]) == "not reverse" {
 		a.Add(R0, 1)
 	} else {
 		a.Sub(R0, 1)
 	}
-	a.StrWithOffset(R0, 4)
+	a.StrWithOffset(R0, 8)
 
 	// Go to the beginning of the loop
 	a.BranchToLabel("for" + strconv.Itoa(goodCounter))
@@ -600,6 +649,13 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 	// Clear the stack
 	a.CurrentFor--
 	a.Add(SP, 4)
+
+	// Get the static chain
+	a.Ldr(R11, 0)
+	a.Add(SP, 4)
+
+	// Restore R9
+	a.MovRegister(R9, R11)
 
 	a.AddComment("Loop #" + strconv.Itoa(goodCounter) + " end")
 }
@@ -623,7 +679,6 @@ func (a *AssemblyFile) ReadDecl(graph Graph, node int) {
 
 			nameA := graph.types[sortedA[0]]
 			nameB := graph.types[sortedB[0]]
-			fmt.Println("why:", nameA, nameB)
 			return strings.Compare(nameA, nameB)
 		}
 		return a - b
@@ -657,16 +712,41 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	// Note: single character labels are not allowed
 	a.AddComment("Procedure " + procedureName)
 	a.AddLabel(procedureName)
+
+	a.MovRegister(R8, R11) // Assuming R11 holds the frame pointer of the enclosing scope
+
+	a.ReadDecl(graph, declNode)
+
+	// Save R11
 	a.Sub(SP, 4)
+	a.StrWithOffset(R8, 4)
+
+	// Save return address
+	a.Sub(SP, 4)
+	a.StrWithOffset(LR, 4)
+
+	// Save current base pointer
+	paramOffset := len(graph.GetChildren(children[1])) * 4
+	a.MovRegister(R9, SP)
+	a.Add(R9, paramOffset+8) // jump the FP and the return address
+
 	// Read the body of the procedure
 	a.ReadBody(graph, bodyNode)
+
+	// Get the return address
+	a.Ldr(LR, 4)
 	a.Add(SP, 4)
-	// Return
-	//a.Ldmfd(PC)
+
+	// Get the static chain
+	a.Ldr(R11, 0)
+	a.Add(SP, 4)
+
+	// Restore R9
+	a.MovRegister(R9, R11)
+
 	a.MovRegister(PC, LR)
 	a.AddComment("End of procedure " + procedureName)
 
-	a.ReadDecl(graph, declNode)
 	a.WritingAtEnd = false
 }
 
@@ -714,7 +794,7 @@ func (a *AssemblyFile) ReadVar(graph Graph, node int) {
 	}
 }
 
-func (a *AssemblyFile) ReadOperand(graph Graph, node int, fixOffset int) {
+func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 	// Read left and right operands and do the operation
 	// If the operands are values, use them
 	// Else, save them in stack and use them
@@ -748,21 +828,27 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int, fixOffset int) {
 
 				// Get the address of the ident using the symbol table
 				scope := graph.getScope(node)
+
 				endScope, offset := goUpScope(scope, graph.GetNode(node))
 
-				baseOffset := scope.getCurrentOffset()
-				var realOffset int
+				// Save previous R11 for the static chain
+				a.MovRegister(R10, R11)
+
 				if scope == endScope {
-					realOffset = baseOffset + offset - 4
+					a.LdrFrom(R0, R9, offset)
 				} else {
-					fmt.Println(graph.GetNode(node), "endscope differs", baseOffset, offset, fixOffset)
-					//fixOffset = 0
-					realOffset = offset
+					scope = scope.parent
+					for scope != endScope {
+						// Load the static chain
+						a.LdrFromFramePointer(R11, 0)
+						scope = scope.parent
+						fmt.Println('a')
+					}
+					a.LdrFromFramePointer(R0, offset)
 				}
 
-				// Load the value from the stack
-				//a.Ldr(R0, offset+fixOffset)
-				a.Ldr(R0, realOffset+fixOffset)
+				// Restore R11
+				a.MovRegister(R11, R10)
 
 				a.Str(R0)
 
@@ -775,10 +861,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int, fixOffset int) {
 	switch graph.GetNode(node) {
 	case "+":
 		// Read left operand
-		a.ReadOperand(graph, children[0], fixOffset+0)
+		a.ReadOperand(graph, children[0])
 
 		// Read right operand
-		a.ReadOperand(graph, children[1], fixOffset+4)
+		a.ReadOperand(graph, children[1])
 		a.Ldr(R0, 4)
 		a.AddWithOffset(R0, R1, 8) // same as ldr from offset 8 then add
 
@@ -792,10 +878,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int, fixOffset int) {
 		a.Sub(SP, 4)
 	case "-":
 		// Read left operand
-		a.ReadOperand(graph, children[0], fixOffset+0)
+		a.ReadOperand(graph, children[0])
 
 		// Read right operand
-		a.ReadOperand(graph, children[1], fixOffset+4)
+		a.ReadOperand(graph, children[1])
 		a.Ldr(R0, 4)
 		a.SubWithOffset(R0, R1, 8)
 
@@ -809,10 +895,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int, fixOffset int) {
 		a.Sub(SP, 4)
 	case "*":
 		// Read left operand
-		a.ReadOperand(graph, children[0], fixOffset+0)
+		a.ReadOperand(graph, children[0])
 
 		// Read right operand
-		a.ReadOperand(graph, children[1], fixOffset+4)
+		a.ReadOperand(graph, children[1])
 
 		// Left operand in R1, right operand in R2
 		a.Ldr(R1, 4)
@@ -831,10 +917,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int, fixOffset int) {
 		a.Sub(SP, 4)
 	case "/":
 		// Read left operand
-		a.ReadOperand(graph, children[0], fixOffset+0)
+		a.ReadOperand(graph, children[0])
 
 		// Read right operand
-		a.ReadOperand(graph, children[1], fixOffset+4)
+		a.ReadOperand(graph, children[1])
 
 		// Left operand in R0, right operand in R1
 		a.Ldr(R1, 4)
@@ -866,10 +952,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int, fixOffset int) {
 		a.Sub(SP, 4)
 	case "and":
 		// Read left operand
-		a.ReadOperand(graph, children[0], fixOffset+0)
+		a.ReadOperand(graph, children[0])
 
 		// Read right operand
-		a.ReadOperand(graph, children[1], fixOffset+4)
+		a.ReadOperand(graph, children[1])
 
 		// Left operand in R1, right operand in R2
 		a.Ldr(R1, 4)
@@ -887,10 +973,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int, fixOffset int) {
 		a.Sub(SP, 4)
 	case ">":
 		// Read left operand
-		a.ReadOperand(graph, children[0], fixOffset+0)
+		a.ReadOperand(graph, children[0])
 
 		// Read right operand
-		a.ReadOperand(graph, children[1], fixOffset+4)
+		a.ReadOperand(graph, children[1])
 
 		// Left operand in R0, right operand in R1
 		a.Ldr(R1, 4)
@@ -912,7 +998,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int, fixOffset int) {
 	case "call":
 		if graph.GetNode(children[0]) == "-" {
 			// Read right operand
-			a.ReadOperand(graph, children[1], fixOffset+0)
+			a.ReadOperand(graph, children[1])
 
 			a.Ldr(R0, 0)
 			a.Negate(R0)
