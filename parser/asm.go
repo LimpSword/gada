@@ -527,7 +527,8 @@ func (a *AssemblyFile) ReadFile(graph Graph, node int) {
 		}
 	}
 
-	a.StmfdMultiple([]Register{R11, LR})
+	a.StmfdMultiple([]Register{R10, R11, LR})
+	a.Mov(R10, getRegion(graph, node))
 	a.MovRegister(R11, SP)
 	a.Sub(R11, 4)
 	a.Sub(SP, 4)
@@ -582,12 +583,30 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 				a.StrFrom(R0, R11, offset)
 				a.CommentPreviousLine(fmt.Sprintf("(S) Store the value of %v", graph.GetNode(left)))
 			} else {
-				for scope != endScope {
-					// Load the static chain
-					a.LdrFromFramePointer(R11, 4)
-					scope = scope.parent
-				}
+				// Loop through dynamic links until we reach the correct region
+
+				random := rand.Int()
+
+				a.MovRegister(R9, R11)
+				a.LdrFromFramePointer(R8, 4)
+				a.Cmp(R8, endScope.Region)
+				a.BranchToLabelWithCondition("notload_"+strconv.Itoa(random), EQ)
+				a.AddLabel("load_" + strconv.Itoa(random))
+				a.LdrFromFramePointer(R11, 8)
+				a.LdrFromFramePointer(R8, 4)
+				a.Cmp(R8, endScope.Region)
+				a.BranchToLabelWithCondition("load_"+strconv.Itoa(random), NE)
+
+				a.AddLabel("notload_" + strconv.Itoa(random))
+
+				// Go 1 level up
+				a.LdrFromFramePointer(R11, 8)
+
 				a.StrFromFramePointer(R0, offset)
+
+				// Restore R9
+				a.MovRegister(R11, R9)
+
 				a.CommentPreviousLine(fmt.Sprintf("(NS) Store the value of %v", graph.GetNode(left)))
 			}
 		case "for":
@@ -770,7 +789,8 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	a.AddComment("Procedure " + procedureName)
 	a.AddLabel(procedureName)
 
-	a.StmfdMultiple([]Register{R11, LR})
+	a.StmfdMultiple([]Register{R10, R11, LR})
+	a.Mov(R10, getRegion(graph, node))
 	a.MovRegister(R11, SP)
 	a.Sub(R11, 4)
 	a.Sub(SP, 4)
@@ -782,7 +802,7 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 
 	// Restore R9
 	a.Add(SP, 4)
-	a.LdmfdMultiple([]Register{R11, PC})
+	a.LdmfdMultiple([]Register{R10, R11, PC})
 
 	a.AddComment("End of procedure " + procedureName)
 
@@ -876,12 +896,28 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 					a.LdrFrom(R0, R11, offset)
 					a.CommentPreviousLine(fmt.Sprintf("(S) Load the value of %v", graph.GetNode(node)))
 				} else {
-					for scope != endScope {
-						// Load the static chain
-						a.LdrFromFramePointer(R11, 4)
-						scope = scope.parent
-					}
+					// Loop through dynamic links until we reach the correct region
+
+					a.MovRegister(R9, R11)
+					a.LdrFromFramePointer(R8, 4)
+					a.Cmp(R8, endScope.Region)
+					a.BranchToLabelWithCondition("notload_"+graph.GetNode(node), EQ)
+					a.AddLabel("load_" + graph.GetNode(node))
+					a.LdrFromFramePointer(R11, 8)
+					a.LdrFromFramePointer(R8, 4)
+					a.Cmp(R8, endScope.Region)
+					a.BranchToLabelWithCondition("load_"+graph.GetNode(node), NE)
+
+					a.AddLabel("notload_" + graph.GetNode(node))
+
+					// Go 1 level up
+					a.LdrFromFramePointer(R11, 8)
+
 					a.LdrFromFramePointer(R0, offset)
+
+					// Restore R9
+					a.MovRegister(R11, R9)
+
 					a.CommentPreviousLine(fmt.Sprintf("(NS) Load the value of %v", graph.GetNode(node)))
 				}
 
