@@ -354,7 +354,9 @@ func goUpScope(scope *Scope, name string) (*Scope, int) {
 	if symbol, ok := scope.Table[name]; ok {
 		for _, s := range symbol {
 			if variable, ok := s.(Variable); ok {
-				fmt.Println("variable", variable.Name(), variable.Offset)
+				if variable.IsParamIn || variable.IsParamOut {
+					return scope, -(variable.Offset - 4) + 16
+				}
 				return scope, -(variable.Offset - 4)
 			}
 		}

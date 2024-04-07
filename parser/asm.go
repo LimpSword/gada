@@ -93,11 +93,55 @@ func (a *AssemblyFile) Stmfd(register Register) {
 	}
 }
 
+func (a *AssemblyFile) StmfdMultiple(registers []Register) {
+	if a.WritingAtEnd {
+		a.EndText += "STMFD SP!, {"
+		for i, register := range registers {
+			if i == len(registers)-1 {
+				a.EndText += register.String() + "}\n"
+			} else {
+				a.EndText += register.String() + ", "
+			}
+		}
+	} else {
+		a.Text += "STMFD SP!, {"
+		for i, register := range registers {
+			if i == len(registers)-1 {
+				a.Text += register.String() + "}\n"
+			} else {
+				a.Text += register.String() + ", "
+			}
+		}
+	}
+}
+
 func (a *AssemblyFile) Ldmfd(register Register) {
 	if a.WritingAtEnd {
 		a.EndText += "LDMFD SP!, {" + register.String() + "}\n"
 	} else {
 		a.Text += "LDMFD SP!, {" + register.String() + "}\n"
+	}
+}
+
+func (a *AssemblyFile) LdmfdMultiple(registers []Register) {
+	if a.WritingAtEnd {
+		a.EndText += "LDMFD SP!, {"
+		for i, register := range registers {
+			if i == len(registers)-1 {
+				a.EndText += register.String() + "}\n"
+			} else {
+				a.EndText += register.String() + ", "
+			}
+		}
+	} else {
+		a.Text += "LDMFD SP!, {"
+		for i, register := range registers {
+			if i == len(registers)-1 {
+				a.Text += register.String() + "}\n"
+			} else {
+				a.Text += register.String() + ", "
+			}
+		}
 	}
 }
 
@@ -333,6 +377,14 @@ func (a *AssemblyFile) AddComment(comment string) {
 	}
 }
 
+func (a *AssemblyFile) CommentPreviousLine(comment string) {
+	if a.WritingAtEnd {
+		a.EndText = a.EndText[:len(a.EndText)-1] + " ; " + comment + "\n"
+	} else {
+		a.Text = a.Text[:len(a.Text)-1] + " ; " + comment + "\n"
+	}
+}
+
 func (a *AssemblyFile) BranchToLabel(label string) {
 	if a.WritingAtEnd {
 		a.EndText += "B " + label + "\n"
@@ -475,14 +527,18 @@ func (a *AssemblyFile) ReadFile(graph Graph, node int) {
 		}
 	}
 
-	a.MovRegister(R9, R11)
+	a.StmfdMultiple([]Register{R11, LR})
+	a.MovRegister(R11, SP)
+	a.Sub(R11, 4)
+	a.Sub(SP, 4)
 
-	a.ReadDecl(graph, declNode)
+	a.ReadDecl(graph, declNode, All)
 	a.ReadBody(graph, bodyNode)
 }
 
 func (a *AssemblyFile) ReadIf(graph Graph, node int) {
 	a.AddComment("If statement")
+	a.AddComment("Start of condition")
 
 	// Read condition
 	condition := graph.GetChildren(node)[0]
@@ -494,6 +550,7 @@ func (a *AssemblyFile) ReadIf(graph Graph, node int) {
 	randomLabel := rand.Int()
 
 	a.Cmp(R0, 0)
+	a.AddComment("End of condition")
 	a.BranchToLabelWithCondition("else"+strconv.Itoa(randomLabel), "EQ")
 
 	// Read body
@@ -521,23 +578,18 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			scope := graph.getScope(node)
 			endScope, offset := goUpScope(scope, graph.GetNode(left))
 
-			// Save previous R11 for the static chain
-			a.MovRegister(R10, R11)
-
 			if scope == endScope {
-				a.StrFrom(R0, R9, offset)
+				a.StrFrom(R0, R11, offset)
+				a.CommentPreviousLine(fmt.Sprintf("(S) Store the value of %v", graph.GetNode(left)))
 			} else {
-				scope = scope.parent
 				for scope != endScope {
 					// Load the static chain
-					a.LdrFromFramePointer(R11, 0)
+					a.LdrFromFramePointer(R11, 4)
 					scope = scope.parent
 				}
 				a.StrFromFramePointer(R0, offset)
+				a.CommentPreviousLine(fmt.Sprintf("(NS) Store the value of %v", graph.GetNode(left)))
 			}
-
-			// Restore R11
-			a.MovRegister(R11, R10)
 		case "for":
 			a.ReadFor(graph, child)
 		case "call":
@@ -579,10 +631,6 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 	// Save R11
 	a.Sub(SP, 4)
 	a.StrWithOffset(R8, 4)
-
-	// Save current base pointer
-	a.MovRegister(R9, SP)
-	a.Add(R9, 8) // jump the FP to the index
 
 	a.AddComment("Loop #" + strconv.Itoa(goodCounter) + " start")
 
@@ -654,13 +702,18 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 	a.Ldr(R11, 0)
 	a.Add(SP, 4)
 
-	// Restore R9
-	a.MovRegister(R9, R11)
-
 	a.AddComment("Loop #" + strconv.Itoa(goodCounter) + " end")
 }
 
-func (a *AssemblyFile) ReadDecl(graph Graph, node int) {
+type DeclMode int
+
+const (
+	OnlyFuncAndProc DeclMode = iota
+	OnlyVar
+	All
+)
+
+func (a *AssemblyFile) ReadDecl(graph Graph, node int, mode DeclMode) {
 	// Read all the children
 	children := graph.GetChildren(node)
 
@@ -687,9 +740,13 @@ func (a *AssemblyFile) ReadDecl(graph Graph, node int) {
 	for _, child := range children {
 		switch graph.GetNode(child) {
 		case "var":
-			a.ReadVar(graph, child)
+			if mode == All || mode == OnlyVar {
+				a.ReadVar(graph, child)
+			}
 		case "procedure":
-			a.ReadProcedure(graph, child)
+			if mode == All || mode == OnlyFuncAndProc {
+				a.ReadProcedure(graph, child)
+			}
 		}
 	}
 }
@@ -713,41 +770,25 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	a.AddComment("Procedure " + procedureName)
 	a.AddLabel(procedureName)
 
-	a.MovRegister(R8, R11) // Assuming R11 holds the frame pointer of the enclosing scope
-
-	a.ReadDecl(graph, declNode)
-
-	// Save R11
+	a.StmfdMultiple([]Register{R11, LR})
+	a.MovRegister(R11, SP)
+	a.Sub(R11, 4)
 	a.Sub(SP, 4)
-	a.StrWithOffset(R8, 4)
 
-	// Save return address
-	a.Sub(SP, 4)
-	a.StrWithOffset(LR, 4)
-
-	// Save current base pointer
-	paramOffset := len(graph.GetChildren(children[1])) * 4
-	a.MovRegister(R9, SP)
-	a.Add(R9, paramOffset+8) // jump the FP and the return address
+	a.ReadDecl(graph, declNode, OnlyVar)
 
 	// Read the body of the procedure
 	a.ReadBody(graph, bodyNode)
 
-	// Get the return address
-	a.Ldr(LR, 4)
-	a.Add(SP, 4)
-
-	// Get the static chain
-	a.Ldr(R11, 0)
-	a.Add(SP, 4)
-
 	// Restore R9
-	a.MovRegister(R9, R11)
+	a.Add(SP, 4)
+	a.LdmfdMultiple([]Register{R11, PC})
 
-	a.MovRegister(PC, LR)
 	a.AddComment("End of procedure " + procedureName)
 
 	a.WritingAtEnd = false
+
+	a.ReadDecl(graph, declNode, OnlyFuncAndProc)
 }
 
 func (a *AssemblyFile) ReadVar(graph Graph, node int) {
@@ -831,24 +872,18 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 				endScope, offset := goUpScope(scope, graph.GetNode(node))
 
-				// Save previous R11 for the static chain
-				a.MovRegister(R10, R11)
-
 				if scope == endScope {
-					a.LdrFrom(R0, R9, offset)
+					a.LdrFrom(R0, R11, offset)
+					a.CommentPreviousLine(fmt.Sprintf("(S) Load the value of %v", graph.GetNode(node)))
 				} else {
-					scope = scope.parent
 					for scope != endScope {
 						// Load the static chain
-						a.LdrFromFramePointer(R11, 0)
+						a.LdrFromFramePointer(R11, 4)
 						scope = scope.parent
-						fmt.Println('a')
 					}
 					a.LdrFromFramePointer(R0, offset)
+					a.CommentPreviousLine(fmt.Sprintf("(NS) Load the value of %v", graph.GetNode(node)))
 				}
-
-				// Restore R11
-				a.MovRegister(R11, R10)
 
 				a.Str(R0)
 
