@@ -245,6 +245,7 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 
 	scope := *currentScope
 
+	graph.scopes[node] = &scope
 	switch graph.types[node] {
 	case "file":
 		shift := 0
@@ -301,6 +302,7 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 			}
 			shift++
 		}
+		graph.scopes[node] = funcScope
 		dfsSymbols(graph, sorted[2+shift], funcScope)
 	case "procedure":
 		procParam := make(map[int]*Variable)
@@ -324,6 +326,7 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 			}
 			shift++
 		}
+		graph.scopes[node] = procScope
 		dfsSymbols(graph, sorted[1+shift], procScope)
 	case "for":
 		forScope := newScope(&scope)
@@ -360,5 +363,4 @@ func dfsSymbols(graph Graph, node int, currentScope *Scope) {
 			dfsSymbols(graph, child, currentScope)
 		}
 	}
-	graph.scopes[node] = &scope
 }

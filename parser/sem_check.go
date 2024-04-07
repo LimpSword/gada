@@ -355,7 +355,7 @@ func goUpScope(scope *Scope, name string) (*Scope, int) {
 		for _, s := range symbol {
 			if variable, ok := s.(Variable); ok {
 				if variable.IsParamIn || variable.IsParamOut {
-					return scope, -(variable.Offset - 4) + 16
+					return scope, -(variable.Offset - 4) + 20
 				}
 				return scope, -(variable.Offset - 4)
 			}
@@ -373,6 +373,11 @@ func goUpScope(scope *Scope, name string) (*Scope, int) {
 		return parentScope, offset
 	}
 	return nil, 0
+}
+
+func getRegion(graph Graph, node int) int {
+	scope := graph.scopes[node]
+	return scope.Region
 }
 
 func compareFunc(f1 Function, f2 Function) bool {
