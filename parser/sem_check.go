@@ -527,23 +527,34 @@ func findType(scope *Scope, name string) (string, error) {
 
 // goUpScope: get the scope containing the variable and the total offset to reach it
 func goUpScope(scope *Scope, name string) (*Scope, int) {
+	//totalOffset := scope.getCurrentOffset()
 	if symbol, ok := scope.Table[name]; ok {
 		for _, s := range symbol {
 			if variable, ok := s.(Variable); ok {
-				return scope, variable.Offset
+				if variable.IsParamIn || variable.IsParamOut {
+					return scope, -(variable.Offset - 4) + 20
+				}
+				return scope, -(variable.Offset - 4)
 			}
 		}
 	}
 
-	totalOffset := scope.getCurrentOffset()
 	if scope.parent == nil {
 		// should never happen
 		logger.Warn(name + " variable is undefined")
 	} else {
 		parentScope, offset := goUpScope(scope.parent, name)
-		return parentScope, totalOffset + offset
+		/*if _, ok := scope.ScopeSymbol.(Procedure); ok {
+			offset += 8
+		}*/
+		return parentScope, offset
 	}
 	return nil, 0
+}
+
+func getRegion(graph Graph, node int) int {
+	scope := graph.scopes[node]
+	return scope.Region
 }
 
 func compareFunc(f1 Function, f2 Function) bool {

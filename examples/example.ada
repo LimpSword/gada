@@ -1,15 +1,6 @@
 with Ada.Text_IO; use Ada.Text_IO;
 procedure Test is
     S : Integer := 2;
-    function Pt(V: Integer) return integer is
-    begin
-        if V > 0 then
-            return Pt(V - 1);
-        end if;
-        S := S + V;
-        return S;
-    end Pt;
-    r : integer;
 begin
-    r := Pt(1);
+    S := S > 3;
 end;
