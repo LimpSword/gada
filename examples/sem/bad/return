@@ -6,11 +6,11 @@ procedure Record4 is
             procedure Record5(a:Integer) is
                 begin
                     Put('x');
-                    return 5;
+                    return 5; -- procedure can t return value
                 end Record5;
         begin
-            return 'a';
-            return;
+            return 'a'; -- return type mismatch
+            return; -- can t return standalone in function
         end f;
     f1 : Integer;
 begin

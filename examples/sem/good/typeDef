@@ -3,17 +3,20 @@ with Ada.Text_IO; use Ada.Text_IO;
 procedure Record4 is
     type Double is record hi : Integer; end record;
     function f (x,y,z : Integer) return Double is
-            a : Integer := 8;
-            type List is record hi : Integer; end record;
-            Next  : List;
-            procedure Record5(a:Integer) is
-                yosh  : List;
-                begin
-                    Put('x');
-                end Record5;
+        a : Integer := 8;
+        type List is record hi : Integer; end record;
+        Next  : List;
+        procedure Record5(a:Integer) is
+            yosh  : List;
         begin
-            return x + 1;
-        end f;
+            Put('x');
+        end Record5;
+        Result : Double;
+    begin
+        Result.hi := x + 1;
+        return Result;
+    end f;
+
     f1 : Double;
 begin
     f1 := f(1,2,3);

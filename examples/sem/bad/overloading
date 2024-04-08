@@ -3,7 +3,7 @@ with Ada.Text_IO; use Ada.Text_IO;
 procedure Record4 is
     function f (x,y,z : Integer) return Integer is
             a : Integer := 8;
-            Next  : List;
+            Next  : List; -- type undefined
             procedure Record5(a:Integer) is
                 type List is record hi : Integer; end record;
                 begin
@@ -14,7 +14,7 @@ procedure Record4 is
         end f;
     function f (x:Integer;y,z : Character) return Integer is
                     a : Integer := 8;
-                    Next  : List;
+                    Next  : List; -- type undefined
                     procedure Record5(a:Integer) is
                         type List is record hi : Integer; end record;
                         begin
@@ -23,7 +23,7 @@ procedure Record4 is
                 begin
                     return x + 1;
     end f;
-    f : Integer;
+    f : Integer; -- f is already declared
 begin
-    t := f(1,2,3);
+    t := f(1,2,3); -- t is undefinded
 end Record4;

@@ -462,6 +462,25 @@ func makeChild(g *Graph, node int, exp string, newExpr string) {
 
 }
 
+func makeChild2(g *Graph, node int, exp string, newExpr string) int {
+	// create node a child with type newExpr
+	g.nbNode++
+	newNode := g.nbNode
+	smallestChild := node
+	upTheNode(g, smallestChild)
+	g.gmap[newNode] = make(map[int]struct{})
+	g.types[newNode] = newExpr
+	g.fathers[newNode] = node
+	g.gmap[node][newNode] = struct{}{}
+	g.depth[newNode] = g.depth[node] + 1
+	g.types[node] = exp
+	g.terminals[newNode] = struct{}{}
+	g.meaningful[newNode] = struct{}{}
+
+	//switchNodes(g, smallestChild, newNode)
+	return newNode
+}
+
 func switchNodes(g *Graph, node1 int, node2 int) {
 	// switch two nodes
 	// handle fathers

@@ -1,0 +1,19 @@
+with Ada.Text_IO; use Ada.Text_IO;
+
+procedure Record4 is
+    function f return Integer is
+    a : Integer := 8;
+begin
+    return a + 1;
+end f;
+    procedure Record5 is
+                    begin
+                        Put('x');
+    end Record5;
+    t : Integer;
+    t1 : Boolean;
+begin
+    t := f;
+    Record5;
+    t1 := t > 10;
+end Record4;
