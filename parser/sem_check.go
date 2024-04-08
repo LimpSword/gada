@@ -525,6 +525,24 @@ func findType(scope *Scope, name string) (string, error) {
 	return Unknown, nil
 }
 
+func getDeclOffset(graph Graph, node int) int {
+	scope := graph.scopes[node]
+	if _, ok := scope.ScopeSymbol.(Procedure); ok {
+		offset := 0
+		for _, symbols := range scope.Table {
+			for _, symbol := range symbols {
+				if variable, ok := symbol.(Variable); ok {
+					if !variable.IsParamIn && !variable.IsParamOut {
+						offset += 4
+					}
+				}
+			}
+		}
+		return offset
+	}
+	return 0
+}
+
 // goUpScope: get the scope containing the variable and the total offset to reach it
 func goUpScope(scope *Scope, name string) (*Scope, int) {
 	//totalOffset := scope.getCurrentOffset()
@@ -534,7 +552,8 @@ func goUpScope(scope *Scope, name string) (*Scope, int) {
 				if variable.IsParamIn || variable.IsParamOut {
 					return scope, -(variable.Offset - 4) + 20
 				}
-				return scope, -(variable.Offset - 4)
+				var fixParamOffset = 4 * scope.ScopeSymbol.(Procedure).ParamCount
+				return scope, -(variable.Offset - 4) + fixParamOffset
 			}
 		}
 	}

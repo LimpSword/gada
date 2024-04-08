@@ -797,6 +797,9 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 
 	// Restore R9
 	a.Add(SP, 4)
+
+	a.Add(SP, getDeclOffset(graph, node))
+
 	a.LdmfdMultiple([]Register{R10, R11, PC})
 
 	a.AddComment("End of procedure " + procedureName)
