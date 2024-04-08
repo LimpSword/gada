@@ -153,12 +153,13 @@ func (scope *Scope) addSymbol(symbol Symbol) {
 	}
 }
 
-func ReadAST(graph Graph, printtds bool) (*Scope, error) {
+func ReadAST(graph *Graph, printtds bool) (*Scope, error) {
 	fileScope := newScope(nil)
 	fileScope.ScopeSymbol = Procedure{PName: "file", PType: Proc}
 	currentScope := *fileScope
 	fileNodeIndex := 0
 	currentScope.addSymbol(Procedure{PName: "Put", PType: Proc, ParamCount: 1, Params: map[int]*Variable{1: &Variable{VName: "x", SType: "character"}}, children: []int{}})
+	currentScope.addSymbol(Procedure{PName: "Put", PType: Proc, ParamCount: 1, Params: map[int]*Variable{1: &Variable{VName: "x", SType: "integer"}}, children: []int{}})
 	dfsSymbols(graph, fileNodeIndex, &currentScope)
 
 	if printtds {
@@ -173,7 +174,7 @@ func ReadAST(graph Graph, printtds bool) (*Scope, error) {
 	return fileScope, nil
 }
 
-func handleInOut(graph Graph, children []int, name string) *Variable {
+func handleInOut(graph *Graph, children []int, name string) *Variable {
 	if len(children) == 3 {
 		newParam := &Variable{VName: name, SType: getSymbolType(graph.types[children[2]])}
 		if graph.types[children[1]] == "out" {
@@ -195,7 +196,7 @@ func handleInOut(graph Graph, children []int, name string) *Variable {
 	}
 }
 
-func addParam(graph Graph, node int, currentFunc *Function, funcScope *Scope) {
+func addParam(graph *Graph, node int, currentFunc *Function, funcScope *Scope) {
 	children := maps.Keys(graph.gmap[node])
 	slices.Sort(children)
 	if graph.types[children[0]] == "sameType" {
@@ -215,7 +216,7 @@ func addParam(graph Graph, node int, currentFunc *Function, funcScope *Scope) {
 	}
 }
 
-func addParamProc(graph Graph, node int, currentProc *Procedure, procScope *Scope) {
+func addParamProc(graph *Graph, node int, currentProc *Procedure, procScope *Scope) {
 	if graph.types[node] == "param" {
 		children := maps.Keys(graph.gmap[node])
 		slices.Sort(children)
@@ -235,7 +236,7 @@ func addParamProc(graph Graph, node int, currentProc *Procedure, procScope *Scop
 	}
 }
 
-func dfsSymbols(graph Graph, node int, currentScope *Scope) {
+func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 	sorted := maps.Keys(graph.gmap[node])
 	slices.Sort(sorted)
 	scope := *currentScope

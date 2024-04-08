@@ -122,11 +122,30 @@ func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
 	os.WriteFile("./test/parser/parsetree.json", []byte(node.toJson()), 0644)
 	graph := toAst(node, *lex)
 	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
-	_, err := ReadAST(graph, true)
+	_, err := ReadAST(&graph, true)
 	if err != nil {
 		logger.Error("Error while reading AST", "error", err)
 		return
 	}
+	//if printAst {
+	//	logger.Info("Rendering AST...")
+	//	cmd := exec.Command(pythonExecutable, "./test/parser/json_to_image.py")
+	//	cmd.Stdout = os.Stdout
+	//	cmd.Stderr = os.Stderr
+	//	err := cmd.Start()
+	//	if err != nil {
+	//		logger.Error("Error while running python script", "error", err)
+	//		return
+	//	}
+	//	err = cmd.Wait()
+	//	if err != nil {
+	//		logger.Error("Error while running python script", "error", err)
+	//		return
+	//	}
+	//	logger.Info("AST rendered")
+	//}
+	CheckSemantics(graph)
+	os.WriteFile("./test/parser/ast.json", []byte(graph.toJson()), 0644)
 	if printAst {
 		logger.Info("Rendering AST...")
 		cmd := exec.Command(pythonExecutable, "./test/parser/json_to_image.py")
@@ -144,7 +163,6 @@ func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
 		}
 		logger.Info("AST rendered")
 	}
-	CheckSemantics(graph)
 	//ReadASTToASM(graph)
 	if parser.hadError {
 		// no crash for now

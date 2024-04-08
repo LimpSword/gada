@@ -10,8 +10,13 @@ procedure Record4 is
         begin
             return x + 1;
         end f;
+    function f2  return Integer is
+            begin
+                return 2;
+            end f2;
     f1 : Integer;
 begin
     f(1,2,3); -- calling f (a function) is not a statement
     f1; -- same here with a  variable
+    f2; -- same here without argument
 end Record4;

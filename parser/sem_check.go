@@ -9,7 +9,7 @@ import (
 
 func CheckSemantics(graph Graph) {
 	//dfsSemantics(graph, 0)
-	semCheck(graph, 0)
+	semCheck(&graph, 0)
 }
 
 func getTypeSize(t string, scope Scope) int {
@@ -35,7 +35,7 @@ func getTypeSize(t string, scope Scope) int {
 	}
 }
 
-func findAccessType(graph Graph, scope *Scope, node int, curType string) string {
+func findAccessType(graph *Graph, scope *Scope, node int, curType string) string {
 	children := maps.Keys(graph.gmap[node])
 	slices.Sort(children)
 	if symbol, ok := scope.Table[curType]; ok {
@@ -83,7 +83,7 @@ func findAccessType(graph Graph, scope *Scope, node int, curType string) string 
 	return Unknown
 }
 
-func matchFuncReturn(graph Graph, scope *Scope, name string, args []int, returnType map[string]struct{}) map[string]struct{} {
+func matchFuncReturn(graph *Graph, scope *Scope, node int, args []int, returnType map[string]struct{}) map[string]struct{} {
 	argstype := make(map[int]map[string]struct{})
 	slices.Sort(args)
 	for ind, val := range args {
@@ -92,9 +92,10 @@ func matchFuncReturn(graph Graph, scope *Scope, name string, args []int, returnT
 	matching := []Function{}
 	returnTypes := make(map[string]struct{})
 
+	name := graph.types[node]
 	fileName := graph.fileName
-	line := strconv.Itoa(graph.line[args[0]])
-	column := strconv.Itoa(graph.column[args[0]])
+	line := strconv.Itoa(graph.line[node])
+	column := strconv.Itoa(graph.column[node])
 
 	if symbol, ok := scope.Table[name]; ok {
 		for _, f := range symbol {
@@ -143,11 +144,11 @@ func matchFuncReturn(graph Graph, scope *Scope, name string, args []int, returnT
 		returnTypes[Unknown] = struct{}{}
 		return returnTypes
 	} else {
-		return matchFuncReturn(graph, scope.parent, name, args, returnType)
+		return matchFuncReturn(graph, scope.parent, node, args, returnType)
 	}
 }
 
-func matchFunc(graph Graph, scope *Scope, name string, args []int) map[string]struct{} {
+func matchFunc(graph *Graph, scope *Scope, node int, args []int) map[string]struct{} {
 	argstype := make(map[int]map[string]struct{})
 	slices.Sort(args)
 	for ind, val := range args {
@@ -156,9 +157,10 @@ func matchFunc(graph Graph, scope *Scope, name string, args []int) map[string]st
 	matching := []Function{}
 	returnTypes := make(map[string]struct{})
 
+	name := graph.types[node]
 	fileName := graph.fileName
-	line := strconv.Itoa(graph.line[args[0]])
-	column := strconv.Itoa(graph.column[args[0]])
+	line := strconv.Itoa(graph.line[node])
+	column := strconv.Itoa(graph.column[node])
 
 	if symbol, ok := scope.Table[name]; ok {
 		for _, f := range symbol {
@@ -186,7 +188,6 @@ func matchFunc(graph Graph, scope *Scope, name string, args []int) map[string]st
 					}
 					matching = append(matching, f.(Function))
 					//return f.(Function).ReturnType
-					// TODO: check return type overloadding and return the correct one
 				}
 				continue
 			} else {
@@ -210,11 +211,11 @@ func matchFunc(graph Graph, scope *Scope, name string, args []int) map[string]st
 		returnTypes[Unknown] = struct{}{}
 		return returnTypes
 	} else {
-		return matchFunc(graph, scope.parent, name, args)
+		return matchFunc(graph, scope.parent, node, args)
 	}
 }
 
-func matchProc(graph Graph, scope *Scope, name string, args []int) string {
+func matchProc(graph *Graph, scope *Scope, node int, args []int) string {
 	argstype := make(map[int]map[string]struct{})
 	slices.Sort(args)
 	for ind, val := range args {
@@ -222,9 +223,10 @@ func matchProc(graph Graph, scope *Scope, name string, args []int) string {
 	}
 	matching := []Procedure{}
 
+	name := graph.types[node]
 	fileName := graph.fileName
-	line := strconv.Itoa(graph.line[args[0]])
-	column := strconv.Itoa(graph.column[args[0]])
+	line := strconv.Itoa(graph.line[node])
+	column := strconv.Itoa(graph.column[node])
 
 	if symbol, ok := scope.Table[name]; ok {
 		for _, f := range symbol {
@@ -268,11 +270,11 @@ func matchProc(graph Graph, scope *Scope, name string, args []int) string {
 		logger.Error(fileName + ":" + line + ":" + column + " " + name + " procedure is undefined")
 		return Unknown
 	} else {
-		return matchProc(graph, scope.parent, name, args)
+		return matchProc(graph, scope.parent, node, args)
 	}
 }
 
-func whichFinal(graph Graph, node int) string {
+func whichFinal(graph *Graph, node int) string {
 	// give the final type of the node
 	val := graph.types[node]
 	if val == "True" || val == "False" {
@@ -289,7 +291,7 @@ func whichFinal(graph Graph, node int) string {
 	}
 }
 
-func getSymbol(graph Graph, scope *Scope, node int) string {
+func getSymbol(graph *Graph, scope *Scope, node int) string {
 	// give the symbol type of the identifier
 	name := graph.types[node]
 
@@ -325,7 +327,7 @@ func haveType(types map[string]struct{}, wantedtype string) bool {
 	}
 }
 
-//func getExpectedTypes(graph Graph, scope *Scope, node int, ind int) map[string]struct{} {
+//func getExpectedTypes(graph *Graph, scope *Scope, node int, ind int) map[string]struct{} {
 //	// give the expected types of the node
 //	switch graph.types[graph.fathers[node]] {
 //	case ":=":
@@ -357,7 +359,7 @@ func haveType(types map[string]struct{}, wantedtype string) bool {
 //	return returnTypes
 //}
 
-func getReturnType(graph Graph, scope *Scope, node int, expectedReturn map[string]struct{}) map[string]struct{} {
+func getReturnType(graph *Graph, scope *Scope, node int, expectedReturn map[string]struct{}) map[string]struct{} {
 	// give the return type of the node
 	returnTypes := make(map[string]struct{})
 	children := maps.Keys(graph.gmap[node])
@@ -424,9 +426,9 @@ func getReturnType(graph Graph, scope *Scope, node int, expectedReturn map[strin
 			}
 		} else {
 			if len(expectedReturn) == 0 {
-				return matchFunc(graph, scope, graph.types[children[0]], maps.Keys(graph.gmap[children[1]]))
+				return matchFunc(graph, scope, children[0], maps.Keys(graph.gmap[children[1]]))
 			} else {
-				return matchFuncReturn(graph, scope, graph.types[children[0]], maps.Keys(graph.gmap[children[1]]), expectedReturn)
+				return matchFuncReturn(graph, scope, children[0], maps.Keys(graph.gmap[children[1]]), expectedReturn)
 			}
 		}
 	case "access":
@@ -444,7 +446,7 @@ func getReturnType(graph Graph, scope *Scope, node int, expectedReturn map[strin
 	return returnTypes
 }
 
-func findIdentifierType(graph Graph, scope *Scope, node int) map[string]struct{} {
+func findIdentifierType(graph *Graph, scope *Scope, node int) map[string]struct{} {
 	// give the return type of the identifier
 	name := graph.types[node]
 	returnTypes := make(map[string]struct{})
@@ -454,7 +456,8 @@ func findIdentifierType(graph Graph, scope *Scope, node int) map[string]struct{}
 			return returnTypes
 		} else {
 			if symbol[0].Type() == Func { //it means it's a function without arguments
-				return matchFunc(graph, scope, name, []int{})
+				newNode := makeChild2(graph, node, "call", symbol[0].Name())
+				return matchFunc(graph, scope, newNode, []int{})
 			} else {
 				returnTypes[symbol[0].Type()] = struct{}{}
 				return returnTypes
@@ -474,7 +477,7 @@ func findIdentifierType(graph Graph, scope *Scope, node int) map[string]struct{}
 	return returnTypes
 }
 
-func findStruct(graph Graph, scope *Scope, node int, log bool) *Variable {
+func findStruct(graph *Graph, scope *Scope, node int, log bool) *Variable {
 	name := graph.types[node]
 	if name == "access" {
 		children := maps.Keys(graph.gmap[node])
@@ -562,7 +565,7 @@ func compareFunc(f1 Function, f2 Function) bool {
 	return false
 }
 
-func findAccessName(graph Graph, node int, buffer string) string {
+func findAccessName(graph *Graph, node int, buffer string) string {
 	if graph.types[node] == "access" {
 		children := maps.Keys(graph.gmap[node])
 		slices.Sort(children)
@@ -585,7 +588,7 @@ func compareProc(f1 Procedure, f2 Procedure) bool {
 	return false
 }
 
-func checkParam(graph Graph, node int, funcScope *Scope) {
+func checkParam(graph *Graph, node int, funcScope *Scope) {
 	children := maps.Keys(graph.gmap[node])
 	slices.Sort(children)
 	paramType := getSymbolType(graph.types[children[len(children)-1]])
@@ -607,7 +610,7 @@ func findMotherFunc(scope *Scope) Symbol {
 	}
 }
 
-func isHardReturn(graph Graph, node int) bool {
+func isHardReturn(graph *Graph, node int) bool {
 	hasHardReturn := false
 	if graph.types[node] == "return" {
 		return true
@@ -627,7 +630,7 @@ func isHardReturn(graph Graph, node int) bool {
 	return hasHardReturn
 }
 
-func updateReturn(graph Graph, node int) {
+func updateReturn(graph *Graph, node int) {
 	if _, ok := graph.hasReturn[node]; !ok {
 		graph.hasReturn[node] = struct{}{}
 		if (graph.types[node] != "function") && node != 0 {
@@ -636,7 +639,7 @@ func updateReturn(graph Graph, node int) {
 	}
 }
 
-func semCheck(graph Graph, node int) {
+func semCheck(graph *Graph, node int) {
 	sorted := maps.Keys(graph.gmap[node])
 	slices.Sort(sorted)
 	scope := graph.scopes[node]
@@ -791,7 +794,6 @@ func semCheck(graph Graph, node int) {
 				semCheck(graph, child)
 			}
 		}
-		// todo stop variable assignation
 	case "var":
 		// check if something is already declared with the same name
 		if graph.types[sorted[0]] == "sameType" {
@@ -952,7 +954,7 @@ func semCheck(graph Graph, node int) {
 			logger.Error(fileName + ":" + line + ":" + column + " " + "Cannot use call to function " + graph.types[sorted[0]] + " as a statement")
 		} else if symbolType == Proc {
 			//fmt.Println("Proc", graph.types[sorted[0]], maps.Keys(graph.gmap[sorted[1]]))
-			matchProc(graph, scope, graph.types[sorted[0]], maps.Keys(graph.gmap[sorted[1]]))
+			matchProc(graph, scope, sorted[0], maps.Keys(graph.gmap[sorted[1]]))
 		} else if symbolType == Rec {
 			fileName := graph.fileName
 			line := strconv.Itoa(graph.line[node])
@@ -982,10 +984,16 @@ func semCheck(graph Graph, node int) {
 	default:
 		//is something not accepted
 		if len(sorted) == 0 && whichFinal(graph, node) == "identifier" {
+			identType := getSymbol(graph, scope, node)
 			fileName := graph.fileName
 			line := strconv.Itoa(graph.line[node])
 			column := strconv.Itoa(graph.column[node])
-			logger.Error(fileName + ":" + line + ":" + column + " " + "Wrong Statement")
+			if identType == Proc {
+				newNode := makeChild2(graph, node, "call", graph.types[node])
+				matchProc(graph, scope, newNode, []int{})
+			} else {
+				logger.Error(fileName + ":" + line + ":" + column + " " + identType + " " + graph.types[node] + " is not a statement")
+			}
 		}
 		for _, child := range sorted {
 			semCheck(graph, child)
