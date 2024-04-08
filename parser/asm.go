@@ -419,7 +419,6 @@ func (a AssemblyFile) Execute() []string {
 }
 
 func ReadASTToASM(graph Graph) {
-	log.Info("Reading AST to ASM")
 	file := NewAssemblyFile(strings.Replace(graph.fileName, ".ada", ".s", -1))
 
 	file.Text += "MOV R11, SP\n"
@@ -484,8 +483,6 @@ minus_sign
        rsb     r3, r3, #0
        LDMFD   SP!, {PC}
 `
-
-	log.Info("\n" + file.Text)
 
 	file.Write()
 }
@@ -740,8 +737,6 @@ func (a *AssemblyFile) ReadDecl(graph Graph, node int, mode DeclMode) {
 	slices.SortFunc(children, func(a, b int) int {
 		nodeA := graph.GetNode(a)
 		nodeB := graph.GetNode(b)
-
-		fmt.Println(nodeA, nodeB)
 
 		if nodeA == "var" && nodeB == "var" {
 			sortedA := maps.Keys(graph.gmap[a])

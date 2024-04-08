@@ -144,7 +144,10 @@ func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
 		}
 		logger.Info("AST rendered")
 	}
+	logger.Info("Checking semantics...")
 	CheckSemantics(graph)
+
+	logger.Info("Compiling to ASM...")
 	ReadASTToASM(graph)
 	if parser.hadError {
 		// no crash for now
