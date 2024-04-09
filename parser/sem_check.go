@@ -560,7 +560,7 @@ func goUpScope(scope *Scope, name string) (*Scope, int) {
 		for _, s := range symbol {
 			if variable, ok := s.(Variable); ok {
 				if variable.IsParamIn || variable.IsParamOut {
-					return scope, -(variable.Offset - 4) + 20
+					return scope, -(variable.Offset - 4) + 16
 				}
 				var fixParamOffset = 0
 				if _, ok := scope.ScopeSymbol.(Procedure); ok {

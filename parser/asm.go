@@ -7,6 +7,7 @@ import (
 	"golang.org/x/exp/maps"
 	"math/rand"
 	"os"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -418,6 +419,13 @@ func (a AssemblyFile) Execute() []string {
 }
 
 func getStringFromRight(s string) string {
+	if runtime.GOOS == "windows" {
+		index := strings.LastIndex(s, "\\")
+		if index == -1 {
+			return s // No '/' found, return the original string
+		}
+		return s[index+1:] // Return the substring from index+1 to the end
+	}
 	index := strings.LastIndex(s, "/")
 	if index == -1 {
 		return s // No '/' found, return the original string
@@ -519,9 +527,9 @@ func (a *AssemblyFile) CallWithParameters(name string, scope *Scope, removedOffs
 	if a.WritingAtEnd {
 		a.EndText += "BL " + name + "\n"
 
-		if isFunction {
+		if true || isFunction {
 			a.Add(SP, 4)
-			a.LdrFromFramePointer(R0, -(removedOffset + 4))
+			a.Ldr(R0, -(removedOffset + 0))
 		}
 
 		// clear the stack
@@ -529,9 +537,9 @@ func (a *AssemblyFile) CallWithParameters(name string, scope *Scope, removedOffs
 	} else {
 		a.Text += "BL " + name + "\n"
 
-		if isFunction {
+		if true || isFunction {
 			a.Add(SP, 4)
-			a.LdrFromFramePointer(R0, -(removedOffset + 4))
+			a.Ldr(R0, -(removedOffset + 0))
 		}
 
 		// clear the stack
@@ -571,7 +579,7 @@ func (a *AssemblyFile) ReadIf(graph Graph, node int) {
 	condition := graph.GetChildren(node)[0]
 	a.ReadOperand(graph, condition)
 
-	a.Ldr(R0, 4)
+	a.Ldr(R0, 0)
 	a.CommentPreviousLine("Load result of condition")
 	a.Add(SP, 4)
 
@@ -650,8 +658,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			a.ReadOperand(graph, operand)
 
 			// Move the result to R0
-			a.Ldr(R0, 4)
-			a.Add(SP, 4)
+			a.Ldr(R0, 0)
 
 			// Save the result at the right place
 			a.StrFromFramePointer(R0, 16)
@@ -673,16 +680,17 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 		a.ReadOperand(graph, args)
 
 		// Move the result to R0
-		a.Ldr(R0, 4)
-		a.Add(SP, 4)
+		a.Ldr(R0, 0)
 
 		a.CallProcedure("put")
 		return
 	}
 
+	// FIXME: what do i call?
 	symbol := graph.getScope(node).ScopeSymbol
+	fmt.Println(symbol)
 	_, isFunction := symbol.(Function)
-	if isFunction {
+	if true || isFunction {
 		a.Sub(SP, 4)
 		a.CommentPreviousLine("Save space for the return value")
 	}
@@ -855,7 +863,7 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	a.StmfdMultiple([]Register{R10, R11, LR})
 	a.Mov(R10, getRegion(graph, node))
 	a.MovRegister(R11, SP)
-	a.Sub(R11, 4)
+	a.Sub(R11, 4) // SP points to R10 so we need to subtract 4
 
 	a.ReadDecl(graph, declNode, OnlyVar)
 
@@ -1090,7 +1098,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 		// Save the result in stack
 		a.Str(R0)
-	case ">":
+	case ">", "=":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
 
@@ -1103,8 +1111,13 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 		// Compare the operands
 		a.CmpRegisters(R0, R1)
-		a.MovCond(R0, 1, GT)
-		a.MovCond(R0, 0, LE)
+		if graph.GetNode(node) == ">" {
+			a.MovCond(R0, 1, GT)
+			a.MovCond(R0, 0, LE)
+		} else if graph.GetNode(node) == "=" {
+			a.MovCond(R0, 1, EQ)
+			a.MovCond(R0, 0, NE)
+		}
 
 		a.Add(SP, 4)
 
