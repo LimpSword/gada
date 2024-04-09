@@ -495,14 +495,26 @@ func (a *AssemblyFile) CallProcedure(name string) {
 	}
 }
 
-func (a *AssemblyFile) CallProcedureWithParameters(name string, scope *Scope, removedOffset int) {
+func (a *AssemblyFile) CallWithParameters(name string, scope *Scope, removedOffset int) {
+	symbol := scope.ScopeSymbol
+	_, isFunction := symbol.(Function)
 	if a.WritingAtEnd {
 		a.EndText += "BL " + name + "\n"
+
+		if isFunction {
+			a.Add(SP, 4)
+			a.LdrFromFramePointer(R0, -(removedOffset + 8))
+		}
 
 		// clear the stack
 		a.Add(SP, removedOffset)
 	} else {
 		a.Text += "BL " + name + "\n"
+
+		if isFunction {
+			a.Add(SP, 4)
+			a.LdrFromFramePointer(R0, -(removedOffset + 8))
+		}
 
 		// clear the stack
 		a.Add(SP, removedOffset)
@@ -612,26 +624,57 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			name := graph.GetChildren(child)[0]
 			args := graph.GetChildren(child)[1]
 
-			if graph.GetNode(name) == "Put" {
-				a.ReadOperand(graph, args)
+			a.Call(child, graph, name, args)
+		case "return":
+			// Read the return operand
+			operand := graph.GetChildren(child)[0]
+			a.ReadOperand(graph, operand)
 
-				// Move the result to R0
-				a.Ldr(R0, 4)
-				a.Add(SP, 4)
+			// Move the result to R0
+			a.Ldr(R0, 4)
+			a.Add(SP, 4)
 
-				a.CallProcedure("put")
-				continue
-			}
+			// Save the result at the right place
+			a.StrFromFramePointer(R0, 16)
 
-			for _, arg := range graph.GetChildren(args) {
-				a.ReadOperand(graph, arg)
-			}
+			// Leave the procedure
+			a.Add(SP, 4)
 
-			a.CallProcedureWithParameters(graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4)
+			a.Add(SP, getDeclOffset(graph, node))
+
+			a.LdmfdMultiple([]Register{R10, R11, PC})
 		case "if":
 			a.ReadIf(graph, child)
 		}
 	}
+}
+
+func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
+	if graph.GetNode(name) == "Put" {
+		a.ReadOperand(graph, args)
+
+		// Move the result to R0
+		a.Ldr(R0, 4)
+		a.Add(SP, 4)
+
+		a.CallProcedure("put")
+		return
+	}
+
+	symbol := graph.getScope(node).ScopeSymbol
+	_, isFunction := symbol.(Function)
+	if isFunction {
+		a.Sub(SP, 4)
+		a.CommentPreviousLine("Save space for the return value")
+	}
+
+	a.AddComment("Read the arguments")
+	for _, arg := range graph.GetChildren(args) {
+		a.ReadOperand(graph, arg)
+	}
+
+	a.AddComment("Arguments read, call the procedure")
+	a.CallWithParameters(graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4)
 }
 
 func (a *AssemblyFile) ReadFor(graph Graph, node int) {
@@ -758,6 +801,10 @@ func (a *AssemblyFile) ReadDecl(graph Graph, node int, mode DeclMode) {
 				a.ReadVar(graph, child)
 			}
 		case "procedure":
+			if mode == All || mode == OnlyFuncAndProc {
+				a.ReadProcedure(graph, child)
+			}
+		case "function":
 			if mode == All || mode == OnlyFuncAndProc {
 				a.ReadProcedure(graph, child)
 			}
@@ -1073,6 +1120,16 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 			a.Negate(R0)
 
 			a.Str(R0)
+		} else {
+			name := graph.GetChildren(node)[0]
+			args := graph.GetChildren(node)[1]
+
+			a.Call(node, graph, name, args)
+
+			a.Str(R0)
+
+			// Move the stack pointer
+			a.Sub(SP, 4)
 		}
 	}
 }
