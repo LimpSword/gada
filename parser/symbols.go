@@ -386,7 +386,15 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 		for _, child := range maps.Keys(graph.gmap[sorted[1]]) {
 			childChild := maps.Keys(graph.gmap[child])
 			slices.Sort(childChild)
-			recordElem.Fields[getSymbolType(graph.types[childChild[0]])] = getSymbolType(graph.types[childChild[1]])
+			if graph.types[childChild[0]] == "sameType" {
+				childChildchild := maps.Keys(graph.gmap[childChild[0]])
+				slices.Sort(childChildchild)
+				for _, child := range childChildchild {
+					recordElem.Fields[getSymbolType(graph.types[child])] = getSymbolType(graph.types[childChild[1]])
+				}
+			} else {
+				recordElem.Fields[getSymbolType(graph.types[childChild[0]])] = getSymbolType(graph.types[childChild[1]])
+			}
 		}
 		scope.addSymbol(recordElem)
 	default:
