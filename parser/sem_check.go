@@ -406,15 +406,17 @@ func getReturnType(graph *Graph, scope *Scope, node int, expectedReturn map[stri
 			logger.Error(fileName + ":" + line + ":" + column + " Operator not should have boolean operands")
 		}
 	case ">", "<", ">=", "<=", "=", "/=":
-		if haveType(getReturnType(graph, scope, children[0], expectedReturn), "integer") && haveType(getReturnType(graph, scope, children[1], expectedReturn), "integer") {
-			returnTypes["boolean"] = struct{}{}
-			return returnTypes
-		} else {
-			fileName := graph.fileName
-			line := strconv.Itoa(graph.line[node])
-			column := strconv.Itoa(graph.column[node])
-			logger.Error(fileName + ":" + line + ":" + column + " Operator " + graph.types[node] + " should have integer operands")
+		for rType, _ := range getReturnType(graph, scope, children[0], expectedReturn) {
+			if haveType(getReturnType(graph, scope, children[1], expectedReturn), rType) {
+				returnTypes["boolean"] = struct{}{}
+				return returnTypes
+			}
 		}
+
+		fileName := graph.fileName
+		line := strconv.Itoa(graph.line[node])
+		column := strconv.Itoa(graph.column[node])
+		logger.Error(fileName + ":" + line + ":" + column + " Operator " + graph.types[node] + " should have integer operands")
 	case "call":
 		if graph.types[children[0]] == "-" {
 			if haveType(getReturnType(graph, scope, children[1], expectedReturn), "integer") {
