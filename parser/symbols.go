@@ -203,16 +203,30 @@ func addParam(graph *Graph, node int, currentFunc *Function, funcScope *Scope) {
 		childrenchildren := maps.Keys(graph.gmap[children[0]])
 		slices.Sort(childrenchildren)
 		for _, child := range childrenchildren {
+			var size int
+			if len(children) == 3 {
+				size = getTypeSize(getSymbolType(graph.types[children[2]]), *funcScope)
+			} else {
+				size = getTypeSize(getSymbolType(graph.types[children[1]]), *funcScope)
+			}
+
 			currentFunc.ParamCount++
 			newParam := handleInOut(graph, children, graph.types[child])
-			newParam.Offset = funcScope.getCurrentOffset() + 4
+			newParam.Offset = funcScope.getCurrentOffset() + size
 			currentFunc.Params[currentFunc.ParamCount] = newParam
 			funcScope.addSymbol(*newParam)
 		}
 	} else {
+		var size int
+		if len(children) == 3 {
+			size = getTypeSize(getSymbolType(graph.types[children[2]]), *funcScope)
+		} else {
+			size = getTypeSize(getSymbolType(graph.types[children[1]]), *funcScope)
+		}
+
 		currentFunc.ParamCount++
 		newParam := handleInOut(graph, children, graph.types[children[0]])
-		newParam.Offset = funcScope.getCurrentOffset() + 4
+		newParam.Offset = funcScope.getCurrentOffset() + size
 		currentFunc.Params[currentFunc.ParamCount] = newParam
 		funcScope.addSymbol(*newParam)
 	}
@@ -224,16 +238,30 @@ func addParamProc(graph *Graph, node int, currentProc *Procedure, procScope *Sco
 		slices.Sort(children)
 		if graph.types[children[0]] == "sameType" {
 			for _, child := range maps.Keys(graph.gmap[children[0]]) {
+				var size int
+				if len(children) == 3 {
+					size = getTypeSize(getSymbolType(graph.types[children[2]]), *procScope)
+				} else {
+					size = getTypeSize(getSymbolType(graph.types[children[1]]), *procScope)
+				}
+
 				currentProc.ParamCount++
 				newParam := handleInOut(graph, children, graph.types[child])
-				newParam.Offset = procScope.getCurrentOffset() + 4
+				newParam.Offset = procScope.getCurrentOffset() + size
 				currentProc.Params[currentProc.ParamCount] = newParam
 				procScope.addSymbol(*newParam)
 			}
 		} else {
+			var size int
+			if len(children) == 3 {
+				size = getTypeSize(getSymbolType(graph.types[children[2]]), *procScope)
+			} else {
+				size = getTypeSize(getSymbolType(graph.types[children[1]]), *procScope)
+			}
+
 			currentProc.ParamCount++
 			newParam := handleInOut(graph, children, graph.types[children[0]])
-			newParam.Offset = procScope.getCurrentOffset() + 4
+			newParam.Offset = procScope.getCurrentOffset() + size
 			currentProc.Params[currentProc.ParamCount] = newParam
 			procScope.addSymbol(*newParam)
 		}

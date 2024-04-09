@@ -17,19 +17,29 @@ func getTypeSize(t string, scope Scope) int {
 	case "integer":
 		return 4
 	case "character":
-		return 1
+		return 4
 	case "boolean":
-		return 1
+		return 4
 	default:
 		// Is it a record?
-		if symbol, ok := scope.Table[t]; ok {
-			if symbol[0].Type() == Rec {
-				size := 0
-				for _, field := range symbol[0].(Record).Fields {
-					size += getTypeSize(field, scope)
+		for {
+			if symbol, ok := scope.Table[t]; ok {
+				if symbol[0].Type() == Rec {
+					size := 0
+					for _, field := range symbol[0].(Record).Fields {
+						size += getTypeSize(field, scope)
+					}
+					// The size needs to be a multiple of 4
+					if size%4 != 0 {
+						size += 4 - size%4
+					}
+					return size
 				}
-				return size
 			}
+			if scope.parent == nil {
+				return 0
+			}
+			scope = *scope.parent
 		}
 		return 0
 	}
