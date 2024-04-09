@@ -708,8 +708,8 @@ func semCheck(graph *Graph, node int) {
 	switch graph.types[node] {
 	case "file":
 		shift := 0
-		if graph.types[sorted[0]] != graph.types[sorted[len(sorted)-1]] {
-			if graph.types[sorted[len(sorted)-1]] != "end" {
+		if getSymbolType(graph.types[sorted[0]]) != getSymbolType(graph.types[sorted[len(sorted)-1]]) {
+			if getSymbolType(graph.types[sorted[len(sorted)-1]]) != "end" {
 				fileName := graph.fileName
 				line := strconv.Itoa(graph.line[sorted[len(sorted)-1]])
 				column := strconv.Itoa(graph.column[sorted[len(sorted)-1]])
@@ -729,8 +729,8 @@ func semCheck(graph *Graph, node int) {
 		funcParam := make(map[int]*Variable)
 		funcElem := Function{FName: getSymbolType(graph.types[sorted[0]]), SType: Func, children: sorted, Params: funcParam}
 		shift := 0
-		if graph.types[sorted[0]] != graph.types[sorted[len(sorted)-1]] {
-			if graph.types[sorted[len(sorted)-1]] != "end" {
+		if getSymbolType(graph.types[sorted[0]]) != getSymbolType(graph.types[sorted[len(sorted)-1]]) {
+			if getSymbolType(graph.types[sorted[len(sorted)-1]]) != "end" {
 				fileName := graph.fileName
 				line := strconv.Itoa(graph.line[node])
 				column := strconv.Itoa(graph.column[node])
@@ -803,8 +803,8 @@ func semCheck(graph *Graph, node int) {
 		procParam := make(map[int]*Variable)
 		procElem := Procedure{PName: getSymbolType(graph.types[sorted[0]]), PType: Proc, children: sorted, Params: procParam}
 		shift := 0
-		if graph.types[sorted[0]] != graph.types[sorted[len(sorted)-1]] {
-			if graph.types[sorted[len(sorted)-1]] != "end" {
+		if getSymbolType(graph.types[sorted[0]]) != getSymbolType(graph.types[sorted[len(sorted)-1]]) {
+			if getSymbolType(graph.types[sorted[len(sorted)-1]]) != "end" {
 				fileName := graph.fileName
 				line := strconv.Itoa(graph.line[node])
 				column := strconv.Itoa(graph.column[node])
@@ -1006,7 +1006,7 @@ func semCheck(graph *Graph, node int) {
 		}
 		updateReturn(graph, node)
 	case "call":
-		fmt.Printf("call scope: %d %v\n", scope.Region, scope.Table)
+		//fmt.Printf("call scope: %d %v\n", scope.Region, scope.Table)
 		symbolType := getSymbol(graph, scope, sorted[0])
 		//fmt.Println("symbolType", symbolType, graph.types[sorted[0]])
 		if symbolType == Func {
