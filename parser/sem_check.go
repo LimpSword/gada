@@ -426,6 +426,16 @@ func getReturnType(graph *Graph, scope *Scope, node int, expectedReturn map[stri
 				column := strconv.Itoa(graph.column[node])
 				logger.Error(fileName + ":" + line + ":" + column + " Operator - should have integer operands")
 			}
+		} else if graph.types[children[0]] == "not" {
+			if haveType(getReturnType(graph, scope, children[1], expectedReturn), "boolean") {
+				returnTypes["boolean"] = struct{}{}
+				return returnTypes
+			} else {
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[node])
+				column := strconv.Itoa(graph.column[node])
+				logger.Error(fileName + ":" + line + ":" + column + " Operator not should have boolean operands")
+			}
 		} else {
 			if len(expectedReturn) == 0 {
 				return matchFunc(graph, scope, children[0], maps.Keys(graph.gmap[children[1]]), genArgsMap(graph, scope, maps.Keys(graph.gmap[children[1]])))
