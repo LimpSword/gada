@@ -7,6 +7,7 @@ import (
 	"golang.org/x/exp/maps"
 	"math/rand"
 	"os"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -418,6 +419,13 @@ func (a AssemblyFile) Execute() []string {
 }
 
 func getStringFromRight(s string) string {
+	if runtime.GOOS == "windows" {
+		index := strings.LastIndex(s, "\\")
+		if index == -1 {
+			return s // No '/' found, return the original string
+		}
+		return s[index+1:] // Return the substring from index+1 to the end
+	}
 	index := strings.LastIndex(s, "/")
 	if index == -1 {
 		return s // No '/' found, return the original string
