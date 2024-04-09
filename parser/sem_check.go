@@ -443,7 +443,11 @@ func getReturnType(graph *Graph, scope *Scope, node int, expectedReturn map[stri
 		finalType := findAccessType(graph, scope, children[1], mainType)
 		returnTypes[finalType] = struct{}{}
 		return returnTypes
+	case "cast":
+		returnTypes["character"] = struct{}{}
+		return returnTypes
 	}
+
 	returnTypes[Unknown] = struct{}{}
 	return returnTypes
 }
