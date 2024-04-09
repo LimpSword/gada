@@ -148,6 +148,7 @@ func Parse(lex *lexer.Lexer, printAst bool, pythonExecutable string) {
 	CheckSemantics(graph)
 
 	logger.Info("Compiling to ASM...")
+	os.WriteFile("./test/parser/astSem.json", []byte(graph.toJson()), 0644)
 	ReadASTToASM(graph)
 	if parser.hadError {
 		// no crash for now
