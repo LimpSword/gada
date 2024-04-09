@@ -158,8 +158,8 @@ func ReadAST(graph *Graph, printtds bool) (*Scope, error) {
 	fileScope.ScopeSymbol = Procedure{PName: "file", PType: Proc}
 	currentScope := *fileScope
 	fileNodeIndex := 0
-	currentScope.addSymbol(Procedure{PName: "Put", PType: Proc, ParamCount: 1, Params: map[int]*Variable{1: &Variable{VName: "x", SType: "character"}}, children: []int{}})
-	currentScope.addSymbol(Procedure{PName: "Put", PType: Proc, ParamCount: 1, Params: map[int]*Variable{1: &Variable{VName: "x", SType: "integer"}}, children: []int{}})
+	currentScope.addSymbol(Procedure{PName: "put", PType: Proc, ParamCount: 1, Params: map[int]*Variable{1: &Variable{VName: "x", SType: "character"}}, children: []int{}})
+	currentScope.addSymbol(Procedure{PName: "put", PType: Proc, ParamCount: 1, Params: map[int]*Variable{1: &Variable{VName: "x", SType: "integer"}}, children: []int{}})
 	dfsSymbols(graph, fileNodeIndex, &currentScope)
 
 	if printtds {
@@ -175,6 +175,7 @@ func ReadAST(graph *Graph, printtds bool) (*Scope, error) {
 }
 
 func handleInOut(graph *Graph, children []int, name string) *Variable {
+	name = getSymbolType(name)
 	if len(children) == 3 {
 		newParam := &Variable{VName: name, SType: getSymbolType(graph.types[children[2]])}
 		if graph.types[children[1]] == "out" {
@@ -309,7 +310,7 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 		dfsSymbols(graph, sorted[1+shift], currentScope)
 	case "function":
 		funcParam := make(map[int]*Variable)
-		funcElem := Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: funcParam}
+		funcElem := Function{FName: getSymbolType(graph.types[sorted[0]]), SType: Func, children: sorted, Params: funcParam}
 		funcScope := newScope(&scope)
 		shift := 0
 		if graph.types[sorted[1]] == "params" {
@@ -335,7 +336,7 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 		dfsSymbols(graph, sorted[2+shift], funcScope)
 	case "procedure":
 		procParam := make(map[int]*Variable)
-		procElem := Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: procParam}
+		procElem := Procedure{PName: getSymbolType(graph.types[sorted[0]]), PType: Proc, children: sorted, Params: procParam}
 		procScope := newScope(&scope)
 		shift := 0
 		if graph.types[sorted[1]] == "params" {
@@ -359,7 +360,7 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 		dfsSymbols(graph, sorted[1+shift], procScope)
 	case "for":
 		forScope := newScope(&scope)
-		forScope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: "integer", Offset: 4, IsLoop: true})
+		forScope.addSymbol(Variable{VName: getSymbolType(graph.types[sorted[0]]), SType: "integer", Offset: 4, IsLoop: true})
 		graph.scopes[node] = forScope
 		for _, child := range sorted {
 			// FIXME: loop from and to should be read at least to know their scope
@@ -374,18 +375,18 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 			slices.Sort(keys)
 			for _, k := range keys {
 				currentOffset += getTypeSize(getSymbolType(graph.types[sorted[1]]), scope)
-				scope.addSymbol(Variable{VName: graph.types[k], SType: getSymbolType(graph.types[sorted[1]]), Offset: currentOffset})
+				scope.addSymbol(Variable{VName: getSymbolType(graph.types[k]), SType: getSymbolType(graph.types[sorted[1]]), Offset: currentOffset})
 			}
 		} else {
 			currentOffset += getTypeSize(getSymbolType(graph.types[sorted[1]]), scope)
-			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]]), Offset: currentOffset})
+			scope.addSymbol(Variable{VName: getSymbolType(graph.types[sorted[0]]), SType: getSymbolType(graph.types[sorted[1]]), Offset: currentOffset})
 		}
 	case "type":
 		recordElem := Record{RName: getSymbolType(graph.types[sorted[0]]), SType: Rec, Fields: make(map[string]string)}
 		for _, child := range maps.Keys(graph.gmap[sorted[1]]) {
 			childChild := maps.Keys(graph.gmap[child])
 			slices.Sort(childChild)
-			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
+			recordElem.Fields[getSymbolType(graph.types[childChild[0]])] = getSymbolType(graph.types[childChild[1]])
 		}
 		scope.addSymbol(recordElem)
 	default:

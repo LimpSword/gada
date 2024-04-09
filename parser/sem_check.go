@@ -51,8 +51,8 @@ func findAccessType(graph *Graph, scope *Scope, node int, curType string) string
 	if symbol, ok := scope.Table[curType]; ok {
 		if symbol[0].Type() == Rec {
 			if graph.types[node] == "access" {
-				if _, ok1 := symbol[0].(Record).Fields[graph.types[children[0]]]; ok1 {
-					newType := symbol[0].(Record).Fields[graph.types[children[0]]]
+				if _, ok1 := symbol[0].(Record).Fields[getSymbolType(graph.types[children[0]])]; ok1 {
+					newType := symbol[0].(Record).Fields[getSymbolType(graph.types[children[0]])]
 					return findAccessType(graph, scope, children[1], newType)
 				} else {
 					fileName := graph.fileName
@@ -62,8 +62,8 @@ func findAccessType(graph *Graph, scope *Scope, node int, curType string) string
 				}
 			} else {
 
-				if _, ok1 := symbol[0].(Record).Fields[graph.types[node]]; ok1 {
-					newType := symbol[0].(Record).Fields[graph.types[node]]
+				if _, ok1 := symbol[0].(Record).Fields[getSymbolType(graph.types[node])]; ok1 {
+					newType := symbol[0].(Record).Fields[getSymbolType(graph.types[node])]
 					return newType
 				} else {
 					fileName := graph.fileName
@@ -99,7 +99,7 @@ func matchFuncReturn(graph *Graph, scope *Scope, node int, args []int, argstype 
 	matching := []Function{}
 	returnTypes := make(map[string]struct{})
 
-	name := graph.types[node]
+	name := getSymbolType(graph.types[node])
 	fileName := graph.fileName
 	line := strconv.Itoa(graph.line[node])
 	column := strconv.Itoa(graph.column[node])
@@ -160,7 +160,7 @@ func matchFunc(graph *Graph, scope *Scope, node int, args []int, argstype map[in
 	matching := []Function{}
 	returnTypes := make(map[string]struct{})
 
-	name := graph.types[node]
+	name := getSymbolType(graph.types[node])
 	fileName := graph.fileName
 	line := strconv.Itoa(graph.line[node])
 	column := strconv.Itoa(graph.column[node])
@@ -220,10 +220,10 @@ func matchFunc(graph *Graph, scope *Scope, node int, args []int, argstype map[in
 
 func matchProc(graph *Graph, scope *Scope, node int, args []int, argstype map[int]map[string]struct{}) string {
 
-	fmt.Printf("proc %s, args:%v, node : %d\n", graph.types[node], argstype, node)
+	//fmt.Printf("proc %s, args:%v, node : %d\n", graph.types[node], argstype, node)
 	matching := []Procedure{}
 
-	name := graph.types[node]
+	name := getSymbolType(graph.types[node])
 	fileName := graph.fileName
 	line := strconv.Itoa(graph.line[node])
 	column := strconv.Itoa(graph.column[node])
@@ -293,7 +293,7 @@ func whichFinal(graph *Graph, node int) string {
 
 func getSymbol(graph *Graph, scope *Scope, node int) string {
 	// give the symbol type of the identifier
-	name := graph.types[node]
+	name := getSymbolType(graph.types[node])
 
 	if name == "access" {
 		children := maps.Keys(graph.gmap[node])
@@ -450,7 +450,7 @@ func getReturnType(graph *Graph, scope *Scope, node int, expectedReturn map[stri
 
 func findIdentifierType(graph *Graph, scope *Scope, node int) map[string]struct{} {
 	// give the return type of the identifier
-	name := graph.types[node]
+	name := getSymbolType(graph.types[node])
 	returnTypes := make(map[string]struct{})
 	//fmt.Printf("scope: %v\n", scope.Table)
 	if symbol, ok := scope.Table[name]; ok {
@@ -481,7 +481,7 @@ func findIdentifierType(graph *Graph, scope *Scope, node int) map[string]struct{
 }
 
 func findStruct(graph *Graph, scope *Scope, node int, log bool) *Variable {
-	name := graph.types[node]
+	name := getSymbolType(graph.types[node])
 	if name == "access" {
 		children := maps.Keys(graph.gmap[node])
 		slices.Sort(children)
@@ -607,10 +607,10 @@ func findAccessName(graph *Graph, node int, buffer string) string {
 	if graph.types[node] == "access" {
 		children := maps.Keys(graph.gmap[node])
 		slices.Sort(children)
-		buffer = buffer + graph.types[children[0]] + "."
+		buffer = buffer + getSymbolType(graph.types[children[0]]) + "."
 		return findAccessName(graph, children[1], buffer)
 	} else {
-		return buffer + graph.types[node]
+		return buffer + getSymbolType(graph.types[node])
 	}
 }
 
@@ -713,7 +713,7 @@ func semCheck(graph *Graph, node int) {
 
 	case "function":
 		funcParam := make(map[int]*Variable)
-		funcElem := Function{FName: graph.types[sorted[0]], SType: Func, children: sorted, Params: funcParam}
+		funcElem := Function{FName: getSymbolType(graph.types[sorted[0]]), SType: Func, children: sorted, Params: funcParam}
 		shift := 0
 		if graph.types[sorted[0]] != graph.types[sorted[len(sorted)-1]] {
 			if graph.types[sorted[len(sorted)-1]] != "end" {
@@ -787,7 +787,7 @@ func semCheck(graph *Graph, node int) {
 		}
 	case "procedure":
 		procParam := make(map[int]*Variable)
-		procElem := Procedure{PName: graph.types[sorted[0]], PType: Proc, children: sorted, Params: procParam}
+		procElem := Procedure{PName: getSymbolType(graph.types[sorted[0]]), PType: Proc, children: sorted, Params: procParam}
 		shift := 0
 		if graph.types[sorted[0]] != graph.types[sorted[len(sorted)-1]] {
 			if graph.types[sorted[len(sorted)-1]] != "end" {
@@ -845,7 +845,7 @@ func semCheck(graph *Graph, node int) {
 		// check if something is already declared with the same name
 		if graph.types[sorted[0]] == "sameType" {
 			for _, child := range maps.Keys(graph.gmap[sorted[0]]) {
-				if r, ok := scope.Table[graph.types[child]]; ok {
+				if r, ok := scope.Table[getSymbolType(graph.types[child])]; ok {
 					if len(r) > 1 {
 						fileName := graph.fileName
 						line := strconv.Itoa(graph.line[node])
@@ -855,7 +855,7 @@ func semCheck(graph *Graph, node int) {
 				}
 			}
 		} else {
-			if r, ok := scope.Table[graph.types[sorted[0]]]; ok {
+			if r, ok := scope.Table[getSymbolType(graph.types[sorted[0]])]; ok {
 				if len(r) > 1 {
 					fileName := graph.fileName
 					line := strconv.Itoa(graph.line[node])
@@ -865,7 +865,7 @@ func semCheck(graph *Graph, node int) {
 			}
 		}
 		// check if the type exists
-		declType := getSymbolType(graph.types[sorted[1]])
+		declType := getSymbolType(getSymbolType(graph.types[sorted[1]]))
 
 		_, err := findType(scope, declType)
 		if err != nil {
@@ -877,7 +877,7 @@ func semCheck(graph *Graph, node int) {
 		}
 
 	case "type":
-		if r, ok := scope.Table[graph.types[node]]; ok {
+		if r, ok := scope.Table[getSymbolType(graph.types[node])]; ok {
 			if len(r) > 1 {
 				fileName := graph.fileName
 				line := strconv.Itoa(graph.line[node])
@@ -885,17 +885,17 @@ func semCheck(graph *Graph, node int) {
 				logger.Error(fileName + ":" + line + ":" + column + " " + graph.types[node] + " is already declared in this scope")
 			}
 		}
-		recordElem := Record{RName: graph.types[sorted[0]], SType: Rec, Fields: make(map[string]string)}
+		recordElem := Record{RName: getSymbolType(graph.types[sorted[0]]), SType: Rec, Fields: make(map[string]string)}
 		for _, child := range maps.Keys(graph.gmap[sorted[1]]) {
 			childChild := maps.Keys(graph.gmap[child])
 			slices.Sort(childChild)
-			if _, ok := recordElem.Fields[graph.types[childChild[0]]]; ok {
+			if _, ok := recordElem.Fields[getSymbolType(graph.types[childChild[0]])]; ok {
 				fileName := graph.fileName
 				line := strconv.Itoa(graph.line[node])
 				column := strconv.Itoa(graph.column[node])
 				logger.Error(fileName + ":" + line + ":" + column + " " + "Field " + graph.types[childChild[0]] + " is duplicate in record " + graph.types[sorted[0]] + " declaration")
 			}
-			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
+			recordElem.Fields[getSymbolType(graph.types[childChild[0]])] = getSymbolType(graph.types[childChild[1]])
 
 			_, err := findType(scope, getSymbolType(graph.types[childChild[1]]))
 			if err != nil {
