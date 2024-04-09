@@ -503,7 +503,7 @@ func (a *AssemblyFile) CallWithParameters(name string, scope *Scope, removedOffs
 
 		if isFunction {
 			a.Add(SP, 4)
-			a.LdrFromFramePointer(R0, -(removedOffset + 8))
+			a.LdrFromFramePointer(R0, -(removedOffset + 4))
 		}
 
 		// clear the stack
@@ -513,7 +513,7 @@ func (a *AssemblyFile) CallWithParameters(name string, scope *Scope, removedOffs
 
 		if isFunction {
 			a.Add(SP, 4)
-			a.LdrFromFramePointer(R0, -(removedOffset + 8))
+			a.LdrFromFramePointer(R0, -(removedOffset + 4))
 		}
 
 		// clear the stack
@@ -540,7 +540,6 @@ func (a *AssemblyFile) ReadFile(graph Graph, node int) {
 	a.Mov(R10, getRegion(graph, node))
 	a.MovRegister(R11, SP)
 	a.Sub(R11, 4)
-	a.Sub(SP, 4)
 
 	a.ReadDecl(graph, declNode, All)
 	a.ReadBody(graph, bodyNode)
@@ -555,6 +554,7 @@ func (a *AssemblyFile) ReadIf(graph Graph, node int) {
 	a.ReadOperand(graph, condition)
 
 	a.Ldr(R0, 4)
+	a.CommentPreviousLine("Load result of condition")
 	a.Add(SP, 4)
 
 	randomLabel := rand.Int()
@@ -580,6 +580,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			left := graph.GetChildren(child)[0]
 			right := graph.GetChildren(child)[1]
 
+			a.AddComment("Assignment of " + graph.GetNode(left))
 			a.ReadOperand(graph, right)
 
 			a.Add(SP, 4)
@@ -835,15 +836,11 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	a.Mov(R10, getRegion(graph, node))
 	a.MovRegister(R11, SP)
 	a.Sub(R11, 4)
-	a.Sub(SP, 4)
 
 	a.ReadDecl(graph, declNode, OnlyVar)
 
 	// Read the body of the procedure
 	a.ReadBody(graph, bodyNode)
-
-	// Restore R9
-	a.Add(SP, 4)
 
 	a.Add(SP, getDeclOffset(graph, node))
 
@@ -883,17 +880,20 @@ func (a *AssemblyFile) ReadVar(graph Graph, node int) {
 				if value != nil {
 					offset := getTypeSize(variable.SType, *scope)
 
+					// Move the stack pointer
+					a.Sub(SP, offset)
+					a.CommentPreviousLine("Reserve space for the value of " + name)
+
 					// Load the int value to r0
 					a.Mov(R0, *value)
 					a.Str(R0)
-
-					// Move the stack pointer
-					a.Sub(SP, offset)
+					a.CommentPreviousLine("Store the value of " + name)
 				} else {
 					offset := getTypeSize(variable.SType, *scope)
 
 					// Move the stack pointer
 					a.Sub(SP, offset)
+					a.CommentPreviousLine("Reserve space for the value of " + name)
 				}
 			}
 		}
@@ -912,22 +912,22 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		// Different cases: int, char or ident
 		intValue, err := strconv.Atoi(graph.GetNode(node))
 		if err == nil {
+			// Move the stack pointer
+			a.Sub(SP, 4)
+
 			// The operand is an int
 			// Load the int value to r0
 			a.Mov(R0, intValue)
 			a.Str(R0)
-
-			// Move the stack pointer
-			a.Sub(SP, 4)
 		} else {
 			if graph.GetNode(node)[0] == '\'' {
+				// Move the stack pointer
+				a.Sub(SP, 4)
+
 				// The operand is a char
 				// Load the char value to r0
 				a.Mov(R0, int(graph.GetNode(node)[1]))
 				a.Str(R0)
-
-				// Move the stack pointer
-				a.Sub(SP, 4)
 			} else {
 				// The operand is an ident
 				// Load the ident value to r0
@@ -965,11 +965,12 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 					a.CommentPreviousLine(fmt.Sprintf("(NS) Load the value of %v", graph.GetNode(node)))
 				}
-
-				a.Str(R0)
-
 				// Move the stack pointer
 				a.Sub(SP, 4)
+				a.CommentPreviousLine("Reserve space for the value of " + graph.GetNode(node))
+
+				a.Str(R0)
+				a.CommentPreviousLine("Store the value of " + graph.GetNode(node))
 			}
 		}
 	}
@@ -981,34 +982,26 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 		// Read right operand
 		a.ReadOperand(graph, children[1])
-		a.Ldr(R0, 4)
-		a.AddWithOffset(R0, R1, 8) // same as ldr from offset 8 then add
+		a.Ldr(R0, 0)
+		a.AddWithOffset(R0, R1, 4) // same as ldr from offset 8 then add
 
-		// We can move the SP back
-		a.Add(SP, 8)
+		a.Add(SP, 4)
 
 		// Save the result in stack
 		a.Str(R0)
-
-		// Move the stack pointer
-		a.Sub(SP, 4)
 	case "-":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
 
 		// Read right operand
 		a.ReadOperand(graph, children[1])
-		a.Ldr(R0, 4)
-		a.SubWithOffset(R0, R1, 8)
+		a.Ldr(R0, 0)
+		a.SubWithOffset(R0, R1, 4)
 
-		// We can move the SP back
-		a.Add(SP, 8)
+		a.Add(SP, 4)
 
 		// Save the result in stack
 		a.Str(R0)
-
-		// Move the stack pointer
-		a.Sub(SP, 4)
 	case "*":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
@@ -1017,20 +1010,16 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		a.ReadOperand(graph, children[1])
 
 		// Left operand in R1, right operand in R2
-		a.Ldr(R1, 4)
-		a.Ldr(R2, 8)
+		a.Ldr(R1, 0)
+		a.Ldr(R2, 4)
 
 		// Use the multiplication algorithm at the label mul
 		a.CallProcedure("mul")
 
-		// Move the stack pointer
-		a.Add(SP, 8)
+		a.Add(SP, 4)
 
 		// Save the result in stack
 		a.Str(R0)
-
-		// Move the stack pointer
-		a.Sub(SP, 4)
 	case "/":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
@@ -1039,8 +1028,8 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		a.ReadOperand(graph, children[1])
 
 		// Left operand in R0, right operand in R1
-		a.Ldr(R1, 4)
-		a.Ldr(R0, 8)
+		a.Ldr(R1, 0)
+		a.Ldr(R0, 4)
 
 		// Make R0 and R1 positive
 		a.Positive(R0)
@@ -1051,21 +1040,17 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 		// Apply the sign
 		// Move left operand in R1, right operand in R2, result in R3
-		a.Ldr(R1, 4)
-		a.Ldr(R2, 8)
+		a.Ldr(R1, 0)
+		a.Ldr(R2, 4)
 		a.MovRegister(R3, R0)
 		a.CallProcedure("fix_sign")
 
 		a.MovRegister(R0, R3)
 
-		// Move the stack pointer
-		a.Add(SP, 8)
+		a.Add(SP, 4)
 
 		// Save the result in stack
 		a.Str(R0)
-
-		// Move the stack pointer
-		a.Sub(SP, 4)
 	case "and":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
@@ -1074,19 +1059,16 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		a.ReadOperand(graph, children[1])
 
 		// Left operand in R1, right operand in R2
-		a.Ldr(R1, 4)
-		a.Ldr(R2, 8)
+		a.Ldr(R1, 0)
+		a.Ldr(R2, 4)
 
 		// Use the AND operation
 		a.And(R1, R2)
 
-		a.Add(SP, 8)
+		a.Add(SP, 4)
 
 		// Save the result in stack
 		a.Str(R0)
-
-		// Move the stack pointer
-		a.Sub(SP, 4)
 	case ">":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
@@ -1095,22 +1077,18 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		a.ReadOperand(graph, children[1])
 
 		// Left operand in R0, right operand in R1
-		a.Ldr(R1, 4)
-		a.Ldr(R0, 8)
+		a.Ldr(R1, 0)
+		a.Ldr(R0, 4)
 
 		// Compare the operands
 		a.CmpRegisters(R0, R1)
 		a.MovCond(R0, 1, GT)
 		a.MovCond(R0, 0, LE)
 
-		// Move the stack pointer
-		a.Add(SP, 8)
+		a.Add(SP, 4)
 
 		// Save the result in stack
 		a.Str(R0)
-
-		// Move the stack pointer
-		a.Sub(SP, 4)
 	case "call":
 		if graph.GetNode(children[0]) == "-" {
 			// Read right operand
@@ -1126,10 +1104,10 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 			a.Call(node, graph, name, args)
 
-			a.Str(R0)
-
 			// Move the stack pointer
 			a.Sub(SP, 4)
+
+			a.Str(R0)
 		}
 	}
 }
