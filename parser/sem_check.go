@@ -405,7 +405,7 @@ func getReturnType(graph *Graph, scope *Scope, node int, expectedReturn map[stri
 			column := strconv.Itoa(graph.column[node])
 			logger.Error(fileName + ":" + line + ":" + column + " Operator not should have boolean operands")
 		}
-	case ">", "<", ">=", "<=", "=", "/=":
+	case ">", "<", ">=", "<=", "=", "!=":
 		for rType, _ := range getReturnType(graph, scope, children[0], expectedReturn) {
 			if haveType(getReturnType(graph, scope, children[1], expectedReturn), rType) {
 				returnTypes["boolean"] = struct{}{}
@@ -857,6 +857,15 @@ func semCheck(graph *Graph, node int) {
 				semCheck(graph, child)
 			}
 		}
+	case "while":
+		if !haveType(getReturnType(graph, scope, sorted[0], make(map[string]struct{})), "boolean") {
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " " + "Condition should be boolean")
+		}
+		semCheck(graph, sorted[1])
+
 	case "var":
 		// check if something is already declared with the same name
 		if graph.types[sorted[0]] == "sameType" {
