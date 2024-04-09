@@ -417,8 +417,27 @@ func (a AssemblyFile) Execute() []string {
 	return output
 }
 
+func getStringFromRight(s string) string {
+	index := strings.LastIndex(s, "/")
+	if index == -1 {
+		return s // No '/' found, return the original string
+	}
+	return s[index+1:] // Return the substring from index+1 to the end
+}
+
+func changeOrAddExtension(s string) string {
+	// Find the last occurrence of '.'
+	index := strings.LastIndex(s, ".")
+	if index == -1 {
+		// If '.' doesn't exist, just append ".s"
+		return s + ".s"
+	}
+	// Replace the substring from index to end with ".s"
+	return s[:index] + ".s"
+}
+
 func ReadASTToASM(graph Graph) {
-	file := NewAssemblyFile(strings.Replace(graph.fileName, ".ada", ".s", -1))
+	file := NewAssemblyFile(changeOrAddExtension(fmt.Sprintf("examples/asm/%s", getStringFromRight(graph.fileName))))
 
 	file.Text += "MOV R11, SP\n"
 
