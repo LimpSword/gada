@@ -20,7 +20,6 @@ type AssemblyFile struct {
 	WritingAtEnd bool
 
 	ForCounter int
-	CurrentFor int
 }
 
 type Register int
@@ -595,19 +594,19 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			} else {
 				// Loop through dynamic links until we reach the correct region
 
-				random := rand.Int()
+				random := strconv.Itoa(rand.Int()) + "_" + graph.GetNode(node)
 
 				a.MovRegister(R9, R11)
 				a.LdrFromFramePointer(R8, 4)
 				a.Cmp(R8, endScope.Region)
-				a.BranchToLabelWithCondition("notload_"+strconv.Itoa(random), EQ)
-				a.AddLabel("load_" + strconv.Itoa(random))
+				a.BranchToLabelWithCondition("notload_"+random, EQ)
+				a.AddLabel("load_" + random)
 				a.LdrFromFramePointer(R11, 8)
 				a.LdrFromFramePointer(R8, 4)
 				a.Cmp(R8, endScope.Region)
-				a.BranchToLabelWithCondition("load_"+strconv.Itoa(random), NE)
+				a.BranchToLabelWithCondition("load_"+random, NE)
 
-				a.AddLabel("notload_" + strconv.Itoa(random))
+				a.AddLabel("notload_" + random)
 
 				// Go 1 level up
 				a.LdrFromFramePointer(R11, 8)
@@ -681,55 +680,60 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 	goodCounter := a.ForCounter
 	a.ForCounter++
-	a.CurrentFor++
 
-	a.MovRegister(R8, R11) // Assuming R11 holds the frame pointer of the enclosing scope
+	a.AddComment("Loop #" + strconv.Itoa(goodCounter) + " start")
+
+	a.StmfdMultiple([]Register{R10, R11})
+
+	a.Mov(R10, getRegion(graph, node))
+	a.MovRegister(R11, SP)
+	a.Sub(R11, 4)
 
 	// Reserve space for the index
 	a.Sub(SP, 4)
-
-	// Save R11
-	a.Sub(SP, 4)
-	a.StrWithOffset(R8, 4)
-
-	a.AddComment("Loop #" + strconv.Itoa(goodCounter) + " start")
+	a.CommentPreviousLine("Reserve space for the index")
 
 	children := graph.GetChildren(node)
 	counterStart, err := strconv.Atoi(graph.GetNode(children[2]))
 	if err != nil {
 		a.ReadOperand(graph, children[2])
-		a.Ldr(R0, 4)
+		a.Ldr(R0, 0)
+		a.CommentPreviousLine("Load to R0 the value of the counter")
 		a.Add(SP, 4)
 	} else {
 		a.Mov(R0, counterStart)
+		a.CommentPreviousLine("Load to R0 the value of the counter: " + strconv.Itoa(counterStart))
 	}
 
-	a.StrWithOffset(R0, 8) // jump the FP
+	a.Str(R0)
+	a.CommentPreviousLine("Store the value of the counter")
+
+	counterEnd, err := strconv.Atoi(graph.GetNode(children[3]))
+	if err != nil {
+		a.ReadOperand(graph, children[3])
+		a.Ldr(R1, 0)
+		a.CommentPreviousLine("Load to R1 the value of the max")
+	} else {
+		// Reserve space for the max
+		a.Sub(SP, 4)
+		a.CommentPreviousLine("Reserve space for the max")
+
+		a.Mov(R1, counterEnd)
+		a.CommentPreviousLine("Load to R1 the value of the max: " + strconv.Itoa(counterEnd))
+	}
+	a.Str(R1)
+	a.CommentPreviousLine("Store the value of the max")
 
 	a.AddLabel("for" + strconv.Itoa(goodCounter))
 
-	a.Ldr(R0, 8)
-	counterEnd, err := strconv.Atoi(graph.GetNode(children[3]))
-	if err != nil {
-		// FIXME: But it should be read as an operand
-		scope := graph.getScope(node)
-		endScope, offset := goUpScope(scope, graph.GetNode(children[3]))
+	a.Ldr(R0, 4)
+	a.CommentPreviousLine("Load to R0 the value of the counter")
 
-		baseOffset := scope.getCurrentOffset()
-		var realOffset int
-		if scope == endScope {
-			realOffset = baseOffset + offset
-		} else {
-			realOffset = offset + 4
-		}
+	a.Ldr(R1, 0)
+	a.CommentPreviousLine("Load to R1 the value of the max")
 
-		// Load the value from the stack
-		a.LdrFromFramePointer(R1, realOffset)
-
-		a.CmpRegisters(R0, R1)
-	} else {
-		a.Cmp(R0, counterEnd)
-	}
+	a.CmpRegisters(R0, R1)
+	a.CommentPreviousLine("Compare the counter with the max")
 	if graph.GetNode(children[1]) == "not reverse" {
 		a.BranchToLabelWithCondition("endfor"+strconv.Itoa(goodCounter), "GT")
 	} else {
@@ -740,13 +744,13 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 	a.ReadBody(graph, children[4])
 
 	// Increment the counter
-	a.Ldr(R0, 8)
+	a.Ldr(R0, 4)
 	if graph.GetNode(children[1]) == "not reverse" {
 		a.Add(R0, 1)
 	} else {
 		a.Sub(R0, 1)
 	}
-	a.StrWithOffset(R0, 8)
+	a.StrWithOffset(R0, 4)
 
 	// Go to the beginning of the loop
 	a.BranchToLabel("for" + strconv.Itoa(goodCounter))
@@ -755,12 +759,9 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 	a.AddLabel("endfor" + strconv.Itoa(goodCounter))
 
 	// Clear the stack
-	a.CurrentFor--
-	a.Add(SP, 4)
+	a.Add(SP, 8)
 
-	// Get the static chain
-	a.Ldr(R11, 0)
-	a.Add(SP, 4)
+	a.LdmfdMultiple([]Register{R10, R11})
 
 	a.AddComment("Loop #" + strconv.Itoa(goodCounter) + " end")
 }
@@ -942,18 +943,19 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 					a.CommentPreviousLine(fmt.Sprintf("(S) Load the value of %v", graph.GetNode(node)))
 				} else {
 					// Loop through dynamic links until we reach the correct region
+					random := strconv.Itoa(rand.Int()) + "_" + graph.GetNode(node)
 
 					a.MovRegister(R9, R11)
 					a.LdrFromFramePointer(R8, 4)
 					a.Cmp(R8, endScope.Region)
-					a.BranchToLabelWithCondition("notload_"+graph.GetNode(node), EQ)
-					a.AddLabel("load_" + graph.GetNode(node))
+					a.BranchToLabelWithCondition("notload_"+random, EQ)
+					a.AddLabel("load_" + random)
 					a.LdrFromFramePointer(R11, 8)
 					a.LdrFromFramePointer(R8, 4)
 					a.Cmp(R8, endScope.Region)
-					a.BranchToLabelWithCondition("load_"+graph.GetNode(node), NE)
+					a.BranchToLabelWithCondition("load_"+random, NE)
 
-					a.AddLabel("notload_" + graph.GetNode(node))
+					a.AddLabel("notload_" + random)
 
 					// Go 1 level up
 					a.LdrFromFramePointer(R11, 8)

@@ -552,7 +552,12 @@ func goUpScope(scope *Scope, name string) (*Scope, int) {
 				if variable.IsParamIn || variable.IsParamOut {
 					return scope, -(variable.Offset - 4) + 20
 				}
-				var fixParamOffset = 4 * scope.ScopeSymbol.(Procedure).ParamCount
+				var fixParamOffset = 0
+				if _, ok := scope.ScopeSymbol.(Procedure); ok {
+					fixParamOffset = 4 * scope.ScopeSymbol.(Procedure).ParamCount
+				} else if _, ok := scope.ScopeSymbol.(Function); ok {
+					fixParamOffset = 4 * scope.ScopeSymbol.(Function).ParamCount
+				}
 				return scope, -(variable.Offset - 4) + fixParamOffset
 			}
 		}
