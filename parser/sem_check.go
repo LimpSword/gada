@@ -1048,8 +1048,8 @@ func semCheck(graph *Graph, node int) {
 	case "if", "elif":
 		if !haveType(getReturnType(graph, scope, sorted[0], make(map[string]struct{})), "boolean") {
 			fileName := graph.fileName
-			line := strconv.Itoa(graph.line[node])
-			column := strconv.Itoa(graph.column[node])
+			line := strconv.Itoa(graph.line[sorted[0]])
+			column := strconv.Itoa(graph.column[sorted[0]])
 			logger.Error(fileName + ":" + line + ":" + column + " " + "Condition should be boolean")
 		}
 		for _, child := range sorted[1:] {
