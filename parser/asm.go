@@ -583,16 +583,39 @@ func (a *AssemblyFile) ReadIf(graph Graph, node int) {
 	a.CommentPreviousLine("Load result of condition")
 	a.Add(SP, 4)
 
-	randomLabel := rand.Int()
+	randomLabel := strconv.Itoa(rand.Int())
 
 	a.Cmp(R0, 0)
 	a.AddComment("End of condition")
-	a.BranchToLabelWithCondition("else"+strconv.Itoa(randomLabel), "EQ")
+	a.BranchToLabelWithCondition("else"+randomLabel, "EQ")
 
 	// Read body
 	a.ReadBody(graph, graph.GetChildren(node)[1])
 
-	a.AddLabel("else" + strconv.Itoa(randomLabel))
+	if len(graph.GetChildren(node)) >= 3 {
+		// Read elsif or else
+		if graph.GetNode(graph.GetChildren(node)[2]) == "elif" {
+			a.AddComment("Elif statement")
+			a.AddLabel("else" + randomLabel)
+
+			// Elif statement
+			a.ReadIf(graph, graph.GetChildren(node)[2])
+
+			a.AddComment("End of elif statement")
+
+			if len(graph.GetChildren(node)) >= 4 {
+				// Else statement
+				a.AddComment("Else statement")
+				a.ReadBody(graph, graph.GetChildren(node)[3])
+			}
+		} else {
+			// Else statement
+			a.AddLabel("else" + randomLabel)
+			a.ReadBody(graph, graph.GetChildren(node)[2])
+		}
+	} else {
+		a.AddLabel("else" + randomLabel)
+	}
 
 	a.AddComment("End of if statement")
 }
@@ -1105,7 +1128,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 		// Save the result in stack
 		a.Str(R0)
-	case ">", "=":
+	case ">", "=", "<", "<=", ">=":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
 
@@ -1118,12 +1141,22 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 		// Compare the operands
 		a.CmpRegisters(R0, R1)
-		if graph.GetNode(node) == ">" {
+		switch graph.GetNode(node) {
+		case ">":
 			a.MovCond(R0, 1, GT)
 			a.MovCond(R0, 0, LE)
-		} else if graph.GetNode(node) == "=" {
+		case "=":
 			a.MovCond(R0, 1, EQ)
 			a.MovCond(R0, 0, NE)
+		case "<":
+			a.MovCond(R0, 1, LT)
+			a.MovCond(R0, 0, GE)
+		case "<=":
+			a.MovCond(R0, 1, LE)
+			a.MovCond(R0, 0, GT)
+		case ">=":
+			a.MovCond(R0, 1, GE)
+			a.MovCond(R0, 0, LT)
 		}
 
 		a.Add(SP, 4)
