@@ -19,4 +19,5 @@ begin
     f(1,2,3); -- calling f (a function) is not a statement
     f1; -- same here with a  variable
     f2; -- same here without argument
+    put(Character'Val('a')); -- this is a statement
 end Record4;

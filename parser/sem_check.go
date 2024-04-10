@@ -456,8 +456,15 @@ func getReturnType(graph *Graph, scope *Scope, node int, expectedReturn map[stri
 		returnTypes[finalType] = struct{}{}
 		return returnTypes
 	case "cast":
-		returnTypes["character"] = struct{}{}
-		return returnTypes
+		if haveType(getReturnType(graph, scope, children[1], expectedReturn), "integer") {
+			returnTypes["character"] = struct{}{}
+			return returnTypes
+		} else {
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[node])
+			column := strconv.Itoa(graph.column[node])
+			logger.Error(fileName + ":" + line + ":" + column + " Operator cast should have integer operands")
+		}
 	}
 
 	returnTypes[Unknown] = struct{}{}
