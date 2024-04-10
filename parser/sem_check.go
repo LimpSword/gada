@@ -1022,8 +1022,8 @@ func semCheck(graph *Graph, node int) {
 		//fmt.Println("symbolType", symbolType, graph.types[sorted[0]])
 		if symbolType == Func {
 			fileName := graph.fileName
-			line := strconv.Itoa(graph.line[node])
-			column := strconv.Itoa(graph.column[node])
+			line := strconv.Itoa(graph.line[sorted[0]]) // use sorted[0] instead of node to get the position of the ident
+			column := strconv.Itoa(graph.column[sorted[0]])
 			logger.Error(fileName + ":" + line + ":" + column + " " + "Cannot use call to function " + graph.types[sorted[0]] + " as a statement")
 		} else if symbolType == Proc {
 			//fmt.Println("Proc", graph.types[sorted[0]], maps.Keys(graph.gmap[sorted[1]]))
