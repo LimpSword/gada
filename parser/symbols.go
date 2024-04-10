@@ -66,9 +66,10 @@ type Procedure struct {
 }
 
 type Record struct {
-	RName  string
-	SType  string
-	Fields map[string]string
+	RName        string
+	SType        string
+	Fields       map[string]string
+	FieldsOffset map[string]int
 }
 
 func (v Variable) Name() string {
@@ -381,11 +382,19 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 			scope.addSymbol(Variable{VName: graph.types[sorted[0]], SType: getSymbolType(graph.types[sorted[1]]), Offset: currentOffset})
 		}
 	case "type":
-		recordElem := Record{RName: getSymbolType(graph.types[sorted[0]]), SType: Rec, Fields: make(map[string]string)}
+		recordElem := Record{RName: getSymbolType(graph.types[sorted[0]]), SType: Rec, Fields: make(map[string]string), FieldsOffset: make(map[string]int)}
 		for _, child := range maps.Keys(graph.gmap[sorted[1]]) {
 			childChild := maps.Keys(graph.gmap[child])
 			slices.Sort(childChild)
 			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
+
+			// Calculate offset
+			currentOffset := 0
+			for _, offset := range recordElem.FieldsOffset {
+				currentOffset += offset
+			}
+			currentOffset += getTypeSize(getSymbolType(graph.types[childChild[1]]), scope)
+			recordElem.FieldsOffset[graph.types[childChild[0]]] = currentOffset
 		}
 		scope.addSymbol(recordElem)
 	default:

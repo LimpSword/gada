@@ -528,8 +528,8 @@ func (a *AssemblyFile) CallWithParameters(name string, scope *Scope, removedOffs
 		a.EndText += "BL " + name + "\n"
 
 		if true || isFunction {
-			a.Add(SP, 4)
-			a.Ldr(R0, -(removedOffset + 0))
+			a.Add(SP, removedOffset)
+			a.Ldr(R0, 0)
 		}
 
 		// clear the stack
@@ -538,8 +538,8 @@ func (a *AssemblyFile) CallWithParameters(name string, scope *Scope, removedOffs
 		a.Text += "BL " + name + "\n"
 
 		if true || isFunction {
-			a.Add(SP, 4)
-			a.Ldr(R0, -(removedOffset + 0))
+			a.Add(SP, removedOffset)
+			a.Ldr(R0, 0)
 		}
 
 		// clear the stack
@@ -661,7 +661,14 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			a.Ldr(R0, 0)
 
 			// Save the result at the right place
-			a.StrFromFramePointer(R0, 16)
+			// We have to jump the parameters
+			scope := graph.getScope(node)
+			fnc, isFunction := scope.ScopeSymbol.(Function)
+			paramOffset := 0
+			if isFunction {
+				paramOffset = fnc.ParamCount * 4
+			}
+			a.StrFromFramePointer(R0, 16+paramOffset)
 
 			// Leave the procedure
 			a.Add(SP, 4)
