@@ -500,7 +500,7 @@ shift
 	// Fix sign for division
 	file.Text += `
 fix_sign   
-       stmfd   sp!, {PC}
+       stmfd   sp!, {LR}
        bl      mul
        subs    r0, r0, #0
        blt     minus_sign
