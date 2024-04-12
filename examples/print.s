@@ -34,10 +34,14 @@ CLEAN        LDRB    R2, [R0], #1
 
 
              ;       print HEY
-main         MOV     R0, #65
+main         MOV     R0, #0
+             STR     R0, [SP]
+             SUB     SP, SP, #4
+             LDR     R0, =1667522914
              STR     R0, [SP]
              MOV     R0, SP
              BL      println
+             ADD     SP, SP, #4
 
              LDR     R0, =STR_HELLO
              BL      println
