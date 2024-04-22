@@ -1,12 +1,14 @@
 with Ada.Text_IO; use Ada.Text_IO;
 procedure Test is
     S : Integer := 2;
-    procedure Pt(I : Integer) is
-        D : Integer := 3;
+    function Factorial(N : Integer) return Integer is
     begin
-        S := S + D + I;
-    end Pt;
+        if N = 0 then
+            return 1;
+        end if;
+
+        return N * Factorial(N - 1);
+    end Factorial;
 begin
-    Pt(4);
-    S := S + 1;
+    S := Factorial(5);
 end;

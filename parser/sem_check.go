@@ -5,6 +5,7 @@ import (
 	"golang.org/x/exp/maps"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 func CheckSemantics(graph Graph) {
@@ -578,6 +579,7 @@ func getDeclOffset(graph Graph, node int) int {
 
 // goUpScope: get the scope containing the variable and the total offset to reach it
 func goUpScope(scope *Scope, name string) (*Scope, int) {
+	name = strings.ToLower(name)
 	//totalOffset := scope.getCurrentOffset()
 	if symbol, ok := scope.Table[name]; ok {
 		for _, s := range symbol {

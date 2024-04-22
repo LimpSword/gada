@@ -846,8 +846,8 @@ func (a *AssemblyFile) ReadDecl(graph Graph, node int, mode DeclMode) {
 			sortedB := maps.Keys(graph.gmap[b])
 			slices.Sort(sortedB)
 
-			nameA := graph.types[sortedA[0]]
-			nameB := graph.types[sortedB[0]]
+			nameA := graph.GetNode(sortedA[0])
+			nameB := graph.GetNode(sortedB[0])
 			return strings.Compare(nameA, nameB)
 		}
 		return a - b

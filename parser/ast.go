@@ -6,6 +6,7 @@ import (
 	"gada/lexer"
 	"slices"
 	"sort"
+	"strings"
 )
 
 type Graph struct {
@@ -25,7 +26,7 @@ type Graph struct {
 }
 
 func (g Graph) GetNode(node int) string {
-	return g.types[node]
+	return strings.ToLower(g.types[node])
 }
 
 func (g Graph) getScope(node int) *Scope {
