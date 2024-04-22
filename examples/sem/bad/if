@@ -15,4 +15,8 @@ procedure Pascal is
     else return 3;
     end if;
     end;
-begin a := F; end;
+begin
+    while 0 /= 1 loop
+      put('a');
+     end loop;
+ a := F; end;
