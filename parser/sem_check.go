@@ -94,6 +94,24 @@ func findAccessType(graph *Graph, scope *Scope, node int, curType string) string
 	return Unknown
 }
 
+func hashFunction(function Function) string {
+	hash := function.FName + "("
+	for i := 1; i <= function.ParamCount; i++ {
+		hash += function.Params[i].VName + ":" + function.Params[i].SType + ","
+	}
+	hash = hash[:len(hash)-1] + ")" + function.ReturnType
+	return hash
+}
+
+func hashProc(proc Procedure) string {
+	hash := proc.PName + "("
+	for i := 1; i <= proc.ParamCount; i++ {
+		hash += proc.Params[i].VName + ":" + proc.Params[i].SType + ","
+	}
+	hash = hash[:len(hash)-1] + ")"
+	return hash
+}
+
 func matchFuncReturn(graph *Graph, scope *Scope, node int, args []int, argstype map[int]map[string]struct{}, returnType map[string]struct{}) map[string]struct{} {
 	// match function with expected return types
 
@@ -143,6 +161,7 @@ func matchFuncReturn(graph *Graph, scope *Scope, node int, args []int, argstype 
 		}
 		if len(matching) > 0 {
 			returnTypes[matching[0].ReturnType] = struct{}{}
+			addSymbol(graph, node, hashFunction(matching[0]))
 			return returnTypes
 		}
 
@@ -206,6 +225,7 @@ func matchFunc(graph *Graph, scope *Scope, node int, args []int, argstype map[in
 			}
 		}
 		if len(matching) > 0 {
+			addSymbol(graph, node, hashFunction(matching[0]))
 			return returnTypes
 		}
 
@@ -264,6 +284,7 @@ func matchProc(graph *Graph, scope *Scope, node int, args []int, argstype map[in
 		if len(matching) > 1 {
 			logger.Error(fileName + ":" + line + ":" + column + " " + name + " call is ambiguous")
 		} else if len(matching) == 1 {
+			addSymbol(graph, node, hashProc(matching[0]))
 			return "found"
 		}
 	}

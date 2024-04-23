@@ -14,7 +14,9 @@ begin
 end f;
     t : Integer;
     t1 : Boolean;
+    t2 : Boolean;
 begin
     t := f(1,2,true);
     t1 := f(1,2,3);
+    t2 := f(1,2,f(1,2,true));
 end Record4;

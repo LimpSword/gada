@@ -19,6 +19,7 @@ type Graph struct {
 	column     map[int]int
 	fathers    map[int]int
 	depth      map[int]int
+	symbols    map[int]string
 	scopes     map[int]*Scope
 	hasReturn  map[int]struct{}
 	nbNode     int
@@ -49,6 +50,7 @@ func (g Graph) toJson() string {
 	result["terminals"] = g.terminals
 	result["meaningful"] = g.meaningful
 	result["fathers"] = g.fathers
+	result["symbols"] = g.symbols
 
 	b, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
@@ -346,6 +348,7 @@ func createGraph(node Node, lexer lexer.Lexer) *Graph {
 	graph.depth = make(map[int]int)
 	graph.scopes = make(map[int]*Scope)
 	graph.hasReturn = make(map[int]struct{})
+	graph.symbols = make(map[int]string)
 	graph.nbNode = 0
 	addNodes(&node, &graph, lexer, 1, true)
 
@@ -480,6 +483,10 @@ func makeChild2(g *Graph, node int, exp string, newExpr string) int {
 
 	//switchNodes(g, smallestChild, newNode)
 	return newNode
+}
+
+func addSymbol(g *Graph, node int, hash string) {
+	g.symbols[node] = hash
 }
 
 func switchNodes(g *Graph, node1 int, node2 int) {
