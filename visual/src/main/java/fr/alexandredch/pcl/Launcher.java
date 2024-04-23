@@ -25,7 +25,7 @@ public class Launcher {
     /* we make sure that the output buffer is always the first symbol in memory */
     private static final int outputBufferAddress = instMemSize;
     /* VisUAL offsets line numbers by one for some reason */
-    private static final List<Integer> breakpoints = List.of(13 - 1);
+    private static final List<Integer> breakpoints = new ArrayList<>(); //= List.of(13 - 1);
 
     /* array of all word addresses in the output buffer */
     private static String[] getOutputRange() {
@@ -36,6 +36,23 @@ public class Launcher {
     }
 
     public static void executeAndParseOutput(String assemblyFile) {
+        // Search for the line containing "BNE     PRINTLN_LOOP"
+        File file = new File(assemblyFile);
+        if (!file.exists()) {
+            throw new IllegalArgumentException("File does not exist");
+        }
+        try {
+            List<String> lines = java.nio.file.Files.readAllLines(file.toPath());
+            for (int i = 0; i < lines.size(); i++) {
+                if (lines.get(i).contains("BNE     PRINTLN_LOOP")) {
+                    breakpoints.add(i);
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
         EmulatorLogFile.configureLogging("", true, false, false, false, false, false,
                 true, false, getOutputRange());
         HeadlessController.setLogMode(EmulatorLogFile.LogMode.BREAKPOINT);
@@ -67,7 +84,7 @@ public class Launcher {
             for (int i = 0; i < lines.getLength(); i++) {
                 System.out.println("Parsing line " + i);
                 Node line = lines.item(i);
-                outputs.add(parseLine(line));
+                outputs.add(reverseString(parseLine(line)));
             }
             System.out.println("Parsed " + lines.getLength() + " lines");
         } catch (Exception e) {
@@ -119,6 +136,10 @@ public class Launcher {
             reversed[i] = array[array.length - i - 1];
         }
         return reversed;
+    }
+
+    private static String reverseString(String s) {
+        return new StringBuilder(s).reverse().toString();
     }
 
     public static void run(String assemblyFile) {
