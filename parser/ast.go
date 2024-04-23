@@ -651,7 +651,7 @@ func Contains(slice []string, term string) bool {
 }
 
 func keepUsefulNodes(g *Graph, term int) bool {
-	usefullKeywords := []string{"params", "decl", "body", "attribs", "return", "args"}
+	usefullKeywords := []string{"params", "decl", "body", "attribs", "return", "args", "else"}
 	if _, ok := g.meaningful[term]; !ok {
 		return false
 	}

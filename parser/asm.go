@@ -210,9 +210,9 @@ func (a *AssemblyFile) StrWithOffset(register Register, offset int) {
 func (a *AssemblyFile) Mov(register Register, value int) {
 	str := strconv.Itoa(value)
 	if a.WritingAtEnd {
-		a.EndText += "MOV " + register.String() + ", #" + str + "\n"
+		a.EndText += "LDR " + register.String() + ", =" + str + "\n"
 	} else {
-		a.Text += "MOV " + register.String() + ", #" + str + "\n"
+		a.Text += "LDR " + register.String() + ", =" + str + "\n"
 	}
 }
 
@@ -447,6 +447,7 @@ func changeOrAddExtension(s string) string {
 func ReadASTToASM(graph Graph) {
 	file := NewAssemblyFile(changeOrAddExtension(fmt.Sprintf("examples/asm/%s", getStringFromRight(graph.fileName))))
 
+	file.Text += "STR_OUT      FILL    0x1000\n"
 	file.Text += "MOV R11, SP\n"
 
 	file.ReadFile(graph, 0)
@@ -509,6 +510,35 @@ minus_sign
        rsb     r3, r3, #0
        LDMFD   SP!, {PC}
 `
+
+	file.Text += `
+println      STMFD   SP!, {LR, R0-R3}
+             MOV     R3, R0
+             LDR     R1, =STR_OUT ; address of the output buffer
+PRINTLN_LOOP LDRB    R2, [R0], #1
+             STRB    R2, [R1], #1
+             TST     R2, R2
+             BNE     PRINTLN_LOOP
+             MOV     R2, #10
+             STRB    R2, [R1, #-1]
+             MOV     R2, #0
+             STRB    R2, [R1]
+
+
+             ;       we need to clear the output buffer
+             LDR     R1, =STR_OUT
+             MOV     R0, R3
+CLEAN        LDRB    R2, [R0], #1
+             MOV     R3, #0
+             STRB    R3, [R1], #1
+             TST     R2, R2
+             BNE     CLEAN
+             ;       clear 3 more because why not
+             STRB    R3, [R1], #1
+             STRB    R3, [R1], #1
+             STRB    R3, [R1], #1
+
+             LDMFD   SP!, {PC, R0-R3}`
 
 	file.Write()
 }
@@ -706,13 +736,24 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 }
 
 func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
-	if graph.GetNode(name) == "Put" {
+	if graph.GetNode(name) == "put" {
 		a.ReadOperand(graph, args)
 
 		// Move the result to R0
 		a.Ldr(R0, 0)
 
-		a.CallProcedure("put")
+		a.Sub(SP, 4)
+
+		// Store result in SP with a zero first
+		a.Mov(R1, 0)
+		a.Str(R1)
+		a.Sub(SP, 4)
+		a.Str(R0)
+		a.MovRegister(R0, SP)
+
+		a.CallProcedure("println")
+
+		a.Add(SP, 8)
 		return
 	}
 
@@ -732,6 +773,38 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 
 	a.AddComment("Arguments read, call the procedure")
 	a.CallWithParameters(graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4)
+}
+
+func (a *AssemblyFile) ReadWhile(graph Graph, node int) {
+	a.AddComment("While statement")
+	a.AddComment("Start of condition")
+
+	randomLabel := strconv.Itoa(rand.Int())
+
+	a.AddLabel("while" + randomLabel)
+
+	// Read condition
+	condition := graph.GetChildren(node)[0]
+	a.ReadOperand(graph, condition)
+
+	a.Ldr(R0, 0)
+	a.CommentPreviousLine("Load result of condition")
+	a.Add(SP, 4)
+
+	a.Cmp(R0, 0)
+	a.AddComment("End of condition")
+	a.BranchToLabelWithCondition("endwhile"+randomLabel, "EQ")
+
+	// Read body
+	a.ReadBody(graph, graph.GetChildren(node)[1])
+
+	// Go to the beginning of the loop
+	a.BranchToLabel("while" + randomLabel)
+
+	// End of the while loop
+	a.AddLabel("endwhile" + randomLabel)
+
+	a.AddComment("End of while statement")
 }
 
 func (a *AssemblyFile) ReadFor(graph Graph, node int) {
