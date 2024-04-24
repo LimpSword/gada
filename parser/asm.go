@@ -808,10 +808,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 	if graph.GetNode(name) == "put" {
 		a.ReadOperand(graph, graph.GetChildren(args)[0])
 
-		// If cast then everything is fine
 		if graph.GetNode(graph.GetChildren(args)[0]) == "cast" {
-			// do nothing
-		} else {
 			// Move the result to R0
 			a.Ldr(R0, 0)
 
@@ -823,6 +820,17 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 			a.Sub(SP, 4)
 			a.Str(R0)
 			a.MovRegister(R0, SP)
+		} else {
+			// Move the result to R0
+			a.Ldr(R0, 0)
+
+			addr := a.Fill(12)
+			a.LdrAddr(R3, addr)
+
+			// Cast the result
+			a.CallProcedure("to_ascii")
+
+			a.LdrAddr(R0, addr)
 		}
 
 		/*
@@ -835,7 +843,11 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 
 		a.CallProcedure("println")
 
-		a.Add(SP, 8)
+		if graph.GetNode(graph.GetChildren(args)[0]) == "cast" {
+			a.Add(SP, 8)
+		} else {
+			// do nothing
+		}
 		return
 	}
 
@@ -1325,13 +1337,13 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		// Move the result to R0
 		a.Ldr(R0, 0)
 
-		addr := a.Fill(12)
+		/*addr := a.Fill(12)
 		a.LdrAddr(R3, addr)
 
 		// Cast the result
 		a.CallProcedure("to_ascii")
 
-		a.LdrAddr(R0, addr)
+		a.LdrAddr(R0, addr)*/
 	case "call":
 		if graph.GetNode(children[0]) == "-" {
 			// Read right operand
