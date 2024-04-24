@@ -44,9 +44,8 @@ public class Launcher {
         try {
             List<String> lines = java.nio.file.Files.readAllLines(file.toPath());
             for (int i = 0; i < lines.size(); i++) {
-                if (lines.get(i).contains("BNE     PRINTLN_LOOP")) {
+                if (lines.get(i).contains("STRB    R2, [R1, #-1]")) {
                     breakpoints.add(i);
-                    break;
                 }
             }
         } catch (IOException e) {
@@ -65,8 +64,8 @@ public class Launcher {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             List<String> output = parseOutput(logFile);
             System.out.println("---- PROGRAM OUTPUT ----");
-            output.forEach(System.out::println);
-            System.out.println("---- END PROGRAM OUTPUT ----");
+            output.forEach(System.out::print);
+            System.out.println("\n---- END PROGRAM OUTPUT ----");
         }));
 
         HeadlessController.runFile(assemblyFile, logFile);
@@ -100,28 +99,29 @@ public class Launcher {
             Node child = children.item(j);
             if (child.getNodeName().equals("word")) {
                 try {
-                    // To be fair, it would have been a better idea not to add the 'A' at the end of the print buffer
+                    // The 'A' at the end represents a new line
                     if (child.getTextContent().replaceAll("0x", "").equals("A")) {
                         // We reached the end, the string is empty
-                        break;
-                    }
-                    if (child.getTextContent().replaceAll("0x", "").length() % 2 == 1) {
-                        // The decode needs to have a length that is a multiple of 2, so we should have an 'A'
-                        // at the end if it is not the case
-                        // Any other case is just avoided
-                        if (child.getTextContent().replaceAll("0x", "").charAt(0) == 'A') {
-                            String hex = child.getTextContent().replaceAll("0x", "").substring(1);
-                            byte[] toBytes = Hex.decodeHex(hex.replaceAll("0x", "").toCharArray());
+                        // Return a new line
+                        bytes.write(0x0A);
+                    } else {
+                        if (child.getTextContent().replaceAll("0x", "").length() % 2 == 1) {
+                            // The decode needs to have a length that is a multiple of 2, so we should have an 'A'
+                            // at the end if it is not the case
+                            // Any other case is just avoided
+                            if (child.getTextContent().replaceAll("0x", "").charAt(0) == 'A') {
+                                String hex = child.getTextContent().replaceAll("0x", "").substring(1);
+                                byte[] toBytes = Hex.decodeHex(hex.replaceAll("0x", "").toCharArray());
+                                toBytes = reverseByteArray(toBytes);
+                                bytes.write(toBytes);
+                                bytes.write(0x0A);
+                            }
+                        } else {
+                            byte[] toBytes = Hex.decodeHex(child.getTextContent().replaceAll("0x", "").toCharArray());
                             toBytes = reverseByteArray(toBytes);
-                            System.out.println(child.getTextContent() + " -> " + new String(toBytes, StandardCharsets.UTF_8));
                             bytes.write(toBytes);
                         }
-                        break;
                     }
-                    byte[] toBytes = Hex.decodeHex(child.getTextContent().replaceAll("0x", "").toCharArray());
-                    toBytes = reverseByteArray(toBytes);
-                    System.out.println(child.getTextContent() + " -> " + new String(toBytes, StandardCharsets.UTF_8));
-                    bytes.write(toBytes);
                 } catch (DecoderException | IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -139,6 +139,10 @@ public class Launcher {
     }
 
     private static String reverseString(String s) {
+        if (s.charAt(s.length() - 1) == '\n') {
+            // Keep the line break at the end
+            return new StringBuilder(s.substring(0, s.length() - 1)).reverse().append('\n').toString();
+        }
         return new StringBuilder(s).reverse().toString();
     }
 
