@@ -577,7 +577,15 @@ CLEAN        LDRB    R2, [R0], #1
              LDMFD   SP!, {PC, R0-R3}
 `
 
-	file.Text += `to_ascii      STMFD   SP!, {LR, R4-R6}
+	file.Text += `to_ascii      STMFD   SP!, {LR, R4-R7}
+; make it positive
+MOV R7, R0
+					 CMP     R0, #0	
+					 MOVGE   R6, R0	
+					 RSBLT   R6, R0, #0
+					 MOV     R0, R6
+
+
               MOV     R4, #0 ; Initialize digit counter
               MOV     R5, #10 ; Radix for decimal
 
@@ -590,7 +598,15 @@ to_ascii_loop MOV     R1, R0 ; Save the value in R6
               CMP     R0, #0
               BNE     to_ascii_loop
 
-              LDMFD   SP!, {PC, R4-R6}
+; add the sign if it was negative
+						  CMP     R7, #0
+						  MOVGE   R1, #0	
+						  MOVLT   R1, #45
+						  STRB    R1, [R3, R4]
+						  ADD     R4, R4, #1
+
+
+              LDMFD   SP!, {PC, R4-R7}
 `
 
 	file.Write()
@@ -1172,8 +1188,6 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 			}
 		}
 	}
-
-	fmt.Println(graph.GetNode(node))
 
 	switch graph.GetNode(node) {
 	case "+":
