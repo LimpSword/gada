@@ -20,7 +20,8 @@ type AssemblyFile struct {
 
 	WritingAtEnd bool
 
-	ForCounter int
+	ForCounter  int
+	CurrentAddr int
 }
 
 type Register int
@@ -83,6 +84,17 @@ func (a *AssemblyFile) Name() string {
 
 func (a *AssemblyFile) Content() string {
 	return a.Text
+}
+
+func (a *AssemblyFile) Fill(n int) string {
+	addr := "addr" + strconv.Itoa(a.CurrentAddr)
+	if a.WritingAtEnd {
+		a.EndText += addr + " FILL " + strconv.Itoa(n) + "\n"
+	} else {
+		a.Text += addr + " FILL " + strconv.Itoa(n) + "\n"
+	}
+	a.CurrentAddr++
+	return addr
 }
 
 func (a *AssemblyFile) Stmfd(register Register) {
@@ -151,6 +163,14 @@ func (a *AssemblyFile) Ldr(register Register, offset int) {
 		a.EndText += "LDR " + register.String() + ", [SP, #" + str + "]\n"
 	} else {
 		a.Text += "LDR " + register.String() + ", [SP, #" + str + "]\n"
+	}
+}
+
+func (a *AssemblyFile) LdrAddr(register Register, addr string) {
+	if a.WritingAtEnd {
+		a.EndText += "LDR " + register.String() + ", =" + addr + "\n"
+	} else {
+		a.Text += "LDR " + register.String() + ", =" + addr + "\n"
 	}
 }
 
@@ -474,28 +494,44 @@ mul_loop LSRS    R2, R2, #1
 	file.Text += `
 ;       Integer division routine
 ;       Arguments:
-;       R0 = Dividend
-;       R1 = Divisor
+;       R1 = Dividend
+;       R2 = Divisor
 ;       Returns:
 ;       R0 = Quotient
 ;       R1 = Remainder
-div32
-       STMFD   SP!, {LR}
-       MOV     R4, #1 ; Bit position = 1
-       MOV     R2, #0 ; Quotient = 0
-       MOV     R3, R0 ; Remainder = Dividend
-
-loop   
-       CMP     R3, R1 ; Compare remainder and divisor
-       BCC     shift ; If remainder < divisor, shift
-       SUB     R3, R3, R1 ; Remainder = Remainder - Divisor
-       ADD     R2, R2, R4 ; Quotient = Quotient + Bit position
-       B       loop
-
-shift  
-       MOV     R0, R2 ; R0 = Quotient
-       MOV     R1, R3 ; R1 = Remainder
-       LDMFD   SP!, {PC} ; Restore registers and return
+div32    STMFD   SP!, {LR, R2-R5}
+         MOV     R0, #0
+         MOV     R3, #0
+         CMP     R1, #0
+         RSBLT   R1, R1, #0
+         EORLT   R3, R3, #1
+         CMP     R2, #0
+         RSBLT   R2, R2, #0
+         EORLT   R3, R3, #1
+         MOV     R4, R2
+         MOV     R5, #1
+div_max  LSL     R4, R4, #1
+         LSL     R5, R5, #1
+         CMP     R4, R1
+         BLE     div_max
+div_loop LSR     R4, R4, #1
+         LSR     R5, R5, #1
+         CMP     R4,R1
+         BGT     div_loop
+         ADD     R0, R0, R5
+         SUB     R1, R1, R4
+         CMP     R1, R2
+         BGE     div_loop
+         CMP     R3, #1
+         BNE     div_exit
+         CMP     R1, #0
+         ADDNE   R0, R0, #1
+         RSB     R0, R0, #0
+         RSB     R1, R1, #0
+         ADDNE   R1, R1, R2
+div_exit CMP     R0, #0
+         ADDEQ   R1, R1, R4
+         LDMFD   SP!, {PC, R2-R5}
 `
 
 	// Fix sign for division
@@ -538,7 +574,24 @@ CLEAN        LDRB    R2, [R0], #1
              STRB    R3, [R1], #1
              STRB    R3, [R1], #1
 
-             LDMFD   SP!, {PC, R0-R3}`
+             LDMFD   SP!, {PC, R0-R3}
+`
+
+	file.Text += `to_ascii      STMFD   SP!, {LR, R4-R6}
+              MOV     R4, #0 ; Initialize digit counter
+              MOV     R5, #10 ; Radix for decimal
+
+to_ascii_loop MOV     R1, R0 ; Save the value in R6
+              MOV     R2, #10
+              BL      div32 ; R0 = R0 / 10, R1 = R0 % 10
+              ADD     R1, R1, #48 ; Convert digit to ASCII
+              STRB    R1, [R3, R4] ; Store the ASCII digit
+              ADD     R4, R4, #1 ; Increment digit counter
+              CMP     R0, #0
+              BNE     to_ascii_loop
+
+              LDMFD   SP!, {PC, R4-R6}
+`
 
 	file.Write()
 }
@@ -737,19 +790,32 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 
 func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 	if graph.GetNode(name) == "put" {
-		a.ReadOperand(graph, args)
+		a.ReadOperand(graph, graph.GetChildren(args)[0])
 
-		// Move the result to R0
-		a.Ldr(R0, 0)
+		// If cast then everything is fine
+		if graph.GetNode(graph.GetChildren(args)[0]) == "cast" {
+			// do nothing
+		} else {
+			// Move the result to R0
+			a.Ldr(R0, 0)
 
-		a.Sub(SP, 4)
+			a.Sub(SP, 4)
 
-		// Store result in SP with a zero first
-		a.Mov(R1, 0)
-		a.Str(R1)
-		a.Sub(SP, 4)
-		a.Str(R0)
-		a.MovRegister(R0, SP)
+			// Store result in SP with a zero first
+			a.Mov(R1, 0)
+			a.Str(R1)
+			a.Sub(SP, 4)
+			a.Str(R0)
+			a.MovRegister(R0, SP)
+		}
+
+		/*
+			if to string
+			addr                    FILL    12
+			                        LDR     R3, =addr
+			                        BL      to_ascii
+			                        ldr     r0, =addr
+		*/
 
 		a.CallProcedure("println")
 
@@ -1107,6 +1173,8 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		}
 	}
 
+	fmt.Println(graph.GetNode(node))
+
 	switch graph.GetNode(node) {
 	case "+":
 		// Read left operand
@@ -1160,8 +1228,8 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		a.ReadOperand(graph, children[1])
 
 		// Left operand in R0, right operand in R1
-		a.Ldr(R1, 0)
-		a.Ldr(R0, 4)
+		a.Ldr(R2, 0)
+		a.Ldr(R1, 4)
 
 		// Make R0 and R1 positive
 		a.Positive(R0)
@@ -1236,6 +1304,20 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 		// Save the result in stack
 		a.Str(R0)
+	case "cast":
+		// Read the operand
+		a.ReadOperand(graph, children[1])
+
+		// Move the result to R0
+		a.Ldr(R0, 0)
+
+		addr := a.Fill(12)
+		a.LdrAddr(R3, addr)
+
+		// Cast the result
+		a.CallProcedure("to_ascii")
+
+		a.LdrAddr(R0, addr)
 	case "call":
 		if graph.GetNode(children[0]) == "-" {
 			// Read right operand

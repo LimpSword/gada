@@ -10,5 +10,6 @@ procedure Test is
         return N * Factorial(N - 1);
     end Factorial;
 begin
-    S := Factorial(5);
+    S := Factorial(12);
+    Put(Character'Val(S));
 end;
