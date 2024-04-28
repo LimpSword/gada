@@ -595,6 +595,19 @@ func getDeclOffset(graph Graph, node int) int {
 		}
 		return offset
 	}
+	if _, ok := scope.ScopeSymbol.(Function); ok {
+		offset := 0
+		for _, symbols := range scope.Table {
+			for _, symbol := range symbols {
+				if variable, ok := symbol.(Variable); ok {
+					if !variable.IsParamIn && !variable.IsParamOut {
+						offset += 4
+					}
+				}
+			}
+		}
+		return offset
+	}
 	return 0
 }
 

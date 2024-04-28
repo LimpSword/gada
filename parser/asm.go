@@ -769,6 +769,8 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			}
 		case "for":
 			a.ReadFor(graph, child)
+		case "while":
+			a.ReadWhile(graph, child)
 		case "call":
 			name := graph.GetChildren(child)[0]
 			args := graph.GetChildren(child)[1]
@@ -1068,6 +1070,7 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	a.ReadBody(graph, bodyNode)
 
 	a.Add(SP, getDeclOffset(graph, node))
+	a.CommentPreviousLine("Clear the stack of declarations: " + strconv.Itoa(getDeclOffset(graph, node)))
 
 	a.LdmfdMultiple([]Register{R10, R11, PC})
 
@@ -1080,7 +1083,7 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 
 func (a *AssemblyFile) ReadVar(graph Graph, node int) {
 	var nameList []string
-	var value *int
+	var hasValue bool
 
 	name := graph.GetChildren(node)[0]
 
@@ -1092,8 +1095,7 @@ func (a *AssemblyFile) ReadVar(graph Graph, node int) {
 		nameList = append(nameList, graph.GetNode(name))
 	}
 	if len(graph.GetChildren(node)) > 2 {
-		v, _ := strconv.Atoi(graph.GetNode(graph.GetChildren(node)[2]))
-		value = &v
+		hasValue = true
 	}
 
 	// use values from the symbol table
@@ -1102,15 +1104,16 @@ func (a *AssemblyFile) ReadVar(graph Graph, node int) {
 	for _, name := range nameList {
 		for _, symbol := range scope.Table[name] {
 			if variable, ok := symbol.(Variable); ok {
-				if value != nil {
-					offset := getTypeSize(variable.SType, *scope)
+				if hasValue {
+					//offset := getTypeSize(variable.SType, *scope)
 
-					// Move the stack pointer
-					a.Sub(SP, offset)
-					a.CommentPreviousLine("Reserve space for the value of " + name)
+					a.AddComment("Read the value of " + name)
+
+					value := graph.GetChildren(node)[2]
+					a.ReadOperand(graph, value)
+					a.Ldr(R0, 0)
 
 					// Load the int value to r0
-					a.Mov(R0, *value)
 					a.Str(R0)
 					a.CommentPreviousLine("Store the value of " + name)
 				} else {

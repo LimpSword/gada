@@ -378,9 +378,17 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 				currentOffset += getTypeSize(getSymbolType(graph.types[sorted[1]]), scope)
 				scope.addSymbol(Variable{VName: getSymbolType(graph.types[k]), SType: getSymbolType(graph.types[sorted[1]]), Offset: currentOffset})
 			}
+
+			if len(sorted) > 2 {
+				dfsSymbols(graph, sorted[2], currentScope)
+			}
 		} else {
 			currentOffset += getTypeSize(getSymbolType(graph.types[sorted[1]]), scope)
 			scope.addSymbol(Variable{VName: getSymbolType(graph.types[sorted[0]]), SType: getSymbolType(graph.types[sorted[1]]), Offset: currentOffset})
+
+			if len(sorted) > 2 {
+				dfsSymbols(graph, sorted[2], currentScope)
+			}
 		}
 	case "type":
 		recordElem := Record{RName: getSymbolType(graph.types[sorted[0]]), SType: Rec, Fields: make(map[string]string), FieldsOffset: make(map[string]int)}
