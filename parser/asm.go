@@ -1249,7 +1249,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 		// Save the result in stack
 		a.Str(R0)
-	case "/":
+	case "/", "rem":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
 
@@ -1260,21 +1260,12 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		a.Ldr(R2, 0)
 		a.Ldr(R1, 4)
 
-		// Make R0 and R1 positive
-		a.Positive(R0)
-		a.Positive(R1)
-
 		// Use the division algorithm at the label div32
 		a.CallProcedure("div32")
 
-		// Apply the sign
-		// Move left operand in R1, right operand in R2, result in R3
-		a.Ldr(R1, 0)
-		a.Ldr(R2, 4)
-		a.MovRegister(R3, R0)
-		a.CallProcedure("fix_sign")
-
-		a.MovRegister(R0, R3)
+		if graph.GetNode(node) == "rem" {
+			a.MovRegister(R0, R1)
+		}
 
 		a.Add(SP, 4)
 
