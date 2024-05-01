@@ -62,9 +62,8 @@ func findAccessType(graph *Graph, scope *Scope, node int, curType string) string
 					logger.Error(fileName + ":" + line + ":" + column + " " + graph.types[children[0]] + " is not a field of " + curType)
 				}
 			} else {
-
-				if _, ok1 := symbol[0].(Record).Fields[getSymbolType(graph.types[node])]; ok1 {
-					newType := symbol[0].(Record).Fields[getSymbolType(graph.types[node])]
+				if _, ok1 := symbol[0].(Record).Fields[graph.types[node]]; ok1 {
+					newType := symbol[0].(Record).Fields[graph.types[node]]
 					return newType
 				} else {
 					fileName := graph.fileName
@@ -612,8 +611,12 @@ func getDeclOffset(graph Graph, node int) int {
 }
 
 // goUpScope: get the scope containing the variable and the total offset to reach it
-func goUpScope(scope *Scope, name string) (*Scope, int) {
+func goUpScope(scope *Scope, node int, name string) (*Scope, int) {
 	name = strings.ToLower(name)
+	if name == "access" {
+		// we need to get to the scope of the left child, and then we need to get the offset of the deepest right child
+		fmt.Println(scope)
+	}
 	//totalOffset := scope.getCurrentOffset()
 	if symbol, ok := scope.Table[name]; ok {
 		for _, s := range symbol {
@@ -643,7 +646,7 @@ func goUpScope(scope *Scope, name string) (*Scope, int) {
 		// should never happen
 		logger.Warn(name + " variable is undefined")
 	} else {
-		parentScope, offset := goUpScope(scope.parent, name)
+		parentScope, offset := goUpScope(scope.parent, node, name)
 		/*if _, ok := scope.ScopeSymbol.(Procedure); ok {
 			offset += 8
 		}*/

@@ -735,7 +735,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 
 			// Get the address of the ident using the symbol table
 			scope := graph.getScope(node)
-			endScope, offset := goUpScope(scope, graph.GetNode(left))
+			endScope, offset := goUpScope(scope, left, graph.GetNode(left))
 
 			if scope == endScope {
 				a.StrFrom(R0, R11, offset)
@@ -1163,7 +1163,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 				// Get the address of the ident using the symbol table
 				scope := graph.getScope(node)
 
-				endScope, offset := goUpScope(scope, graph.GetNode(node))
+				endScope, offset := goUpScope(scope, node, graph.GetNode(node))
 
 				if scope == endScope {
 					a.LdrFrom(R0, R11, offset)
