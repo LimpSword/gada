@@ -626,7 +626,7 @@ func (a *AssemblyFile) CallWithParameters(blName string, name string, scope *Sco
 	if a.WritingAtEnd {
 		a.EndText += "BL " + blName + "\n"
 
-		if true || isFunction {
+		if isFunction {
 			a.Add(SP, removedOffset)
 			a.Ldr(R0, 0)
 		}
@@ -636,7 +636,7 @@ func (a *AssemblyFile) CallWithParameters(blName string, name string, scope *Sco
 	} else {
 		a.Text += "BL " + blName + "\n"
 
-		if true || isFunction {
+		if isFunction {
 			a.Add(SP, removedOffset)
 			a.Ldr(R0, 0)
 		}
@@ -691,6 +691,8 @@ func (a *AssemblyFile) ReadIf(graph Graph, node int) {
 	// Read body
 	a.ReadBody(graph, graph.GetChildren(node)[1])
 
+	a.BranchToLabel("end_if_" + randomLabel)
+
 	if len(graph.GetChildren(node)) >= 3 {
 		// Read elsif or else
 		if graph.GetNode(graph.GetChildren(node)[2]) == "elif" {
@@ -715,6 +717,7 @@ func (a *AssemblyFile) ReadIf(graph Graph, node int) {
 	} else {
 		a.AddLabel("else" + randomLabel)
 	}
+	a.AddLabel("end_if_" + randomLabel)
 
 	a.AddComment("End of if statement")
 }
@@ -784,9 +787,9 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 		case "return":
 			if len(graph.GetChildren(child)) == 0 {
 				// Leave the procedure
-				a.Add(SP, 4)
 				a.Add(SP, getDeclOffset(graph, node))
 				a.LdmfdMultiple([]Register{R10, R11, PC})
+				return
 			}
 
 			// Read the return operand
@@ -858,7 +861,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 		a.CallProcedure("println")
 
 		if graph.GetNode(graph.GetChildren(args)[0]) == "cast" {
-			a.Add(SP, 8)
+			a.Add(SP, 12)
 		} else {
 			// do nothing
 		}
@@ -866,7 +869,6 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 	}
 
 	symbol := graph.getScope(node).ScopeSymbol
-	fmt.Println(symbol)
 	_, isFunction := symbol.(Function)
 	if isFunction {
 		a.Sub(SP, 4)

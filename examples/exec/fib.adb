@@ -9,14 +9,14 @@ procedure Fib is
       Put(Character'Val(48 + C));
    end;
 
-   f : integer;
+   f : integer := -1;
 
    procedure fib(n	: integer) is
       procedure somme is
          tmp : integer;
-      begin fib(n-2); tmp := f; fib(n-1); f := f + Tmp; end;
+      begin fib(n-2); tmp := f; fib(n-1); f := f + Tmp; return; end;
    begin
-      if n <= 1 then f := N; else somme; end if;
+      if n <= 1 then f := n; else somme; end if; return;
    end;
 
-begin fib(10); printint(f); New_Line; end;
+begin fib(13); printint(f); end;
