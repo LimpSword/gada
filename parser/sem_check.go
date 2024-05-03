@@ -94,20 +94,20 @@ func findAccessType(graph *Graph, scope *Scope, node int, curType string) string
 }
 
 func hashFunction(function Function) string {
-	hash := function.FName + "("
+	hash := function.FName
 	for i := 1; i <= function.ParamCount; i++ {
-		hash += function.Params[i].VName + ":" + function.Params[i].SType + ","
+		hash += function.Params[i].VName + function.Params[i].SType + "_"
 	}
-	hash = hash[:len(hash)-1] + ")" + function.ReturnType
+	hash = hash[:len(hash)-1] + function.ReturnType
 	return hash
 }
 
 func hashProc(proc Procedure) string {
-	hash := proc.PName + "("
+	hash := proc.PName
 	for i := 1; i <= proc.ParamCount; i++ {
-		hash += proc.Params[i].VName + ":" + proc.Params[i].SType + ","
+		hash += proc.Params[i].VName + proc.Params[i].SType + "_"
 	}
-	hash = hash[:len(hash)-1] + ")"
+	hash = hash[:len(hash)-1]
 	return hash
 }
 
@@ -811,6 +811,7 @@ func semCheck(graph *Graph, node int) {
 			errorMessage := fileName + ":" + line + ":" + column + " " + err.Error()
 			logger.Error(errorMessage)
 		}
+		addSymbol(graph, node, hashFunction(funcElem))
 
 		countSame := 0
 		for _, fun := range scope.Table[funcElem.FName] {
@@ -875,6 +876,8 @@ func semCheck(graph *Graph, node int) {
 			}
 			shift = 1
 		}
+		addSymbol(graph, node, hashProc(procElem))
+
 		countSame := 0
 		for _, proc := range scope.Table[procElem.PName] {
 			if proc.Type() == Proc {

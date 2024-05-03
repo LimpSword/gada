@@ -620,11 +620,11 @@ func (a *AssemblyFile) CallProcedure(name string) {
 	}
 }
 
-func (a *AssemblyFile) CallWithParameters(name string, scope *Scope, removedOffset int) {
+func (a *AssemblyFile) CallWithParameters(blName string, name string, scope *Scope, removedOffset int) {
 	symbol := scope.ScopeSymbol
 	_, isFunction := symbol.(Function)
 	if a.WritingAtEnd {
-		a.EndText += "BL " + name + "\n"
+		a.EndText += "BL " + blName + "\n"
 
 		if true || isFunction {
 			a.Add(SP, removedOffset)
@@ -634,7 +634,7 @@ func (a *AssemblyFile) CallWithParameters(name string, scope *Scope, removedOffs
 		// clear the stack
 		a.Add(SP, removedOffset)
 	} else {
-		a.Text += "BL " + name + "\n"
+		a.Text += "BL " + blName + "\n"
 
 		if true || isFunction {
 			a.Add(SP, removedOffset)
@@ -865,11 +865,10 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 		return
 	}
 
-	// FIXME: what do i call?
 	symbol := graph.getScope(node).ScopeSymbol
 	fmt.Println(symbol)
 	_, isFunction := symbol.(Function)
-	if true || isFunction {
+	if isFunction {
 		a.Sub(SP, 4)
 		a.CommentPreviousLine("Save space for the return value")
 	}
@@ -880,7 +879,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 	}
 
 	a.AddComment("Arguments read, call the procedure")
-	a.CallWithParameters(graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4)
+	a.CallWithParameters(graph.symbols[name], graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4)
 }
 
 func (a *AssemblyFile) ReadWhile(graph Graph, node int) {
@@ -1069,7 +1068,7 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	a.WritingAtEnd = true
 	// Note: single character labels are not allowed
 	a.AddComment("Procedure " + procedureName)
-	a.AddLabel(procedureName)
+	a.AddLabel(graph.symbols[node])
 
 	a.StmfdMultiple([]Register{R10, R11, LR})
 	a.Mov(R10, getRegion(graph, node))
