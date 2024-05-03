@@ -738,7 +738,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 
 			// Get the address of the ident using the symbol table
 			scope := graph.getScope(node)
-			endScope, offset := goUpScope(scope, left, graph.GetNode(left))
+			endScope, offset := goUpScope(graph, scope, left, graph.GetNode(left))
 
 			if scope == endScope {
 				a.StrFrom(R0, R11, offset)
@@ -823,6 +823,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 
 func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 	if graph.GetNode(name) == "put" {
+		a.AddComment("Put statement")
 		a.ReadOperand(graph, graph.GetChildren(args)[0])
 
 		if graph.GetNode(graph.GetChildren(args)[0]) == "cast" {
@@ -865,6 +866,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 		} else {
 			// do nothing
 		}
+		a.AddComment("End of put statement")
 		return
 	}
 
@@ -1032,7 +1034,7 @@ func (a *AssemblyFile) ReadDecl(graph Graph, node int, mode DeclMode) {
 			nameB := graph.GetNode(sortedB[0])
 			return strings.Compare(nameA, nameB)
 		}
-		return a - b
+		return strings.Compare(nodeA, nodeB)
 	})
 
 	for _, child := range children {
@@ -1176,7 +1178,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 				// Get the address of the ident using the symbol table
 				scope := graph.getScope(node)
 
-				endScope, offset := goUpScope(scope, node, graph.GetNode(node))
+				endScope, offset := goUpScope(graph, scope, node, graph.GetNode(node))
 
 				if scope == endScope {
 					a.LdrFrom(R0, R11, offset)
@@ -1371,5 +1373,51 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 			a.Str(R0)
 		}
+	}
+
+	if graph.GetNode(node) == "access" {
+		// The operand is an ident
+		// Load the ident value to r0
+
+		// Get the address of the ident using the symbol table
+		scope := graph.getScope(node)
+
+		endScope, offset := goUpScope(graph, scope, node, graph.GetNode(node))
+
+		if scope == endScope {
+			a.LdrFrom(R0, R11, offset)
+			a.CommentPreviousLine(fmt.Sprintf("(S) Load the value of %v", graph.GetNode(node)))
+		} else {
+			// Loop through dynamic links until we reach the correct region
+			random := strconv.Itoa(rand.Int()) + "_" + graph.GetNode(node)
+
+			a.MovRegister(R9, R11)
+			a.LdrFromFramePointer(R8, 4)
+			a.Cmp(R8, endScope.Region)
+			a.BranchToLabelWithCondition("notload_"+random, EQ)
+			a.AddLabel("load_" + random)
+			a.LdrFromFramePointer(R11, 8)
+			a.LdrFromFramePointer(R8, 4)
+			a.Cmp(R8, endScope.Region)
+			a.BranchToLabelWithCondition("load_"+random, NE)
+
+			a.AddLabel("notload_" + random)
+
+			// Go 1 level up
+			a.LdrFromFramePointer(R11, 8)
+
+			a.LdrFromFramePointer(R0, offset)
+
+			// Restore R9
+			a.MovRegister(R11, R9)
+
+			a.CommentPreviousLine(fmt.Sprintf("(NS) Load the value of %v", graph.GetNode(node)))
+		}
+		// Move the stack pointer
+		a.Sub(SP, 4)
+		a.CommentPreviousLine("Reserve space for the value of " + graph.GetNode(node))
+
+		a.Str(R0)
+		a.CommentPreviousLine("Store the value of " + graph.GetNode(node))
 	}
 }

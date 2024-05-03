@@ -298,10 +298,9 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 
 					nameA := graph.types[sortedA[0]]
 					nameB := graph.types[sortedB[0]]
-					fmt.Println("why:", nameA, nameB)
 					return strings.Compare(nameA, nameB)
 				}
-				return a - b
+				return strings.Compare(nodeA, nodeB)
 			})
 			for _, child := range children {
 				dfsSymbols(graph, child, currentScope)
@@ -395,7 +394,7 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 		for _, child := range maps.Keys(graph.gmap[sorted[1]]) {
 			childChild := maps.Keys(graph.gmap[child])
 			slices.Sort(childChild)
-			recordElem.Fields[graph.types[childChild[0]]] = getSymbolType(graph.types[childChild[1]])
+			recordElem.Fields[strings.ToLower(graph.types[childChild[0]])] = getSymbolType(graph.types[childChild[1]])
 
 			// Calculate offset
 			currentOffset := 0
@@ -403,7 +402,7 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 				currentOffset += offset
 			}
 			currentOffset += getTypeSize(getSymbolType(graph.types[childChild[1]]), scope)
-			recordElem.FieldsOffset[graph.types[childChild[0]]] = currentOffset
+			recordElem.FieldsOffset[strings.ToLower(graph.types[childChild[0]])] = currentOffset
 		}
 		scope.addSymbol(recordElem)
 	default:
