@@ -773,10 +773,22 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			a.ReadWhile(graph, child)
 		case "call":
 			name := graph.GetChildren(child)[0]
-			args := graph.GetChildren(child)[1]
+			var args int
+			if len(graph.GetChildren(child)) > 1 {
+				args = graph.GetChildren(child)[1]
+			} else {
+				args = -1
+			}
 
 			a.Call(child, graph, name, args)
 		case "return":
+			if len(graph.GetChildren(child)) == 0 {
+				// Leave the procedure
+				a.Add(SP, 4)
+				a.Add(SP, getDeclOffset(graph, node))
+				a.LdmfdMultiple([]Register{R10, R11, PC})
+			}
+
 			// Read the return operand
 			operand := graph.GetChildren(child)[0]
 			a.ReadOperand(graph, operand)
