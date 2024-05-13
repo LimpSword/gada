@@ -555,7 +555,7 @@ PRINTLN_LOOP LDRB    R2, [R0], #1
              STRB    R2, [R1], #1
              TST     R2, R2
              BNE     PRINTLN_LOOP
-             MOV     R2, #10
+             MOV     R2, #0
              STRB    R2, [R1, #-1]
              MOV     R2, #0
              STRB    R2, [R1]
@@ -831,6 +831,15 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 }
 
 func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
+	if graph.GetNode(name) == "new_line" {
+		a.Sub(SP, 4)
+		a.Mov(R0, 10)
+		a.Str(R0)
+		a.MovRegister(R0, SP)
+		a.CallProcedure("println")
+		a.Add(SP, 4)
+		return
+	}
 	if graph.GetNode(name) == "put" {
 		a.AddComment("Put statement")
 		a.ReadOperand(graph, graph.GetChildren(args)[0])

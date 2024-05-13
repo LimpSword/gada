@@ -161,6 +161,7 @@ func ReadAST(graph *Graph, printtds bool) (*Scope, error) {
 	fileNodeIndex := 0
 	currentScope.addSymbol(Procedure{PName: "put", PType: Proc, ParamCount: 1, Params: map[int]*Variable{1: &Variable{VName: "x", SType: "character"}}, children: []int{}})
 	currentScope.addSymbol(Procedure{PName: "put", PType: Proc, ParamCount: 1, Params: map[int]*Variable{1: &Variable{VName: "x", SType: "integer"}}, children: []int{}})
+	currentScope.addSymbol(Procedure{PName: "new_line", PType: Proc, children: []int{}})
 	dfsSymbols(graph, fileNodeIndex, &currentScope)
 
 	if printtds {
