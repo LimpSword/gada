@@ -1,6 +1,7 @@
 package asm
 
 import (
+	"fmt"
 	"github.com/charmbracelet/log"
 	"os"
 	"os/exec"
@@ -20,11 +21,11 @@ func Execute(relativePath string) []string {
 	}
 	defer file.Close()
 	absolutePath, err := filepath.Abs(relativePath)
-	cmd := exec.Command("java", "-jar", "asm/asm.jar", absolutePath)
+	cmd := exec.Command("java", "-jar", "pcl.jar", absolutePath)
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Fatal("Error while executing file")
+		log.Fatal("Error while executing file", err)
 	}
 	text := string(out)
 	lines := strings.Split(text, "\n")
@@ -44,5 +45,6 @@ func Execute(relativePath string) []string {
 		}
 	}
 
+	fmt.Println(string(out))
 	return programOutput
 }

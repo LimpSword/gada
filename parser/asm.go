@@ -1081,8 +1081,10 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	a.MovRegister(R11, SP)
 	a.Sub(R11, 4) // SP points to R10 so we need to subtract 4
 
+	a.AddComment("Read variable declarations")
 	a.ReadDecl(graph, declNode, OnlyVar)
 
+	a.AddComment("Read the body of the procedure")
 	// Read the body of the procedure
 	a.ReadBody(graph, bodyNode)
 
@@ -1104,7 +1106,7 @@ func (a *AssemblyFile) ReadVar(graph Graph, node int) {
 
 	name := graph.GetChildren(node)[0]
 
-	if graph.GetNode(name) == "sameType" {
+	if graph.GetNode(name) == "sametype" {
 		for _, child := range graph.GetChildren(name) {
 			nameList = append(nameList, graph.GetNode(child))
 		}
