@@ -629,6 +629,8 @@ func (a *AssemblyFile) CallWithParameters(blName string, name string, scope *Sco
 		if isFunction {
 			a.Add(SP, removedOffset)
 			a.Ldr(R0, 0)
+			a.Add(SP, 4)
+			return
 		}
 
 		// clear the stack
@@ -639,6 +641,8 @@ func (a *AssemblyFile) CallWithParameters(blName string, name string, scope *Sco
 		if isFunction {
 			a.Add(SP, removedOffset)
 			a.Ldr(R0, 0)
+			a.Add(SP, 4)
+			return
 		}
 
 		// clear the stack
@@ -785,10 +789,12 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 
 			a.Call(child, graph, name, args)
 		case "return":
+			a.AddComment("Return statement")
 			if len(graph.GetChildren(child)) == 0 {
 				// Leave the procedure
 				a.Add(SP, getDeclOffset(graph, node))
 				a.LdmfdMultiple([]Register{R10, R11, PC})
+				a.CommentPreviousLine("Return from the procedure")
 				return
 			}
 
@@ -811,10 +817,13 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 
 			// Leave the procedure
 			a.Add(SP, 4)
+			a.CommentPreviousLine("Remove the return value from the stack")
 
 			a.Add(SP, getDeclOffset(graph, node))
+			a.CommentPreviousLine("Clear the stack of declarations: " + strconv.Itoa(getDeclOffset(graph, node)))
 
 			a.LdmfdMultiple([]Register{R10, R11, PC})
+			a.CommentPreviousLine("Return from the procedure with params")
 		case "if":
 			a.ReadIf(graph, child)
 		}
@@ -1005,6 +1014,7 @@ func (a *AssemblyFile) ReadFor(graph Graph, node int) {
 	a.Add(SP, 8)
 
 	a.LdmfdMultiple([]Register{R10, R11})
+	a.CommentPreviousLine("End for loop")
 
 	a.AddComment("Loop #" + strconv.Itoa(goodCounter) + " end")
 }
@@ -1078,6 +1088,7 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 
 	a.StmfdMultiple([]Register{R10, R11, LR})
 	a.Mov(R10, getRegion(graph, node))
+	a.CommentPreviousLine("Current region")
 	a.MovRegister(R11, SP)
 	a.Sub(R11, 4) // SP points to R10 so we need to subtract 4
 
@@ -1092,6 +1103,7 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	a.CommentPreviousLine("Clear the stack of declarations: " + strconv.Itoa(getDeclOffset(graph, node)))
 
 	a.LdmfdMultiple([]Register{R10, R11, PC})
+	a.CommentPreviousLine("Base return of procedure " + procedureName)
 
 	a.AddComment("End of procedure " + procedureName)
 
