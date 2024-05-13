@@ -1320,7 +1320,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 		// Save the result in stack
 		a.Str(R0)
-	case ">", "=", "<", "<=", ">=":
+	case ">", "=", "<", "<=", ">=", "/=":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
 
@@ -1349,6 +1349,9 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		case ">=":
 			a.MovCond(R0, 1, GE)
 			a.MovCond(R0, 0, LT)
+		case "/=":
+			a.MovCond(R0, 1, NE)
+			a.MovCond(R0, 0, EQ)
 		}
 
 		a.Add(SP, 4)
