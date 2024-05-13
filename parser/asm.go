@@ -910,7 +910,7 @@ func (a *AssemblyFile) ReadWhile(graph Graph, node int) {
 	a.ReadOperand(graph, condition)
 
 	a.Ldr(R0, 0)
-	a.CommentPreviousLine("Load result of condition")
+	a.CommentPreviousLine("Load result of while condition")
 	a.Add(SP, 4)
 
 	a.Cmp(R0, 0)
@@ -1320,7 +1320,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 		// Save the result in stack
 		a.Str(R0)
-	case ">", "=", "<", "<=", ">=", "/=":
+	case ">", "=", "<", "<=", ">=", "/=", "!=":
 		// Read left operand
 		a.ReadOperand(graph, children[0])
 
@@ -1349,7 +1349,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 		case ">=":
 			a.MovCond(R0, 1, GE)
 			a.MovCond(R0, 0, LT)
-		case "/=":
+		case "/=", "!=":
 			a.MovCond(R0, 1, NE)
 			a.MovCond(R0, 0, EQ)
 		}
