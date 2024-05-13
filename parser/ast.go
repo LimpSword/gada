@@ -30,6 +30,10 @@ func (g Graph) GetNode(node int) string {
 	return strings.ToLower(g.types[node])
 }
 
+func (g Graph) GetRealNode(node int) string {
+	return g.types[node]
+}
+
 func (g Graph) getScope(node int) *Scope {
 	return g.scopes[node]
 }

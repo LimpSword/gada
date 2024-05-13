@@ -810,7 +810,9 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 	if graph.GetNode(name) == "put" {
 		a.ReadOperand(graph, graph.GetChildren(args)[0])
 
-		if graph.GetNode(graph.GetChildren(args)[0]) == "cast" {
+		// TODO: check for variable that could be a char (or char in record)
+		isChar := graph.GetNode(graph.GetChildren(args)[0]) == "cast" || graph.GetNode(graph.GetChildren(args)[0])[0] == '\''
+		if isChar {
 			// Move the result to R0
 			a.Ldr(R0, 0)
 
@@ -1154,7 +1156,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 				// The operand is a char
 				// Load the char value to r0
-				a.Mov(R0, int(graph.GetNode(node)[1]))
+				a.Mov(R0, int(graph.GetRealNode(node)[1]))
 				a.Str(R0)
 			} else {
 				// The operand is an ident
