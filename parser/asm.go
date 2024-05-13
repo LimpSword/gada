@@ -875,7 +875,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 	symbol := graph.getScope(node).ScopeSymbol
 	_, isFunction := symbol.(Function)
 	if isFunction {
-		a.Sub(SP, 4)
+		a.Sub(SP, 4) // TODO: record fix
 		a.CommentPreviousLine("Save space for the return value")
 	}
 
@@ -885,7 +885,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 	}
 
 	a.AddComment("Arguments read, call the procedure")
-	a.CallWithParameters(graph.symbols[name], graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4)
+	a.CallWithParameters(graph.symbols[name], graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4) // TODO: record fix
 }
 
 func (a *AssemblyFile) ReadWhile(graph Graph, node int) {
