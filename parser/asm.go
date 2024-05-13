@@ -620,13 +620,13 @@ func (a *AssemblyFile) CallProcedure(name string) {
 	}
 }
 
-func (a *AssemblyFile) CallWithParameters(name string, scope *Scope, removedOffset int) {
+func (a *AssemblyFile) CallWithParameters(blName string, name string, scope *Scope, removedOffset int) {
 	symbol := scope.ScopeSymbol
 	_, isFunction := symbol.(Function)
 	if a.WritingAtEnd {
-		a.EndText += "BL " + name + "\n"
+		a.EndText += "BL " + blName + "\n"
 
-		if true || isFunction {
+		if isFunction {
 			a.Add(SP, removedOffset)
 			a.Ldr(R0, 0)
 		}
@@ -634,9 +634,9 @@ func (a *AssemblyFile) CallWithParameters(name string, scope *Scope, removedOffs
 		// clear the stack
 		a.Add(SP, removedOffset)
 	} else {
-		a.Text += "BL " + name + "\n"
+		a.Text += "BL " + blName + "\n"
 
-		if true || isFunction {
+		if isFunction {
 			a.Add(SP, removedOffset)
 			a.Ldr(R0, 0)
 		}
@@ -691,6 +691,8 @@ func (a *AssemblyFile) ReadIf(graph Graph, node int) {
 	// Read body
 	a.ReadBody(graph, graph.GetChildren(node)[1])
 
+	a.BranchToLabel("end_if_" + randomLabel)
+
 	if len(graph.GetChildren(node)) >= 3 {
 		// Read elsif or else
 		if graph.GetNode(graph.GetChildren(node)[2]) == "elif" {
@@ -715,6 +717,7 @@ func (a *AssemblyFile) ReadIf(graph Graph, node int) {
 	} else {
 		a.AddLabel("else" + randomLabel)
 	}
+	a.AddLabel("end_if_" + randomLabel)
 
 	a.AddComment("End of if statement")
 }
@@ -735,7 +738,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 
 			// Get the address of the ident using the symbol table
 			scope := graph.getScope(node)
-			endScope, offset := goUpScope(scope, left, graph.GetNode(left))
+			endScope, offset := goUpScope(graph, scope, left, graph.GetNode(left))
 
 			if scope == endScope {
 				a.StrFrom(R0, R11, offset)
@@ -773,10 +776,22 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			a.ReadWhile(graph, child)
 		case "call":
 			name := graph.GetChildren(child)[0]
-			args := graph.GetChildren(child)[1]
+			var args int
+			if len(graph.GetChildren(child)) > 1 {
+				args = graph.GetChildren(child)[1]
+			} else {
+				args = -1
+			}
 
 			a.Call(child, graph, name, args)
 		case "return":
+			if len(graph.GetChildren(child)) == 0 {
+				// Leave the procedure
+				a.Add(SP, getDeclOffset(graph, node))
+				a.LdmfdMultiple([]Register{R10, R11, PC})
+				return
+			}
+
 			// Read the return operand
 			operand := graph.GetChildren(child)[0]
 			a.ReadOperand(graph, operand)
@@ -808,6 +823,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 
 func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 	if graph.GetNode(name) == "put" {
+		a.AddComment("Put statement")
 		a.ReadOperand(graph, graph.GetChildren(args)[0])
 
 		// TODO: check for variable that could be a char (or char in record)
@@ -848,18 +864,17 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 		a.CallProcedure("println")
 
 		if graph.GetNode(graph.GetChildren(args)[0]) == "cast" {
-			a.Add(SP, 8)
+			a.Add(SP, 12)
 		} else {
 			// do nothing
 		}
+		a.AddComment("End of put statement")
 		return
 	}
 
-	// FIXME: what do i call?
 	symbol := graph.getScope(node).ScopeSymbol
-	fmt.Println(symbol)
 	_, isFunction := symbol.(Function)
-	if true || isFunction {
+	if isFunction {
 		a.Sub(SP, 4)
 		a.CommentPreviousLine("Save space for the return value")
 	}
@@ -870,7 +885,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 	}
 
 	a.AddComment("Arguments read, call the procedure")
-	a.CallWithParameters(graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4)
+	a.CallWithParameters(graph.symbols[name], graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4)
 }
 
 func (a *AssemblyFile) ReadWhile(graph Graph, node int) {
@@ -1021,7 +1036,7 @@ func (a *AssemblyFile) ReadDecl(graph Graph, node int, mode DeclMode) {
 			nameB := graph.GetNode(sortedB[0])
 			return strings.Compare(nameA, nameB)
 		}
-		return a - b
+		return strings.Compare(nodeA, nodeB)
 	})
 
 	for _, child := range children {
@@ -1059,7 +1074,7 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	a.WritingAtEnd = true
 	// Note: single character labels are not allowed
 	a.AddComment("Procedure " + procedureName)
-	a.AddLabel(procedureName)
+	a.AddLabel(graph.symbols[node])
 
 	a.StmfdMultiple([]Register{R10, R11, LR})
 	a.Mov(R10, getRegion(graph, node))
@@ -1165,7 +1180,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 				// Get the address of the ident using the symbol table
 				scope := graph.getScope(node)
 
-				endScope, offset := goUpScope(scope, node, graph.GetNode(node))
+				endScope, offset := goUpScope(graph, scope, node, graph.GetNode(node))
 
 				if scope == endScope {
 					a.LdrFrom(R0, R11, offset)
@@ -1360,5 +1375,51 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 			a.Str(R0)
 		}
+	}
+
+	if graph.GetNode(node) == "access" {
+		// The operand is an ident
+		// Load the ident value to r0
+
+		// Get the address of the ident using the symbol table
+		scope := graph.getScope(node)
+
+		endScope, offset := goUpScope(graph, scope, node, graph.GetNode(node))
+
+		if scope == endScope {
+			a.LdrFrom(R0, R11, offset)
+			a.CommentPreviousLine(fmt.Sprintf("(S) Load the value of %v", graph.GetNode(node)))
+		} else {
+			// Loop through dynamic links until we reach the correct region
+			random := strconv.Itoa(rand.Int()) + "_" + graph.GetNode(node)
+
+			a.MovRegister(R9, R11)
+			a.LdrFromFramePointer(R8, 4)
+			a.Cmp(R8, endScope.Region)
+			a.BranchToLabelWithCondition("notload_"+random, EQ)
+			a.AddLabel("load_" + random)
+			a.LdrFromFramePointer(R11, 8)
+			a.LdrFromFramePointer(R8, 4)
+			a.Cmp(R8, endScope.Region)
+			a.BranchToLabelWithCondition("load_"+random, NE)
+
+			a.AddLabel("notload_" + random)
+
+			// Go 1 level up
+			a.LdrFromFramePointer(R11, 8)
+
+			a.LdrFromFramePointer(R0, offset)
+
+			// Restore R9
+			a.MovRegister(R11, R9)
+
+			a.CommentPreviousLine(fmt.Sprintf("(NS) Load the value of %v", graph.GetNode(node)))
+		}
+		// Move the stack pointer
+		a.Sub(SP, 4)
+		a.CommentPreviousLine("Reserve space for the value of " + graph.GetNode(node))
+
+		a.Str(R0)
+		a.CommentPreviousLine("Store the value of " + graph.GetNode(node))
 	}
 }

@@ -11,5 +11,5 @@ procedure Test is
     end Factorial;
 begin
     S := Factorial(12);
-    Put(Character'Val(S));
+    Put(S);
 end;

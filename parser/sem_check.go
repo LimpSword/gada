@@ -24,7 +24,7 @@ func getTypeSize(t string, scope Scope) int {
 	default:
 		// Is it a record?
 		for {
-			if symbol, ok := scope.Table[t]; ok {
+			if symbol, ok := scope.Table[strings.ToLower(t)]; ok {
 				if symbol[0].Type() == Rec {
 					size := 0
 					for _, field := range symbol[0].(Record).Fields {
@@ -62,8 +62,8 @@ func findAccessType(graph *Graph, scope *Scope, node int, curType string) string
 					logger.Error(fileName + ":" + line + ":" + column + " " + graph.types[children[0]] + " is not a field of " + curType)
 				}
 			} else {
-				if _, ok1 := symbol[0].(Record).Fields[graph.types[node]]; ok1 {
-					newType := symbol[0].(Record).Fields[graph.types[node]]
+				if _, ok1 := symbol[0].(Record).Fields[getSymbolType(graph.types[node])]; ok1 {
+					newType := symbol[0].(Record).Fields[getSymbolType(graph.types[node])]
 					return newType
 				} else {
 					fileName := graph.fileName
@@ -94,20 +94,20 @@ func findAccessType(graph *Graph, scope *Scope, node int, curType string) string
 }
 
 func hashFunction(function Function) string {
-	hash := function.FName + "("
+	hash := function.FName
 	for i := 1; i <= function.ParamCount; i++ {
-		hash += function.Params[i].VName + ":" + function.Params[i].SType + ","
+		hash += function.Params[i].VName + function.Params[i].SType + "_"
 	}
-	hash = hash[:len(hash)-1] + ")" + function.ReturnType
+	hash = hash[:len(hash)-1] + function.ReturnType
 	return hash
 }
 
 func hashProc(proc Procedure) string {
-	hash := proc.PName + "("
+	hash := proc.PName
 	for i := 1; i <= proc.ParamCount; i++ {
-		hash += proc.Params[i].VName + ":" + proc.Params[i].SType + ","
+		hash += proc.Params[i].VName + proc.Params[i].SType + "_"
 	}
-	hash = hash[:len(hash)-1] + ")"
+	hash = hash[:len(hash)-1]
 	return hash
 }
 
@@ -611,11 +611,53 @@ func getDeclOffset(graph Graph, node int) int {
 }
 
 // goUpScope: get the scope containing the variable and the total offset to reach it
-func goUpScope(scope *Scope, node int, name string) (*Scope, int) {
+func goUpScope(graph Graph, scope *Scope, node int, name string) (*Scope, int) {
 	name = strings.ToLower(name)
 	if name == "access" {
-		// we need to get to the scope of the left child, and then we need to get the offset of the deepest right child
-		fmt.Println(scope)
+		children := graph.GetChildren(node)
+		endScope, offset := goUpScope(graph, scope, children[0], graph.GetNode(children[0]))
+		// offset is the offset of the record itself, we need to add the offset of the field
+
+		var upperRec Record
+		for _, s := range endScope.Table {
+			for _, symbol := range s {
+				if symbol.Type() == Rec && symbol.Name() == endScope.Table[graph.GetNode(children[0])][0].Type() {
+					upperRec = symbol.(Record)
+				}
+			}
+		}
+
+		// the right child might be another record field (or not)
+		rightChild := children[1]
+		realOffset := 0
+		for graph.GetNode(rightChild) == "access" {
+			chdr := graph.GetChildren(rightChild)
+			recName := graph.GetNode(chdr[0])
+			recName = upperRec.Fields[recName]
+			var rec Record
+			for _, s := range endScope.Table {
+				for _, symbol := range s {
+					if symbol.Type() == Rec && symbol.Name() == recName {
+						rec = symbol.(Record)
+					}
+				}
+			}
+			realOffset += rec.FieldsOffset[graph.GetNode(chdr[1])]
+			rightChild = chdr[1]
+			upperRec = rec
+		}
+		// add the offset of the last field
+		for _, s := range endScope.Table {
+			for _, symbol := range s {
+				if symbol.Type() == Rec && symbol.Name() == endScope.Table[strings.ToLower(graph.GetNode(children[0]))][0].Type() {
+					upperRec = symbol.(Record)
+				}
+			}
+		}
+		//fmt.Println(endScope.Table[graph.GetNode(children[0])][0].Type(), rec, graph.GetNode(children[1]))
+		realOffset += upperRec.FieldsOffset[getSymbolType(graph.GetNode(children[1]))]
+		//fmt.Println("realOffset", offset, realOffset)
+		return endScope, offset + realOffset - 4
 	}
 	//totalOffset := scope.getCurrentOffset()
 	if symbol, ok := scope.Table[name]; ok {
@@ -646,7 +688,7 @@ func goUpScope(scope *Scope, node int, name string) (*Scope, int) {
 		// should never happen
 		logger.Warn(name + " variable is undefined")
 	} else {
-		parentScope, offset := goUpScope(scope.parent, node, name)
+		parentScope, offset := goUpScope(graph, scope.parent, node, name)
 		/*if _, ok := scope.ScopeSymbol.(Procedure); ok {
 			offset += 8
 		}*/
@@ -811,6 +853,7 @@ func semCheck(graph *Graph, node int) {
 			errorMessage := fileName + ":" + line + ":" + column + " " + err.Error()
 			logger.Error(errorMessage)
 		}
+		addSymbol(graph, node, hashFunction(funcElem))
 
 		countSame := 0
 		for _, fun := range scope.Table[funcElem.FName] {
@@ -875,6 +918,8 @@ func semCheck(graph *Graph, node int) {
 			}
 			shift = 1
 		}
+		addSymbol(graph, node, hashProc(procElem))
+
 		countSame := 0
 		for _, proc := range scope.Table[procElem.PName] {
 			if proc.Type() == Proc {
