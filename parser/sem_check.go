@@ -715,7 +715,8 @@ func goUpScope(graph Graph, scope *Scope, node int, name string) (*Scope, int) {
 
 	if scope.parent == nil {
 		// should never happen
-		logger.Warn(name + " variable is undefined")
+		logger.Warn(name + " variable is undefined the fuck")
+		logger.Info(node)
 	} else {
 		parentScope, offset := goUpScope(graph, scope.parent, node, name)
 		/*if _, ok := scope.ScopeSymbol.(Procedure); ok {
@@ -992,11 +993,27 @@ func semCheck(graph *Graph, node int) {
 		}
 		semCheck(graph, sorted[1+shift])
 	case "for":
-		for _, child := range sorted {
-			if graph.types[child] == "body" {
-				semCheck(graph, child)
+		if whichFinal(graph, sorted[0]) != "identifier" {
+			fileName := graph.fileName
+			line := strconv.Itoa(graph.line[sorted[0]])
+			column := strconv.Itoa(graph.column[sorted[0]])
+			logger.Error(fileName + ":" + line + ":" + column + " " + "Loop variable should be a variable")
+		} else {
+			if Contains([]string{Func, Proc, Rec}, getSymbol(graph, scope, sorted[0])) {
+				fileName := graph.fileName
+				line := strconv.Itoa(graph.line[sorted[0]])
+				column := strconv.Itoa(graph.column[sorted[0]])
+				logger.Error(fileName + ":" + line + ":" + column + " " + "Loop variable should be a variable")
 			}
 		}
+		if !haveType(getReturnType(graph, scope, sorted[2], make(map[string]struct{})), "integer") {
+			logger.Error("left side of for loop should be an integer")
+		}
+		if !haveType(getReturnType(graph, scope, sorted[3], make(map[string]struct{})), "integer") {
+			logger.Error("right side of for loop should be an integer")
+		}
+		semCheck(graph, sorted[4])
+
 	case "while":
 		if !haveType(getReturnType(graph, scope, sorted[0], make(map[string]struct{})), "boolean") {
 			fileName := graph.fileName
