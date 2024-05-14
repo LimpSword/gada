@@ -373,6 +373,7 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 		dfsSymbols(graph, sorted[1+shift], procScope)
 	case "for":
 		forScope := newScope(&scope)
+		forScope.ScopeSymbol = scope.ScopeSymbol
 		forScope.addSymbol(Variable{VName: getSymbolType(graph.types[sorted[0]]), SType: "integer", Offset: 4, IsLoop: true})
 		graph.scopes[node] = forScope
 		for _, child := range sorted {
