@@ -51,7 +51,7 @@ procedure Test is
                 Put('e');
                 Put(' ');
                 Put('n');
-                Put('\'');
+                Put(' ');
                 Put('e');
                 Put('s');
                 Put('t');

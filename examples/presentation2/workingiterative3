@@ -31,12 +31,17 @@ procedure Test is
     end EstPremier;
     -- Fonction récursive pour calculer la factorielle
     function Factorielle(N : Integer) return Integer is
+        Resultat : Integer := 1;
     begin
-        if N <= 1 then
+        if N <= 0 then
             return 1;
-        else
-            return N * Factorielle(N - 1);
         end if;
+
+        for I in 2..N loop
+            Resultat := Resultat * I;
+        end loop;
+
+        return Resultat;
     end Factorielle;
 
     -- Procédure pour calculer la factorielle d'un nombre premier
