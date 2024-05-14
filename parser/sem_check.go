@@ -654,12 +654,19 @@ func goUpScope(graph Graph, scope *Scope, node int, name string) (*Scope, int) {
 				}
 			}
 		}
+		if _, ok := endScope.Table[graph.GetNode(children[0])]; ok {
+			recName := endScope.Table[graph.GetNode(children[0])][0].Type()
+			//fmt.Println(recName, "parent:", endScope.parent)
+			es := getMeScope(recName, *endScope)
+			//fmt.Println(es.Table)
+			upperRec = es.Table[recName][0].(Record)
+		}
 		//fmt.Println(endScope.Table[graph.GetNode(children[0])][0].Type(), rec, graph.GetNode(children[1]))
 		realOffset += upperRec.FieldsOffset[getSymbolType(graph.GetNode(children[1]))]
 		//fmt.Println("realOffset", offset, realOffset)
 		return endScope, offset + realOffset - 4
 	}
-	//totalOffset := scope.getCurrentOffset()
+
 	if symbol, ok := scope.Table[name]; ok {
 		for _, s := range symbol {
 			if variable, ok := s.(Variable); ok {
@@ -717,6 +724,17 @@ func goUpScope(graph Graph, scope *Scope, node int, name string) (*Scope, int) {
 		return parentScope, offset
 	}
 	return nil, 0
+}
+
+func getMeScope(name string, scope Scope) *Scope {
+	if _, ok := scope.Table[name]; ok {
+		return &scope
+
+	}
+	if scope.parent != nil {
+		return getMeScope(name, *scope.parent)
+	}
+	return nil
 }
 
 func getRegion(graph Graph, node int) int {
@@ -860,6 +878,8 @@ func semCheck(graph *Graph, node int) {
 			child := maps.Keys(graph.gmap[sorted[1]])
 			slices.Sort(child)
 			for _, param := range child {
+				trashScope.parent = scope
+				trashScope.Table = scope.Table
 				addParam(graph, param, &funcElem, trashScope)
 				checkParam(graph, param, scope)
 			}

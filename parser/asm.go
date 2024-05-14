@@ -740,21 +740,18 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			a.AddComment("Assignment of " + graph.GetNode(left))
 			a.ReadOperand(graph, right)
 
-			a.Add(SP, 4)
-
 			// Get the address of the ident using the symbol table
 			scope := graph.getScope(node)
 			endScope, offset := goUpScope(graph, scope, left, graph.GetNode(left))
 
+			a.MovRegister(R9, R11)
 			if scope == endScope {
-				a.StrFrom(R0, R11, offset)
-				a.CommentPreviousLine(fmt.Sprintf("(S) Store the value of %v", graph.GetNode(left)))
+				a.AddComment(fmt.Sprintf("(S) Store the value of %v", graph.GetNode(left)))
 			} else {
 				// Loop through dynamic links until we reach the correct region
 
 				random := strconv.Itoa(rand.Int()) + "_" + graph.GetNode(node)
 
-				a.MovRegister(R9, R11)
 				a.LdrFromFramePointer(R8, 4)
 				a.Cmp(R8, endScope.Region)
 				a.BranchToLabelWithCondition("notload_"+random, EQ)
@@ -769,13 +766,40 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 				// Go 1 level up
 				a.LdrFromFramePointer(R11, 8)
 
-				a.StrFromFramePointer(R0, offset)
-
-				// Restore R9
-				a.MovRegister(R11, R9)
-
-				a.CommentPreviousLine(fmt.Sprintf("(NS) Store the value of %v", graph.GetNode(left)))
 			}
+			name := graph.GetNode(left)
+			isAccess := false
+			if name == "access" {
+				// If this is an access we are looking to the right most
+				r := graph.GetChildren(left)[1]
+				for graph.GetNode(r) == "access" {
+					r = graph.GetChildren(r)[1]
+				}
+				name = graph.GetNode(r)
+				isAccess = true
+			}
+			// What's the size of the type?
+			var typeSize int
+			if isAccess {
+				// TODO: Size of the field
+				typeSize = 4
+			} else {
+				typeSize = getTypeSize(endScope.Table[name][0].Type(), *scope)
+			}
+
+			sOffset := 0
+			for typeSize > 0 {
+				a.Ldr(R0, sOffset)
+				a.StrFromFramePointer(R0, offset+sOffset)
+
+				sOffset += 4
+				typeSize -= 4
+			}
+
+			a.Add(SP, 4)
+
+			// Restore R9
+			a.MovRegister(R11, R9)
 		case "for":
 			a.ReadFor(graph, child)
 		case "while":
@@ -856,22 +880,37 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			paramOffset := 0
 			if isFunction {
 				for _, param := range fnc.Params {
-					if param.Offset > paramOffset {
-						paramOffset = param.Offset
+					size := getTypeSize(param.Type(), *scope)
+					paramOffset += size
+					if param.IsParamIn && param.IsParamOut {
+						paramOffset += 4
 					}
 				}
 			}
-			a.StrFromFramePointer(R0, 16+paramOffset)
+
+			symbol := graph.fullSymbols[node]
+			if symbol == nil {
+				symbol = scope.ScopeSymbol
+			}
+
+			returnedSize := getTypeSize(fnc.ReturnType, *scope)
+			offset := 0
+			for returnedSize > 0 {
+				a.Ldr(R0, offset)
+				a.StrFromFramePointer(R0, 16+paramOffset)
+				paramOffset += 4
+				returnedSize -= 4
+				offset += 4
+			}
 
 			// Leave the procedure
-			a.Add(SP, 4)
+			a.Add(SP, getTypeSize(scope.ScopeSymbol.(Function).ReturnType, *scope))
 			a.CommentPreviousLine("Remove the return value from the stack")
 
 			// Return the in out parameters
-			symbol := graph.fullSymbols[node]
 			_, isProcedure := symbol.(Procedure)
 			if isFunction {
-				for i := 1; i < len(symbol.(Function).Params); i++ {
+				for i := 1; i < len(symbol.(Function).Params)+1; i++ {
 					if symbol.(Function).Params[i].IsParamIn && symbol.(Function).Params[i].IsParamOut {
 						// Load the address of the in out parameter
 						a.LdrFromFramePointer(R0, paramOffset-symbol.(Function).Params[i].Offset+16)
@@ -998,9 +1037,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 
 				removedOffset += 4
 			}
-			if symbol.(Function).Params[k+1].Offset > removedOffset {
-				removedOffset = symbol.(Function).Params[k+1].Offset
-			}
+			removedOffset += getTypeSize(symbol.(Function).Params[k+1].Type(), *graph.getScope(node))
 		} else if isProcedure {
 			if symbol.(Procedure).Params[k+1].IsParamIn && symbol.(Procedure).Params[k+1].IsParamOut {
 				a.Sub(SP, 4)
@@ -1010,9 +1047,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 
 				removedOffset += 4
 			}
-			if symbol.(Procedure).Params[k+1].Offset > removedOffset {
-				removedOffset = symbol.(Procedure).Params[k+1].Offset
-			}
+			removedOffset += getTypeSize(symbol.(Procedure).Params[k+1].Type(), *graph.getScope(node))
 		}
 	}
 
@@ -1270,6 +1305,9 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 		for _, param := range symbol.(Function).Params {
 			if param.Offset > paramOffset {
 				paramOffset = param.Offset
+				if param.IsParamIn && param.IsParamOut {
+					paramOffset += 4
+				}
 			}
 		}
 		for i := 1; i < len(symbol.(Function).Params)+1; i++ {
@@ -1416,14 +1454,13 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 
 				endScope, offset := goUpScope(graph, scope, node, graph.GetNode(node))
 
+				a.MovRegister(R9, R11)
 				if scope == endScope {
-					a.LdrFrom(R0, R11, offset)
-					a.CommentPreviousLine(fmt.Sprintf("(S) Load the value of %v", graph.GetNode(node)))
+					a.AddComment(fmt.Sprintf("(S) Load the value of %v", graph.GetNode(node)))
 				} else {
 					// Loop through dynamic links until we reach the correct region
 					random := strconv.Itoa(rand.Int()) + "_" + graph.GetNode(node)
 
-					a.MovRegister(R9, R11)
 					a.LdrFromFramePointer(R8, 4)
 					a.Cmp(R8, endScope.Region)
 					a.BranchToLabelWithCondition("notload_"+random, EQ)
@@ -1438,19 +1475,28 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 					// Go 1 level up
 					a.LdrFromFramePointer(R11, 8)
 
+					a.AddComment(fmt.Sprintf("(NS) Load the value of %v", graph.GetNode(node)))
+				}
+
+				// What's the size of the type?
+				typeSize := getTypeSize(endScope.Table[graph.GetNode(node)][0].Type(), *scope)
+
+				for typeSize > 0 {
 					a.LdrFromFramePointer(R0, offset)
 
-					// Restore R9
-					a.MovRegister(R11, R9)
+					// Move the stack pointer
+					a.Sub(SP, 4)
+					a.CommentPreviousLine("Reserve space for the value of " + graph.GetNode(node))
 
-					a.CommentPreviousLine(fmt.Sprintf("(NS) Load the value of %v", graph.GetNode(node)))
+					a.Str(R0)
+					a.CommentPreviousLine("Store the value of " + graph.GetNode(node))
+
+					offset += 4
+					typeSize -= 4
 				}
-				// Move the stack pointer
-				a.Sub(SP, 4)
-				a.CommentPreviousLine("Reserve space for the value of " + graph.GetNode(node))
 
-				a.Str(R0)
-				a.CommentPreviousLine("Store the value of " + graph.GetNode(node))
+				// Restore R9
+				a.MovRegister(R11, R9)
 			}
 		}
 	}
@@ -1608,9 +1654,17 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 			a.Call(node, graph, name, args)
 
 			// Move the stack pointer
-			a.Sub(SP, 4)
+			size := getTypeSize(graph.fullSymbols[graph.GetChildren(node)[0]].(Function).ReturnType, *graph.getScope(node))
+			fmt.Println(size)
+			a.Sub(SP, getTypeSize(graph.fullSymbols[graph.GetChildren(node)[0]].(Function).ReturnType, *graph.getScope(node)))
 
-			a.Str(R0)
+			o := 0
+			for size > 0 {
+				a.Ldr(R0, o)
+				a.StrWithOffset(R0, o)
+				size -= 4
+				o += 4
+			}
 		}
 	}
 
