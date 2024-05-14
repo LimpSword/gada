@@ -1,0 +1,147 @@
+with Ada.Text_IO; use Ada.Text_IO;
+procedure Test is
+
+    type FactResult is record
+        value : Integer;
+        result : Integer;
+    end record;
+
+    function EstPremier(N : Integer) return Boolean is
+        Racine : Integer;
+    begin
+        if N <= 1 then
+            return False;
+        elsif N <= 3 then
+            return True;
+        end if;
+
+        Racine := 1;
+        while Racine * Racine <= N loop
+            Racine := Racine + 1;
+        end loop;
+        Racine := Racine - 1;
+
+        for I in 2..Racine loop
+            if N rem I = 0 then
+                return False;
+            end if;
+        end loop;
+
+        return True;
+    end EstPremier;
+    -- Fonction récursive pour calculer la factorielle
+    function Factorielle(N : Integer) return Integer is
+    begin
+        if N <= 1 then
+            return 1;
+        else
+            return N * Factorielle(N - 1);
+        end if;
+    end Factorielle;
+
+    -- Procédure pour calculer la factorielle d'un nombre premier
+    -- et retourner le résultat dans AdresseResult
+    function CalculerFactorielle(X : in Integer; AdresseResult : in out Integer) return FactResult is
+
+        factStruct : FactResult;
+    begin
+        if EstPremier(X) then
+            factStruct.value := X;
+            factStruct.result := Factorielle(X);
+            AdresseResult := factStruct.result;
+            return factStruct;
+        else
+            factStruct.value := X;
+            factStruct.result := -1;
+            Put('L');
+                            Put('e');
+                            Put(' ');
+                            Put('n');
+                            Put('o');
+                            Put('m');
+                            Put('b');
+                            Put('r');
+                            Put('e');
+                            Put(' ');
+                            Put('n');
+                            Put('\'');
+                            Put('e');
+                            Put('s');
+                            Put('t');
+                            Put(' ');
+                            Put('p');
+                            Put('a');
+                            Put('s');
+                            Put(' ');
+                            Put('p');
+                            Put('r');
+                            Put('e');
+                            Put('m');
+                            Put('i');
+                            Put('e');
+                            Put('r');
+                            Put('.');
+                            New_Line;
+            AdresseResult := -1;
+            return factStruct;
+        end if;
+    end CalculerFactorielle;
+    Result : Integer;
+    factR : FactResult;
+    toCheck : Integer := 4;
+begin
+    factR := CalculerFactorielle(toCheck, Result);
+    Put('F');
+    Put('a');
+    Put('c');
+    Put('t');
+    Put('o');
+    Put('r');
+    Put('i');
+    Put('e');
+    Put('l');
+    Put('l');
+    Put('e');
+    Put(' ');
+    Put('d');
+    Put('e');
+    Put(' ');
+    Put(toCheck);
+    Put(' ');
+    Put(':');
+    Put(' ');
+    Put(Result);
+    New_Line;
+    Put('F');
+    Put('a');
+    Put('c');
+    Put('t');
+    Put('o');
+    Put('r');
+    Put('i');
+    Put('e');
+    Put('l');
+    Put('l');
+    Put('e');
+    Put(' ');
+    Put('i');
+    Put('n');
+    Put(' ');
+    Put('r');
+    Put('e');
+    Put('c');
+    Put('o');
+    Put('r');
+    Put('d');
+    Put(' ');
+    Put('f');
+    Put('o');
+    Put('r');
+    Put(' ');
+    Put(factR.value);
+    Put(' ');
+    Put('i');
+    Put('s');
+    Put(' ');
+    Put(factR.result);
+end Test;

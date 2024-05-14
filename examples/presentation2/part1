@@ -1,0 +1,35 @@
+with Ada.Text_IO; use Ada.Text_IO;
+procedure Test is
+    function EstPremier(N : Integer) return Boolean is
+            Racine : Integer;
+            F : Boolean := True;
+        begin
+            if N <= 1 then
+                return False;
+            elsif N <= 3 then
+                return True;
+            end if;
+
+            Racine := 1;
+            while Racine * Racine <= N loop
+                Racine := Racine + 1;
+            end loop;
+            Racine := Racine - 1;
+
+            for I in 2..Racine loop
+                if N rem I = 0 then
+                    F := False;
+                end if;
+            end loop;
+
+            return F;
+        end EstPremier;
+begin
+    for I in 1..100 loop
+        if EstPremier(I) then
+            Put(I);
+            Put(' ');
+        end if;
+    end loop;
+    New_Line;
+end Test;
