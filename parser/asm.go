@@ -687,6 +687,7 @@ func (a *AssemblyFile) ReadIf(graph Graph, node int) {
 	a.Ldr(R0, 0)
 	a.CommentPreviousLine("Load result of condition")
 	a.Add(SP, 4)
+	a.CommentPreviousLine("Remove the result of the condition from the stack")
 
 	randomLabel := strconv.Itoa(rand.Int())
 
@@ -1654,7 +1655,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 			a.Call(node, graph, name, args)
 
 			// Move the stack pointer
-			size := getTypeSize(graph.fullSymbols[graph.GetChildren(node)[0]].(Function).ReturnType, *graph.getScope(node))
+			/*size := getTypeSize(graph.fullSymbols[graph.GetChildren(node)[0]].(Function).ReturnType, *graph.getScope(node))
 			fmt.Println(size)
 			a.Sub(SP, getTypeSize(graph.fullSymbols[graph.GetChildren(node)[0]].(Function).ReturnType, *graph.getScope(node)))
 
@@ -1664,7 +1665,7 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 				a.StrWithOffset(R0, o)
 				size -= 4
 				o += 4
-			}
+			}*/
 		}
 	}
 
