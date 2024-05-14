@@ -805,7 +805,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 							paramOffset = param.Offset
 						}
 					}
-					for i := 1; i < len(symbol.(Function).Params); i++ {
+					for i := 1; i < len(symbol.(Function).Params)+1; i++ {
 						if symbol.(Function).Params[i].IsParamIn && symbol.(Function).Params[i].IsParamOut {
 							// Load the address of the in out parameter
 							a.LdrFromFramePointer(R0, paramOffset-symbol.(Function).Params[i].Offset+16)
@@ -823,7 +823,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 							paramOffset = param.Offset
 						}
 					}
-					for i := 1; i < len(symbol.(Procedure).Params); i++ {
+					for i := 1; i < len(symbol.(Procedure).Params)+1; i++ {
 						if symbol.(Procedure).Params[i].IsParamIn && symbol.(Procedure).Params[i].IsParamOut {
 							// Load the address of the in out parameter
 							a.LdrFromFramePointer(R0, paramOffset-symbol.(Procedure).Params[i].Offset+16)
@@ -979,7 +979,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 	_, isFunction := symbol.(Function)
 	_, isProcedure := symbol.(Procedure)
 	if isFunction {
-		a.Sub(SP, 4) // TODO: record fix
+		a.Sub(SP, getTypeSize(symbol.(Function).ReturnType, *graph.getScope(node)))
 		a.CommentPreviousLine("Save space for the return value")
 	}
 
@@ -995,6 +995,8 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 				a.CommentPreviousLine("Reserve space for the in out parameter")
 				a.StoreAddress(arg, graph)
 				a.AddComment("Stored the address of the in out parameter")
+
+				removedOffset += 4
 			}
 			if symbol.(Function).Params[k+1].Offset > removedOffset {
 				removedOffset = symbol.(Function).Params[k+1].Offset
@@ -1005,6 +1007,8 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 				a.CommentPreviousLine("Reserve space for the in out parameter")
 				a.StoreAddress(arg, graph)
 				a.AddComment("Stored the address of the in out parameter")
+
+				removedOffset += 4
 			}
 			if symbol.(Procedure).Params[k+1].Offset > removedOffset {
 				removedOffset = symbol.(Procedure).Params[k+1].Offset
@@ -1268,7 +1272,7 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 				paramOffset = param.Offset
 			}
 		}
-		for i := 1; i < len(symbol.(Function).Params); i++ {
+		for i := 1; i < len(symbol.(Function).Params)+1; i++ {
 			if symbol.(Function).Params[i].IsParamIn && symbol.(Function).Params[i].IsParamOut {
 				// Load the address of the in out parameter
 				a.LdrFromFramePointer(R0, paramOffset-symbol.(Function).Params[i].Offset+16)
@@ -1286,7 +1290,7 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 				paramOffset = param.Offset
 			}
 		}
-		for i := 1; i < len(symbol.(Procedure).Params); i++ {
+		for i := 1; i < len(symbol.(Procedure).Params)+1; i++ {
 			if symbol.(Procedure).Params[i].IsParamIn && symbol.(Procedure).Params[i].IsParamOut {
 				// Load the address of the in out parameter
 				a.LdrFromFramePointer(R0, paramOffset-symbol.(Procedure).Params[i].Offset+16)
@@ -1379,7 +1383,23 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 			a.Mov(R0, intValue)
 			a.Str(R0)
 		} else {
-			if graph.GetNode(node)[0] == '\'' {
+			if graph.GetNode(node) == "true" {
+				// Move the stack pointer
+				a.Sub(SP, 4)
+
+				// The operand is a bool
+				// Load the bool value to r0
+				a.Mov(R0, 1)
+				a.Str(R0)
+			} else if graph.GetNode(node) == "false" {
+				// Move the stack pointer
+				a.Sub(SP, 4)
+
+				// The operand is a bool
+				// Load the bool value to r0
+				a.Mov(R0, 0)
+				a.Str(R0)
+			} else if graph.GetNode(node)[0] == '\'' {
 				// Move the stack pointer
 				a.Sub(SP, 4)
 
