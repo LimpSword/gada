@@ -847,6 +847,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 		// TODO: check for variable that could be a char (or char in record)
 		isChar := graph.GetNode(graph.GetChildren(args)[0]) == "cast" || graph.GetNode(graph.GetChildren(args)[0])[0] == '\''
 		if isChar {
+			a.AddComment("Printing char")
 			// Move the result to R0
 			a.Ldr(R0, 0)
 
@@ -881,7 +882,7 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 
 		a.CallProcedure("println")
 
-		if graph.GetNode(graph.GetChildren(args)[0]) == "cast" {
+		if isChar {
 			a.Add(SP, 12)
 		} else {
 			// do nothing
