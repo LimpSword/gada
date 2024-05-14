@@ -160,7 +160,7 @@ func matchFuncReturn(graph *Graph, scope *Scope, node int, args []int, argstype 
 		}
 		if len(matching) > 0 {
 			returnTypes[matching[0].ReturnType] = struct{}{}
-			addSymbol(graph, node, hashFunction(matching[0]))
+			addSymbol(graph, node, hashFunction(matching[0]), matching[0])
 			return returnTypes
 		}
 
@@ -224,7 +224,7 @@ func matchFunc(graph *Graph, scope *Scope, node int, args []int, argstype map[in
 			}
 		}
 		if len(matching) > 0 {
-			addSymbol(graph, node, hashFunction(matching[0]))
+			addSymbol(graph, node, hashFunction(matching[0]), matching[0])
 			return returnTypes
 		}
 
@@ -283,7 +283,7 @@ func matchProc(graph *Graph, scope *Scope, node int, args []int, argstype map[in
 		if len(matching) > 1 {
 			logger.Error(fileName + ":" + line + ":" + column + " " + name + " call is ambiguous")
 		} else if len(matching) == 1 {
-			addSymbol(graph, node, hashProc(matching[0]))
+			addSymbol(graph, node, hashProc(matching[0]), matching[0])
 			return "found"
 		}
 	}
@@ -666,18 +666,40 @@ func goUpScope(graph Graph, scope *Scope, node int, name string) (*Scope, int) {
 				if variable.IsParamIn || variable.IsParamOut {
 					paramOffset := 0
 					if _, ok := scope.ScopeSymbol.(Procedure); ok {
-						paramOffset = 4 * scope.ScopeSymbol.(Procedure).ParamCount
+						for _, param := range scope.ScopeSymbol.(Procedure).Params {
+							if param.Offset > paramOffset {
+								paramOffset = param.Offset
+							}
+						}
 					}
 					if _, ok := scope.ScopeSymbol.(Function); ok {
-						paramOffset = 4 * scope.ScopeSymbol.(Function).ParamCount
+						for _, param := range scope.ScopeSymbol.(Function).Params {
+							if param.Offset > paramOffset {
+								paramOffset = param.Offset
+							}
+						}
+					}
+					if variable.IsParamIn && variable.IsParamOut {
+						paramOffset += 4
 					}
 					return scope, (paramOffset - variable.Offset) + 16
 				}
 				var fixParamOffset = 0
 				if _, ok := scope.ScopeSymbol.(Procedure); ok {
-					fixParamOffset = 4 * scope.ScopeSymbol.(Procedure).ParamCount
+					for _, param := range scope.ScopeSymbol.(Procedure).Params {
+						if param.Offset > fixParamOffset {
+							fixParamOffset = param.Offset
+						}
+					}
 				} else if _, ok := scope.ScopeSymbol.(Function); ok {
-					fixParamOffset = 4 * scope.ScopeSymbol.(Function).ParamCount
+					for _, param := range scope.ScopeSymbol.(Function).Params {
+						if param.Offset > fixParamOffset {
+							fixParamOffset = param.Offset
+						}
+					}
+				}
+				if variable.IsParamIn && variable.IsParamOut {
+					fixParamOffset += 4
 				}
 				return scope, -(variable.Offset - 4) + fixParamOffset
 			}
@@ -853,7 +875,7 @@ func semCheck(graph *Graph, node int) {
 			errorMessage := fileName + ":" + line + ":" + column + " " + err.Error()
 			logger.Error(errorMessage)
 		}
-		addSymbol(graph, node, hashFunction(funcElem))
+		addSymbol(graph, node, hashFunction(funcElem), funcElem)
 
 		countSame := 0
 		for _, fun := range scope.Table[funcElem.FName] {
@@ -918,7 +940,7 @@ func semCheck(graph *Graph, node int) {
 			}
 			shift = 1
 		}
-		addSymbol(graph, node, hashProc(procElem))
+		addSymbol(graph, node, hashProc(procElem), procElem)
 
 		countSame := 0
 		for _, proc := range scope.Table[procElem.PName] {

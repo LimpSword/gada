@@ -620,7 +620,7 @@ func (a *AssemblyFile) CallProcedure(name string) {
 	}
 }
 
-func (a *AssemblyFile) CallWithParameters(blName string, name string, scope *Scope, removedOffset int) {
+func (a *AssemblyFile) CallWithParameters(blName string, scope *Scope, removedOffset int) {
 	symbol := scope.ScopeSymbol
 	_, isFunction := symbol.(Function)
 	if a.WritingAtEnd {
@@ -635,6 +635,7 @@ func (a *AssemblyFile) CallWithParameters(blName string, name string, scope *Sco
 
 		// clear the stack
 		a.Add(SP, removedOffset)
+		a.CommentPreviousLine("Clear the stack of parameters")
 	} else {
 		a.Text += "BL " + blName + "\n"
 
@@ -647,6 +648,7 @@ func (a *AssemblyFile) CallWithParameters(blName string, name string, scope *Sco
 
 		// clear the stack
 		a.Add(SP, removedOffset)
+		a.CommentPreviousLine("Clear the stack of parameters")
 	}
 }
 
@@ -792,6 +794,48 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			a.AddComment("Return statement")
 			if len(graph.GetChildren(child)) == 0 {
 				// Leave the procedure
+				// Return the in out parameters
+				symbol := graph.fullSymbols[node]
+				_, isFunction := symbol.(Function)
+				_, isProcedure := symbol.(Procedure)
+				if isFunction {
+					paramOffset := 0
+					for _, param := range symbol.(Function).Params {
+						if param.Offset > paramOffset {
+							paramOffset = param.Offset
+						}
+					}
+					for i := 1; i < len(symbol.(Function).Params); i++ {
+						if symbol.(Function).Params[i].IsParamIn && symbol.(Function).Params[i].IsParamOut {
+							// Load the address of the in out parameter
+							a.LdrFromFramePointer(R0, paramOffset-symbol.(Function).Params[i].Offset+16)
+							a.CommentPreviousLine("Load the address of the in out parameter")
+							a.LdrFromFramePointer(R1, paramOffset-symbol.(Function).Params[i].Offset+4+16)
+							a.CommentPreviousLine("Load the value of the in out parameter")
+							a.StrFrom(R1, R0, 0)
+							a.CommentPreviousLine("Store the value of the in out parameter")
+						}
+					}
+				} else if isProcedure {
+					paramOffset := 0
+					for _, param := range symbol.(Procedure).Params {
+						if param.Offset > paramOffset {
+							paramOffset = param.Offset
+						}
+					}
+					for i := 1; i < len(symbol.(Procedure).Params); i++ {
+						if symbol.(Procedure).Params[i].IsParamIn && symbol.(Procedure).Params[i].IsParamOut {
+							// Load the address of the in out parameter
+							a.LdrFromFramePointer(R0, paramOffset-symbol.(Procedure).Params[i].Offset+16)
+							a.CommentPreviousLine("Load the address of the in out parameter")
+							a.LdrFromFramePointer(R1, paramOffset-symbol.(Procedure).Params[i].Offset+4+16)
+							a.CommentPreviousLine("Load the value of the in out parameter")
+							a.StrFrom(R1, R0, 0)
+							a.CommentPreviousLine("Store the value of the in out parameter")
+						}
+					}
+				}
+
 				a.Add(SP, getDeclOffset(graph, node))
 				a.LdmfdMultiple([]Register{R10, R11, PC})
 				a.CommentPreviousLine("Return from the procedure")
@@ -811,13 +855,52 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 			fnc, isFunction := scope.ScopeSymbol.(Function)
 			paramOffset := 0
 			if isFunction {
-				paramOffset = fnc.ParamCount * 4
+				for _, param := range fnc.Params {
+					if param.Offset > paramOffset {
+						paramOffset = param.Offset
+					}
+				}
 			}
 			a.StrFromFramePointer(R0, 16+paramOffset)
 
 			// Leave the procedure
 			a.Add(SP, 4)
 			a.CommentPreviousLine("Remove the return value from the stack")
+
+			// Return the in out parameters
+			symbol := graph.fullSymbols[node]
+			_, isProcedure := symbol.(Procedure)
+			if isFunction {
+				for i := 1; i < len(symbol.(Function).Params); i++ {
+					if symbol.(Function).Params[i].IsParamIn && symbol.(Function).Params[i].IsParamOut {
+						// Load the address of the in out parameter
+						a.LdrFromFramePointer(R0, paramOffset-symbol.(Function).Params[i].Offset+16)
+						a.CommentPreviousLine("Load the address of the in out parameter")
+						a.LdrFromFramePointer(R1, paramOffset-symbol.(Function).Params[i].Offset+4+16)
+						a.CommentPreviousLine("Load the value of the in out parameter")
+						a.StrFrom(R1, R0, 0)
+						a.CommentPreviousLine("Store the value of the in out parameter")
+					}
+				}
+			} else if isProcedure {
+				paramOffset := 0
+				for _, param := range symbol.(Procedure).Params {
+					if param.Offset > paramOffset {
+						paramOffset = param.Offset
+					}
+				}
+				for i := 1; i < len(symbol.(Procedure).Params); i++ {
+					if symbol.(Procedure).Params[i].IsParamIn && symbol.(Procedure).Params[i].IsParamOut {
+						// Load the address of the in out parameter
+						a.LdrFromFramePointer(R0, paramOffset-symbol.(Procedure).Params[i].Offset+16)
+						a.CommentPreviousLine("Load the address of the in out parameter")
+						a.LdrFromFramePointer(R1, paramOffset-symbol.(Procedure).Params[i].Offset+4+16)
+						a.CommentPreviousLine("Load the value of the in out parameter")
+						a.StrFrom(R1, R0, 0)
+						a.CommentPreviousLine("Store the value of the in out parameter")
+					}
+				}
+			}
 
 			a.Add(SP, getDeclOffset(graph, node))
 			a.CommentPreviousLine("Clear the stack of declarations: " + strconv.Itoa(getDeclOffset(graph, node)))
@@ -886,25 +969,90 @@ func (a *AssemblyFile) Call(node int, graph Graph, name int, args int) {
 			a.Add(SP, 12)
 		} else {
 			// do nothing
+			a.Add(SP, 4) // why wouldn't the value be removed from the stack?
 		}
 		a.AddComment("End of put statement")
 		return
 	}
 
-	symbol := graph.getScope(node).ScopeSymbol
+	symbol := graph.fullSymbols[name]
 	_, isFunction := symbol.(Function)
+	_, isProcedure := symbol.(Procedure)
 	if isFunction {
 		a.Sub(SP, 4) // TODO: record fix
 		a.CommentPreviousLine("Save space for the return value")
 	}
 
 	a.AddComment("Read the arguments")
-	for _, arg := range graph.GetChildren(args) {
+	removedOffset := 0
+	for k, arg := range graph.GetChildren(args) {
 		a.ReadOperand(graph, arg)
+
+		// Reserve 4 bytes if the argument is in out mode
+		if isFunction {
+			if symbol.(Function).Params[k+1].IsParamIn && symbol.(Function).Params[k+1].IsParamOut {
+				a.Sub(SP, 4)
+				a.CommentPreviousLine("Reserve space for the in out parameter")
+				a.StoreAddress(arg, graph)
+				a.AddComment("Stored the address of the in out parameter")
+			}
+			if symbol.(Function).Params[k+1].Offset > removedOffset {
+				removedOffset = symbol.(Function).Params[k+1].Offset
+			}
+		} else if isProcedure {
+			if symbol.(Procedure).Params[k+1].IsParamIn && symbol.(Procedure).Params[k+1].IsParamOut {
+				a.Sub(SP, 4)
+				a.CommentPreviousLine("Reserve space for the in out parameter")
+				a.StoreAddress(arg, graph)
+				a.AddComment("Stored the address of the in out parameter")
+			}
+			if symbol.(Procedure).Params[k+1].Offset > removedOffset {
+				removedOffset = symbol.(Procedure).Params[k+1].Offset
+			}
+		}
 	}
 
 	a.AddComment("Arguments read, call the procedure")
-	a.CallWithParameters(graph.symbols[name], graph.GetNode(name), graph.getScope(node), len(graph.GetChildren(args))*4) // TODO: record fix
+	a.CallWithParameters(graph.symbols[name], graph.getScope(node), removedOffset) // TODO: record fix
+}
+
+func (a *AssemblyFile) StoreAddress(node int, graph Graph) {
+	scope := graph.getScope(node)
+
+	endScope, offset := goUpScope(graph, scope, node, graph.GetNode(node))
+
+	if scope == endScope {
+		a.MovRegister(R0, R11)
+		a.Add(R0, offset)
+	} else {
+		// Loop through dynamic links until we reach the correct region
+		random := strconv.Itoa(rand.Int()) + "_" + graph.GetNode(node)
+
+		a.MovRegister(R9, R11)
+		a.LdrFromFramePointer(R8, 4)
+		a.Cmp(R8, endScope.Region)
+		a.BranchToLabelWithCondition("notload_"+random, EQ)
+		a.AddLabel("load_" + random)
+		a.LdrFromFramePointer(R11, 8)
+		a.LdrFromFramePointer(R8, 4)
+		a.Cmp(R8, endScope.Region)
+		a.BranchToLabelWithCondition("load_"+random, NE)
+
+		a.AddLabel("notload_" + random)
+
+		// Go 1 level up
+		a.LdrFromFramePointer(R11, 8)
+
+		a.MovRegister(R0, R11)
+		a.Add(R0, offset)
+
+		// Restore R9
+		a.MovRegister(R11, R9)
+	}
+	// Move the stack pointer
+
+	a.Str(R0)
+	a.CommentPreviousLine("Store the value of " + graph.GetNode(node))
 }
 
 func (a *AssemblyFile) ReadWhile(graph Graph, node int) {
@@ -1108,6 +1256,48 @@ func (a *AssemblyFile) ReadProcedure(graph Graph, node int) {
 	a.AddComment("Read the body of the procedure")
 	// Read the body of the procedure
 	a.ReadBody(graph, bodyNode)
+
+	// Return the in out parameters
+	symbol := graph.fullSymbols[node]
+	_, isFunction := symbol.(Function)
+	_, isProcedure := symbol.(Procedure)
+	if isFunction {
+		paramOffset := 0
+		for _, param := range symbol.(Function).Params {
+			if param.Offset > paramOffset {
+				paramOffset = param.Offset
+			}
+		}
+		for i := 1; i < len(symbol.(Function).Params); i++ {
+			if symbol.(Function).Params[i].IsParamIn && symbol.(Function).Params[i].IsParamOut {
+				// Load the address of the in out parameter
+				a.LdrFromFramePointer(R0, paramOffset-symbol.(Function).Params[i].Offset+16)
+				a.CommentPreviousLine("Load the address of the in out parameter")
+				a.LdrFromFramePointer(R1, paramOffset-symbol.(Function).Params[i].Offset+4+16)
+				a.CommentPreviousLine("Load the value of the in out parameter")
+				a.StrFrom(R1, R0, 0)
+				a.CommentPreviousLine("Store the value of the in out parameter")
+			}
+		}
+	} else if isProcedure {
+		paramOffset := 0
+		for _, param := range symbol.(Procedure).Params {
+			if param.Offset > paramOffset {
+				paramOffset = param.Offset
+			}
+		}
+		for i := 1; i < len(symbol.(Procedure).Params); i++ {
+			if symbol.(Procedure).Params[i].IsParamIn && symbol.(Procedure).Params[i].IsParamOut {
+				// Load the address of the in out parameter
+				a.LdrFromFramePointer(R0, paramOffset-symbol.(Procedure).Params[i].Offset+16)
+				a.CommentPreviousLine("Load the address of the in out parameter")
+				a.LdrFromFramePointer(R1, paramOffset-symbol.(Procedure).Params[i].Offset+4+16)
+				a.CommentPreviousLine("Load the value of the in out parameter")
+				a.StrFrom(R1, R0, 0)
+				a.CommentPreviousLine("Store the value of the in out parameter")
+			}
+		}
+	}
 
 	a.Add(SP, getDeclOffset(graph, node))
 	a.CommentPreviousLine("Clear the stack of declarations: " + strconv.Itoa(getDeclOffset(graph, node)))

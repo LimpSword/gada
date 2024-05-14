@@ -10,20 +10,21 @@ import (
 )
 
 type Graph struct {
-	fileName   string
-	gmap       map[int]map[int]struct{}
-	types      map[int]string
-	terminals  map[int]struct{}
-	meaningful map[int]struct{}
-	line       map[int]int
-	column     map[int]int
-	fathers    map[int]int
-	depth      map[int]int
-	symbols    map[int]string
-	scopes     map[int]*Scope
-	hasReturn  map[int]struct{}
-	nbNode     int
-	lexer      *lexer.Lexer
+	fileName    string
+	gmap        map[int]map[int]struct{}
+	types       map[int]string
+	terminals   map[int]struct{}
+	meaningful  map[int]struct{}
+	line        map[int]int
+	column      map[int]int
+	fathers     map[int]int
+	depth       map[int]int
+	symbols     map[int]string
+	fullSymbols map[int]Symbol
+	scopes      map[int]*Scope
+	hasReturn   map[int]struct{}
+	nbNode      int
+	lexer       *lexer.Lexer
 }
 
 func (g Graph) GetNode(node int) string {
@@ -353,6 +354,7 @@ func createGraph(node Node, lexer lexer.Lexer) *Graph {
 	graph.scopes = make(map[int]*Scope)
 	graph.hasReturn = make(map[int]struct{})
 	graph.symbols = make(map[int]string)
+	graph.fullSymbols = make(map[int]Symbol)
 	graph.nbNode = 0
 	addNodes(&node, &graph, lexer, 1, true)
 
@@ -489,8 +491,9 @@ func makeChild2(g *Graph, node int, exp string, newExpr string) int {
 	return newNode
 }
 
-func addSymbol(g *Graph, node int, hash string) {
+func addSymbol(g *Graph, node int, hash string, symbol Symbol) {
 	g.symbols[node] = hash
+	g.fullSymbols[node] = symbol
 }
 
 func switchNodes(g *Graph, node1 int, node2 int) {

@@ -216,6 +216,9 @@ func addParam(graph *Graph, node int, currentFunc *Function, funcScope *Scope) {
 			currentFunc.ParamCount++
 			newParam := handleInOut(graph, children, graph.types[child])
 			newParam.Offset = funcScope.getCurrentOffset() + size
+			if newParam.IsParamIn && newParam.IsParamOut {
+				newParam.Offset += 4 // 4 bytes for the return address
+			}
 			currentFunc.Params[currentFunc.ParamCount] = newParam
 			funcScope.addSymbol(*newParam)
 		}
@@ -230,6 +233,9 @@ func addParam(graph *Graph, node int, currentFunc *Function, funcScope *Scope) {
 		currentFunc.ParamCount++
 		newParam := handleInOut(graph, children, graph.types[children[0]])
 		newParam.Offset = funcScope.getCurrentOffset() + size
+		if newParam.IsParamIn && newParam.IsParamOut {
+			newParam.Offset += 4 // 4 bytes for the return address
+		}
 		currentFunc.Params[currentFunc.ParamCount] = newParam
 		funcScope.addSymbol(*newParam)
 	}
@@ -251,6 +257,9 @@ func addParamProc(graph *Graph, node int, currentProc *Procedure, procScope *Sco
 				currentProc.ParamCount++
 				newParam := handleInOut(graph, children, graph.types[child])
 				newParam.Offset = procScope.getCurrentOffset() + size
+				if newParam.IsParamIn && newParam.IsParamOut {
+					newParam.Offset += 4 // 4 bytes for the return address
+				}
 				currentProc.Params[currentProc.ParamCount] = newParam
 				procScope.addSymbol(*newParam)
 			}
@@ -265,6 +274,9 @@ func addParamProc(graph *Graph, node int, currentProc *Procedure, procScope *Sco
 			currentProc.ParamCount++
 			newParam := handleInOut(graph, children, graph.types[children[0]])
 			newParam.Offset = procScope.getCurrentOffset() + size
+			if newParam.IsParamIn && newParam.IsParamOut {
+				newParam.Offset += 4 // 4 bytes for the return address
+			}
 			currentProc.Params[currentProc.ParamCount] = newParam
 			procScope.addSymbol(*newParam)
 		}
