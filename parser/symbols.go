@@ -295,13 +295,17 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 		shift := 0
 		if graph.types[sorted[1]] == "decl" {
 			children := maps.Keys(graph.gmap[sorted[1]])
-
-			// Extend sort for var nodes
+			// fix for deterministic order
 			slices.SortFunc(children, func(a, b int) int {
 				nodeA := graph.GetNode(a)
 				nodeB := graph.GetNode(b)
 
 				fmt.Println(nodeA, nodeB)
+				if nodeA == "type" && nodeB != "type" {
+					return -1
+				} else if nodeA != "type" && nodeB == "type" {
+					return 1
+				}
 
 				if nodeA == "var" && nodeB == "var" {
 					sortedA := maps.Keys(graph.gmap[a])
@@ -338,8 +342,26 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 		scope.addSymbol(funcElem)
 		funcScope.ScopeSymbol = funcElem
 		if graph.types[sorted[2+shift]] == "decl" {
-
 			children := maps.Keys(graph.gmap[sorted[2+shift]])
+			// fix for deterministic order
+			slices.SortFunc(children, func(a, b int) int {
+				nodeA := graph.GetNode(a)
+				nodeB := graph.GetNode(b)
+
+				fmt.Println(nodeA, nodeB)
+
+				if nodeA == "var" && nodeB == "var" {
+					sortedA := maps.Keys(graph.gmap[a])
+					slices.Sort(sortedA)
+					sortedB := maps.Keys(graph.gmap[b])
+					slices.Sort(sortedB)
+
+					nameA := graph.types[sortedA[0]]
+					nameB := graph.types[sortedB[0]]
+					return strings.Compare(nameA, nameB)
+				}
+				return strings.Compare(nodeA, nodeB)
+			})
 			for _, child := range children {
 				dfsSymbols(graph, child, funcScope)
 			}
@@ -364,6 +386,24 @@ func dfsSymbols(graph *Graph, node int, currentScope *Scope) {
 		procScope.ScopeSymbol = procElem
 		if graph.types[sorted[1+shift]] == "decl" {
 			children := maps.Keys(graph.gmap[sorted[1+shift]])
+			slices.SortFunc(children, func(a, b int) int {
+				nodeA := graph.GetNode(a)
+				nodeB := graph.GetNode(b)
+
+				fmt.Println(nodeA, nodeB)
+
+				if nodeA == "var" && nodeB == "var" {
+					sortedA := maps.Keys(graph.gmap[a])
+					slices.Sort(sortedA)
+					sortedB := maps.Keys(graph.gmap[b])
+					slices.Sort(sortedB)
+
+					nameA := graph.types[sortedA[0]]
+					nameB := graph.types[sortedB[0]]
+					return strings.Compare(nameA, nameB)
+				}
+				return strings.Compare(nodeA, nodeB)
+			})
 			for _, child := range children {
 				dfsSymbols(graph, child, procScope)
 			}

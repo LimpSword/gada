@@ -2,6 +2,7 @@ with Ada.Text_IO; use Ada.Text_IO;
 procedure Test is
     function EstPremier(N : Integer) return Boolean is
         Racine : Integer;
+        B : Boolean := True;
     begin
         if N <= 1 then
             return False;
@@ -17,11 +18,11 @@ procedure Test is
 
         for I in 2..Racine loop
             if N rem I = 0 then
-                return False;
+                B := False;
             end if;
         end loop;
 
-        return True;
+        return B;
     end EstPremier;
     -- Fonction récursive pour calculer la factorielle
     function Factorielle(N : Integer) return Integer is
@@ -40,41 +41,43 @@ procedure Test is
         if EstPremier(X) then
             AdresseResult := Factorielle(X);
         else
-            Put('L');
-                Put('e');
-                Put(' ');
-                Put('n');
-                Put('o');
-                Put('m');
-                Put('b');
-                Put('r');
-                Put('e');
-                Put(' ');
-                Put('n');
-                Put(' ');
-                Put('e');
-                Put('s');
-                Put('t');
-                Put(' ');
-                Put('p');
-                Put('a');
-                Put('s');
-                Put(' ');
-                Put('p');
-                Put('r');
-                Put('e');
-                Put('m');
-                Put('i');
-                Put('e');
-                Put('r');
-                Put('.');
-                New_Line;
-            AdresseResult := 0;
+            AdresseResult := -1;
         end if;
     end CalculerFactorielle;
     Result : Integer;
 begin
     CalculerFactorielle(5, Result);
+    if Result = -1 then
+        Put('L');
+        Put('e');
+        Put(' ');
+        Put('n');
+        Put('o');
+        Put('m');
+        Put('b');
+        Put('r');
+        Put('e');
+        Put(' ');
+        Put('n');
+        Put(' ');
+        Put('e');
+        Put('s');
+        Put('t');
+        Put(' ');
+        Put('p');
+        Put('a');
+        Put('s');
+        Put(' ');
+        Put('p');
+        Put('r');
+        Put('e');
+        Put('m');
+        Put('i');
+        Put('e');
+        Put('r');
+        Put('.');
+        New_Line;
+    else
         Put('F');
         Put('a');
         Put('c');
@@ -95,6 +98,8 @@ begin
         Put(':');
         Put(' ');
         New_Line;
+    end if;
+
     Put(Result);
     New_Line;
 end Test;

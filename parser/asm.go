@@ -346,6 +346,16 @@ func (a *AssemblyFile) Negate(register Register) {
 	}
 }
 
+func (a *AssemblyFile) Not(register Register) {
+	if a.WritingAtEnd {
+		a.EndText += "; Not " + register.String() + "\n"
+		a.EndText += "MVN " + register.String() + ", " + register.String() + "\n"
+	} else {
+		a.Text += "; Not " + register.String() + "\n"
+		a.Text += "MVN " + register.String() + ", " + register.String() + "\n"
+	}
+}
+
 func (a *AssemblyFile) Positive(register Register) {
 	if a.WritingAtEnd {
 		a.EndText += fmt.Sprintf(`; Make %[1]v positive
@@ -629,7 +639,7 @@ func (a *AssemblyFile) CallWithParameters(blName string, scope *Scope, removedOf
 		if isFunction {
 			a.Add(SP, removedOffset)
 			a.Ldr(R0, 0)
-			a.Add(SP, 4)
+			//a.Add(SP, 4)
 			return
 		}
 
@@ -642,7 +652,7 @@ func (a *AssemblyFile) CallWithParameters(blName string, scope *Scope, removedOf
 		if isFunction {
 			a.Add(SP, removedOffset)
 			a.Ldr(R0, 0)
-			a.Add(SP, 4)
+			//a.Add(SP, 4)
 			return
 		}
 
@@ -861,6 +871,8 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 					}
 				}
 
+				// Need to quit every loop we are in
+
 				a.Add(SP, getDeclOffset(graph, node))
 				a.LdmfdMultiple([]Register{R10, R11, PC})
 				a.CommentPreviousLine("Return from the procedure")
@@ -894,7 +906,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 				symbol = scope.ScopeSymbol
 			}
 
-			returnedSize := getTypeSize(fnc.ReturnType, *scope)
+			/*returnedSize := getTypeSize(fnc.ReturnType, *scope)
 			offset := 0
 			for returnedSize > 0 {
 				a.Ldr(R0, offset)
@@ -902,6 +914,19 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 				paramOffset += 4
 				returnedSize -= 4
 				offset += 4
+			}*/
+
+			returnedSize := getTypeSize(fnc.ReturnType, *scope)
+			offset := returnedSize - 4
+			offset2 := 0
+			paramOffset += returnedSize - 4
+			for returnedSize > 0 {
+				a.Ldr(R0, offset2)
+				a.StrFromFramePointer(R0, 16+paramOffset)
+				paramOffset -= 4
+				returnedSize -= 4
+				offset -= 4
+				offset2 += 4
 			}
 
 			// Leave the procedure
@@ -942,6 +967,7 @@ func (a *AssemblyFile) ReadBody(graph Graph, node int) {
 				}
 			}
 
+			fmt.Println("offset", getDeclOffset(graph, node))
 			a.Add(SP, getDeclOffset(graph, node))
 			a.CommentPreviousLine("Clear the stack of declarations: " + strconv.Itoa(getDeclOffset(graph, node)))
 
@@ -1648,9 +1674,22 @@ func (a *AssemblyFile) ReadOperand(graph Graph, node int) {
 			a.Negate(R0)
 
 			a.Str(R0)
+		} else if graph.GetNode(children[0]) == "not" {
+			// Read right operand
+			a.ReadOperand(graph, children[1])
+
+			a.Ldr(R0, 0)
+			a.Not(R0)
+
+			a.Str(R0)
 		} else {
 			name := graph.GetChildren(node)[0]
-			args := graph.GetChildren(node)[1]
+			var args int
+			if len(graph.GetChildren(node)) > 1 {
+				args = graph.GetChildren(node)[1]
+			} else {
+				args = graph.GetChildren(node)[0]
+			}
 
 			a.Call(node, graph, name, args)
 

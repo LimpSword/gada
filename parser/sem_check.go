@@ -38,6 +38,7 @@ func getTypeSize(t string, scope Scope) int {
 				}
 			}
 			if scope.parent == nil {
+				fmt.Println("help")
 				return 0
 			}
 			scope = *scope.parent
@@ -587,7 +588,7 @@ func getDeclOffset(graph Graph, node int) int {
 			for _, symbol := range symbols {
 				if variable, ok := symbol.(Variable); ok {
 					if !variable.IsParamIn && !variable.IsParamOut {
-						offset += 4
+						offset += getTypeSize(variable.SType, *scope)
 					}
 				}
 			}
@@ -600,7 +601,7 @@ func getDeclOffset(graph Graph, node int) int {
 			for _, symbol := range symbols {
 				if variable, ok := symbol.(Variable); ok {
 					if !variable.IsParamIn && !variable.IsParamOut {
-						offset += 4
+						offset += getTypeSize(variable.SType, *scope)
 					}
 				}
 			}
@@ -663,8 +664,9 @@ func goUpScope(graph Graph, scope *Scope, node int, name string) (*Scope, int) {
 		}
 		//fmt.Println(endScope.Table[graph.GetNode(children[0])][0].Type(), rec, graph.GetNode(children[1]))
 		realOffset += upperRec.FieldsOffset[getSymbolType(graph.GetNode(children[1]))]
-		//fmt.Println("realOffset", offset, realOffset)
-		return endScope, offset + realOffset - 4
+		fmt.Println("realOffset", offset, realOffset, offset-realOffset+8)
+		// offset should be -4 not  4
+		return endScope, offset - realOffset + 8
 	}
 
 	if symbol, ok := scope.Table[name]; ok {
@@ -692,16 +694,18 @@ func goUpScope(graph Graph, scope *Scope, node int, name string) (*Scope, int) {
 					return scope, (paramOffset - variable.Offset) + 16
 				}
 				var fixParamOffset = 0
-				if _, ok := scope.ScopeSymbol.(Procedure); ok {
-					for _, param := range scope.ScopeSymbol.(Procedure).Params {
-						if param.Offset > fixParamOffset {
-							fixParamOffset = param.Offset
+				if !variable.IsLoop {
+					if _, ok := scope.ScopeSymbol.(Procedure); ok {
+						for _, param := range scope.ScopeSymbol.(Procedure).Params {
+							if param.Offset > fixParamOffset {
+								fixParamOffset = param.Offset
+							}
 						}
-					}
-				} else if _, ok := scope.ScopeSymbol.(Function); ok {
-					for _, param := range scope.ScopeSymbol.(Function).Params {
-						if param.Offset > fixParamOffset {
-							fixParamOffset = param.Offset
+					} else if _, ok := scope.ScopeSymbol.(Function); ok {
+						for _, param := range scope.ScopeSymbol.(Function).Params {
+							if param.Offset > fixParamOffset {
+								fixParamOffset = param.Offset
+							}
 						}
 					}
 				}
