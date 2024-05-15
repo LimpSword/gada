@@ -724,6 +724,9 @@ func upTheNode(g *Graph, node int) {
 		if g.types[g.fathers[node]] == "body" {
 			goUpChilds(g, node)
 		}
+		if g.types[g.fathers[node]] == "else" {
+			goUpChilds(g, node)
+		}
 	case "access":
 		if g.types[g.fathers[node]] == ":=" || g.types[g.fathers[node]] == "access" {
 			moveDown(g, node)
